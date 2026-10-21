@@ -57,11 +57,11 @@ let server: Server;
 let baseUrl = '';
 
 /** SSE d'un tour qui appelle l'outil `create_canvas`. */
-function toolCallStream(): string {
+function toolCallStream(markdown = CONTRACT, contractType = 'bail-habitation'): string {
   const args = JSON.stringify({
     title: "Contrat de bail à usage d'habitation",
-    contract_type: 'bail-habitation',
-    markdown: CONTRACT,
+    contract_type: contractType,
+    markdown,
   });
 
   const chunks: string[] = [];
@@ -96,8 +96,29 @@ function toolCallStream(): string {
   return chunks.join('');
 }
 
-function textStream(text: string): string {
-  return `data: ${JSON.stringify({
+/** Choit du document selon la demande : un CDD trop long si on le demande. */
+function contractFor(messages: Array<{ role: string; content: string }>): { markdown: string; contractType: string } {
+  // On ne regarde que le dernier message de l'utilisateur : le prompt système
+  // contient le catalogue, qui mentionne tous les types.
+  const lastUser = [...messages].reverse().find((message) => message.role === 'user');
+  const request = lastUser?.content ?? '';
+  if (request.includes('CDD')) {
+    return {
+      contractType: 'cdd-terme-precis',
+      markdown: [
+        '# Contrat de travail à durée déterminée (terme précis)',
+        '',
+        '## Article 4 – Durée',
+        '',
+        'Le contrat est conclu pour une durée de 3 ans à compter du 1er janvier 2026.',
+        '',
+      ].join('\n'),
+    };
+  }
+  return { markdown: CONTRACT, contractType: 'bail-habitation' };
+}
+
+function textStream(text: string): string {  return `data: ${JSON.stringify({
     id: 'gen-fake',
     choices: [{ index: 0, delta: { content: text }, finish_reason: null }],
   })}\n\n`
@@ -130,13 +151,14 @@ beforeAll(async () => {
 
       // Le tour qui reçoit le résultat de l'outil répond en texte ;
       // sinon, l'agent appelle l'outil de rédaction.
-      const messages = (parsed.messages ?? []) as Array<{ role: string }>;
+      const messages = (parsed.messages ?? []) as Array<{ role: string; content: string }>;
       const toolResultReceived = messages.some((message) => message.role === 'tool');
       if (toolResultReceived) {
         res.end(textStream('Le contrat est prêt.'));
         return;
       }
-      res.end(toolCallStream());
+      const chosen = contractFor(parsed.messages);
+      res.end(toolCallStream(chosen.markdown, chosen.contractType));
     });
   });
 
@@ -246,5 +268,36 @@ describe('B9 — bout en bout (serveur OpenRouter local)', () => {
     });
     expect(res.status).toBe(200);
     await res.text().catch(() => undefined);
+  });
+
+  it('remonte au client un écart avec la règle juridique', async () => {
+    // Le modèle produit un CDD de trois ans : la règle interdit de dépasser deux ans.
+    const illegal = [
+      '# Contrat de travail à durée déterminée (terme précis)',
+      '',
+      '## Article 4 – Durée',
+      '',
+      'Le contrat est conclu pour une durée de 3 ans à compter du 1er janvier 2026.',
+      '',
+    ].join('\n');
+
+    const app = buildApp();
+    const res = await app.request('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [{ role: 'user', content: 'Je veux un CDD de 3 ans.' }],
+        contract_type: 'cdd-terme-precis',
+      }),
+    });
+
+    const events = parseSse(await res.text());
+    const set = events.find((event) => event.event === 'canvas_set')!;
+    const issues = set.data.validation.issues as Array<{ code: string; severity: string }>;
+
+    expect(issues.map((issue) => issue.code)).toContain('validator:cdd_duree_max');
+    const issue = issues.find((entry) => entry.code === 'validator:cdd_duree_max')!;
+    expect(issue.severity).toBe('error');
+    expect(illegal).toContain('3 ans');
   });
 });
