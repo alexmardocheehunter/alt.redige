@@ -20,6 +20,7 @@ import type { AppEnv } from './types.js';
 import { TemplateStore } from './templates.js';
 import { metaRoutes } from './routes/meta.js';
 import { chatRoutes } from './routes/chat.js';
+import { exportRoutes } from './routes/export.js';
 
 export interface AppDeps {
   config: AppConfig;
@@ -134,6 +135,16 @@ export function createApp({ config, logger, templates, client }: AppDeps): Hono<
     templates: templateStore,
     client: client ?? createAnthropicClient(config.apiKey),
   }));
+
+  // Rate limiting is attached per route, with the bucket and window required by the contract.
+  app.use('/api/export/docx', rateLimit({
+    name: 'export',
+    limit: config.rateExportPerMin,
+    windowMs: 60 * 1000,
+    trustProxy: config.trustProxy,
+  }));
+
+  app.route('/', exportRoutes({ config, logger }));
 
   app.get('/', (c) => {
     const body = readIndexHtml();
