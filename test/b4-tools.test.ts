@@ -37,6 +37,12 @@ describe('outils — définitions', () => {
     const getTemplate = tools.find((tool) => tool.name === 'get_template')!;
     expect(JSON.stringify(getTemplate.input_schema)).toContain('bail-habitation');
   });
+
+  it('marque la liste d’outils pour la mise en cache du prompt', () => {
+    const tools = toolDefinitions(TemplateStore.load());
+    const last = tools[tools.length - 1] as { cache_control?: { type: string } };
+    expect(last.cache_control).toEqual({ type: 'ephemeral' });
+  });
 });
 
 describe('outil get_template', () => {

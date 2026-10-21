@@ -36,7 +36,7 @@ export interface ToolResult {
 export function toolDefinitions(templates: TemplateStore): Tool[] {
   const enumIds = templates.ready().map((template) => template.id);
 
-  return [
+  const tools: Tool[] = [
     {
       name: TOOL_GET_TEMPLATE,
       description:
@@ -89,6 +89,14 @@ export function toolDefinitions(templates: TemplateStore): Tool[] {
       },
     },
   ];
+
+  // The tool list is stable across the turns: it can be cached by the provider.
+  const last = tools[tools.length - 1];
+  if (last) {
+    (last as { cache_control?: { type: 'ephemeral' } }).cache_control = { type: 'ephemeral' };
+  }
+
+  return tools;
 }
 
 function ok(payload: unknown): ToolResult {
