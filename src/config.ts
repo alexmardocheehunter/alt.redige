@@ -32,6 +32,9 @@ const schema = z.object({
   // Gardien de sécurité : hors bascule, appelé séparément.
   LLM_SAFETY_MODEL: z.string().min(1).default('nvidia/nemotron-3.5-content-safety:free'),
   SAFETY_CHECK: z.enum(['0', '1']).default('1'),
+  // `block` : une demande hors du domaine juridique est bloquée sur le verdict.
+  // `advisory` : le verdict est journalisé, rien n'est bloqué.
+  SAFETY_MODE: z.enum(['off', 'advisory', 'block']).default('block'),
 
   PORT: z.coerce.number().int().min(0).max(65535).default(3000),
   ACCESS_CODE: z.string().min(1).optional(),
@@ -61,6 +64,7 @@ export interface AppConfig {
   model: string;
   safetyModel: string;
   safetyCheck: boolean;
+  safetyMode: 'off' | 'advisory' | 'block';
   port: number;
   accessCode: string | null;
   maxSteps: number;
@@ -104,6 +108,7 @@ function toAppConfig(raw: RawConfig): AppConfig {
     model: ordered[0]!,
     safetyModel: raw.LLM_SAFETY_MODEL,
     safetyCheck: raw.SAFETY_CHECK === '1',
+    safetyMode: raw.SAFETY_MODE,
     port: raw.PORT,
     accessCode: raw.ACCESS_CODE ?? null,
     maxSteps: raw.MAX_STEPS,

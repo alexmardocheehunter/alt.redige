@@ -11,7 +11,7 @@ import { AppError } from '../errors.js';
 import { isAbortError, isModelFailure, type LlmClient } from '../llm.js';
 import type { Logger } from '../logger.js';
 import { runtimeState } from '../runtime-state.js';
-import { checkTextSafety } from '../safety.js';
+import { checkTextSafety, shouldBlock } from '../safety.js';
 import type { TemplateStore } from '../templates.js';
 import type { AppEnv } from '../types.js';
 import { runAgent, type ChatMessage } from '../agent/loop.js';
@@ -167,11 +167,14 @@ export function chatRoutes(deps: ChatDeps): Hono<AppEnv> {
         logger,
       });
       if (!verdict.safe) {
-        logger.warn('safety_blocked_request', { label: verdict.label });
-        throw new AppError(
-          'bad_request',
-          'Votre demande a été bloquée par le filtre de sécurité. Reformulez votre demande.',
-        );
+        if (shouldBlock(verdict, config.safetyMode, verdict.inDomain)) {
+          logger.warn('safety_blocked_request', { label: verdict.label, in_domain: verdict.inDomain });
+          throw new AppError(
+            'bad_request',
+            'Votre demande a été bloquée par le filtre de sécurité. Reformulez votre demande.',
+          );
+        }
+        logger.warn('safety_flagged_request', { label: verdict.label, in_domain: verdict.inDomain });
       }
     }
 

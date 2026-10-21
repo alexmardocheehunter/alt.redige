@@ -27,6 +27,7 @@ function context(overrides: Partial<Parameters<typeof executeTool>[2]> = {}) {
     client: fakeClient(fake),
     safetyModel: 'nvidia/nemotron-3.5-content-safety:free',
     safetyEnabled: false,
+    safetyMode: 'advisory' as const,
     signal: new AbortController().signal,
   };
   return { events, context: { ...base, ...overrides } };

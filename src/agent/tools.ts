@@ -7,7 +7,7 @@ import { applyEdits, type Edit } from '../doc/edit.js';
 import { validate } from '../doc/validate.js';
 import type { LlmClient, LlmToolDefinition } from '../llm.js';
 import type { Logger } from '../logger.js';
-import { checkTextSafety } from '../safety.js';
+import { checkTextSafety, looksLikeContract, shouldBlock } from '../safety.js';
 import type { ContractTemplate, TemplateStore } from '../templates.js';
 import type { AgentEmit } from './events.js';
 
@@ -28,6 +28,7 @@ export interface ToolContext {
   client: LlmClient;
   safetyModel: string;
   safetyEnabled: boolean;
+  safetyMode: 'off' | 'advisory' | 'block';
   signal: AbortSignal;
 }
 
@@ -123,8 +124,10 @@ export function templatePayload(template: ContractTemplate): Record<string, unkn
 async function documentIsSafe(
   context: ToolContext,
   markdown: string,
-): Promise<{ safe: boolean; available: boolean }> {
-  if (!context.safetyEnabled) return { safe: true, available: false };
+): Promise<{ safe: boolean; available: boolean; inDomain: boolean }> {
+  if (!context.safetyEnabled) {
+    return { safe: true, available: false, inDomain: true };
+  }
 
   const verdict = await checkTextSafety({
     client: context.client,
@@ -134,7 +137,22 @@ async function documentIsSafe(
     logger: context.logger,
   });
 
-  return { safe: verdict.safe, available: verdict.available };
+  // Un document qui a la forme d'un contrat est dans le domaine : le gardien
+  // se trompe trop souvent sur le droit français pour le bloquer.
+  const inDomain = verdict.inDomain || looksLikeContract(markdown);
+  const blocked = shouldBlock(
+    { ...verdict, inDomain },
+    context.safetyMode,
+    inDomain,
+  );
+
+  if (!verdict.safe) {
+    context.logger.warn(blocked ? 'safety_blocked_document' : 'safety_flagged_document', {
+      in_domain: inDomain,
+    });
+  }
+
+  return { safe: !blocked, available: verdict.available, inDomain };
 }
 
 /**

@@ -120,6 +120,7 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
     client,
     safetyModel: config.safetyModel,
     safetyEnabled: config.safetyCheck,
+    safetyMode: config.safetyMode,
     signal,
   };
 

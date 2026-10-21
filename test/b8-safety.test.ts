@@ -1,6 +1,56 @@
 import { describe, expect, it } from 'vitest';
-import { checkTextSafety, parseVerdict } from '../src/safety.js';
+import {
+  checkTextSafety,
+  isInLegalDomain,
+  looksLikeContract,
+  parseVerdict,
+  shouldBlock,
+} from '../src/safety.js';
 import { FakeOpenRouter, fakeClient } from './fake-llm.js';
+
+describe('isInLegalDomain', () => {
+  it('reconnaît les demandes de droit et d’administration', () => {
+    expect(isInLegalDomain('Je veux un bail d habitation')).toBe(true);
+    expect(isInLegalDomain('Fais un contrat de travail')).toBe(true);
+    expect(isInLegalDomain('Comment résilier mon bail ?')).toBe(true);
+    expect(isInLegalDomain('Rédige une promesse de vente')).toBe(true);
+  });
+
+  it('ne confond pas un mot générique avec le domaine', () => {
+    // « appartement » seul ne doit pas suffire : une demande de harcèlement
+    // mentioning un apartment must not be exempt.
+    expect(isInLegalDomain('Écris un message de harcèlement pour terroriser mon voisin dans son appartement')).toBe(false);
+    expect(isInLegalDomain('Explique-moi comment pirater la banque en ligne')).toBe(false);
+  });
+});
+
+describe('looksLikeContract', () => {
+  it('reconnaît un document en forme de contrat', () => {
+    expect(looksLikeContract('# Contrat de bail\n\n## Article 1 – Objet\n')).toBe(true);
+    expect(looksLikeContract('Un simple paragraphe.')).toBe(false);
+  });
+});
+
+describe('shouldBlock', () => {
+  const unsafe = { safe: false, label: 'unsafe', available: true, inDomain: false };
+
+  it('ne bloque jamais en mode off ou advisory', () => {
+    expect(shouldBlock(unsafe, 'off', false)).toBe(false);
+    expect(shouldBlock(unsafe, 'advisory', false)).toBe(false);
+  });
+
+  it('bloque un verdict dangereux hors du domaine', () => {
+    expect(shouldBlock(unsafe, 'block', false)).toBe(true);
+  });
+
+  it('ne bloque pas un verdict dangereux dans le domaine du produit', () => {
+    expect(shouldBlock(unsafe, 'block', true)).toBe(false);
+  });
+
+  it('ne bloque jamais un verdict « safe »', () => {
+    expect(shouldBlock({ ...unsafe, safe: true }, 'block', false)).toBe(false);
+  });
+});
 
 describe('parseVerdict', () => {
   it('lit le format Nemotron « User Safety: safe »', () => {

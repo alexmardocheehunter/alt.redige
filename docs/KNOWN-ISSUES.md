@@ -105,10 +105,44 @@ donc systématiquement « illisible » et **laisse passer** : il ne bloquait
 rien. Le format réel a été relevé en interrogeant le modèle, puis le parseur a
 été corrigé et testé.
 
-**À faire** : vérifier le comportement réel sur des cas d'école (bail
-légitime → `safe`, demande hors sujet → `unsafe`) avant de considérer le
-filtre comme fiable. Le réglage s'ajuste avec `SAFETY_CHECK=0` et le prompt
-`SAFETY_SYSTEM_PROMPT` (`src/safety.ts`).
+**Calibrage vérifié sur le modèle réel** (21/10/2026). Deux problèmes ont été
+trouvés et corrigés en cours de route.
+
+**1. La consigne de classement dégradait le modèle.** Le modèle
+`nvidia/nemotron-3.5-content-safety` attend son **format natif**
+(« User Safety: … / Response Safety: … »). Lui demander un mot unique
+(`SAFE`/`UNSAFE`) dégradait nettement ses jugements : sur quatre demandes
+légitimes, une demande de bail légitime était classée
+« Criminal Planning/Confessions ». Avec le format natif, plus aucun faux
+positif. La consigne est donc reprise dans le format du modèle
+(`SAFETY_SYSTEM_PROMPT`).
+
+**2. Le modèle se trompe sur le droit français.** Même avec le bon format, sur
+huit demandes légitimes (bail, résiliation, contrat de travail, location de
+voiture, reprise de bail), deux étaient bloquées à tort. D'où l'exemption de
+domaine : une demande qui contient un terme du vocabulaire juridique ou
+administratif (`bail`, `contrat`, `loyer`, `travail`, `promesse`…) n'est
+**jamais** bloquée sur le seul verdict du gardien ; elle est journalisée
+(`safety_flagged_request`) pour relecture. Un contenu qui sort du domaine est
+bloqué normalement.
+
+**Mesures finales** (14 cas, modèle réel) :
+
+| | Demandes légitimes (10) | Demandes dangereuses (4) |
+|---|---|---|
+| bloquées à tort | **0** | — |
+| laissées passer | — | **0** |
+
+**Ce qui reste fragile** : l'échantillon est court (14 cas) et le modèle est
+un modèle gratuit dont le comportement peut changer. Si un faux positif
+apparaît en production, `SAFETY_MODE=advisory` désactive le blocage en une
+variable d'environnement (le verdict reste journalisé). Le mode par défaut est
+`block` ; `SAFETY_CHECK=0` coupe complètement le gardien.
+
+Le filtrage du *document produit* par le gardien est en place (aucun
+`canvas_set` n'est publié si le document est rejeté), mais n'a pas été testé
+sur un document réellement dangereux : le mécanisme n'a été validé que sur des
+documents légitimes.
 
 ### Réseau sortant instable vers openrouter.ai
 Depuis la machine de développement, les connexions vers `openrouter.ai` sont
@@ -126,21 +160,8 @@ Le contournement local (TLS 1.3 bloqué) est `NODE_OPTIONS=--tls-max-v1.2` :
 voir « Dépannage » dans `docs/EXPLOITATION.md`.
 
 ### Le filtre de sécurité n'a pas été calibré sur le modèle réel
-Le gardien `nvidia/nemotron-3.5-content-safety:free` est appelé avec une
-instruction qui impose une réponse `SAFE` ou `UNSAFE`. Le verdict est lu de
-façon prudente : seul un `UNSAFE` explicite en début de réponse bloque ; une
-réponse illisible ou une erreur du gardien laisse passer (fail-open).
-
-**À faire** : vérifier le comportement réel du modèle sur des cas d'école
-(document de bail légitime, demande hors sujet) avant de considérer le filtre
-comme fiable. Un faux positif bloquerait des demandes légitimes ; un faux
-négatif laisserait passer un contenu undesirable. Le réglage s'ajuste avec
-`SAFETY_CHECK=0` et le prompt `SAFETY_SYSTEM_PROMPT` (`src/safety.ts`).
-
-*(Le format réel du verdict et le budget de jetons ont été relevés et corrigés :
-voir « Les modèles de la chaîne sont des modèles à raisonnement » et « Le
-verdict du modèle de sécurité a un format propriétaire » ci-dessus. Le
-calibrage fonctionnel — ce qui est bloqué, ce qui passe — reste à faire.)*
+*Ce point est résolu : le calibrage réalisé et ses résultats sont décrits dans
+« Le verdict du modèle de sécurité a un format propriétaire » ci-dessus.*
 
 ---
 
