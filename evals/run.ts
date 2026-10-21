@@ -2,11 +2,12 @@
  * Evaluation runner — `npm run eval`.
  *
  * Calls the real endpoint with the real model (costly: never run in CI by
- * default). Without `--dry-run`, OPENROUTER_API_KEY must be set.
+ * default). Without `--smoke`, OPENROUTER_API_KEY must be set.
  *
  * Usage:
- *   npm run eval                 # real model
- *   npm run eval -- --dry-run    # scripted model (offline, verifies the harness)
+ *   npm run eval                 # real model — the only conclusive run
+ *   npm run eval -- --smoke      # scripted model: checks the harness only,
+ *                                 # does NOT count as a successful evaluation
  *   npm run eval -- --scenario=04-edition-cible
  */
 import { readdirSync, readFileSync } from 'node:fs';
@@ -537,13 +538,16 @@ async function runScenarioWithRetries(
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
-  const dryRun = args.includes('--dry-run');
+  // `--smoke` (ou `--dry-run`, alias) : modèle scripté. Ce mode vérifie le
+  // harnais, PAS le comportement du modèle : il ne compte jamais comme une
+  // réussite. Seule l'exécution contre le vrai modèle est concluante.
+  const smoke = args.includes('--smoke') || args.includes('--dry-run');
   const filter = args.find((arg) => arg.startsWith('--scenario='))?.slice('--scenario='.length);
 
   // The key may come from .env.
   loadEnvFile();
 
-  const logger = createLogger(dryRun ? 'warn' : 'info', { service: 'lexcanvas-eval' });
+  const logger = createLogger(smoke ? 'warn' : 'info', { service: 'lexcanvas-eval' });
   const scenarios = loadScenarios().filter((scenario) => !filter || scenario.id.includes(filter));
 
   if (scenarios.length === 0) {
@@ -551,19 +555,29 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  if (!dryRun && !process.env.OPENROUTER_API_KEY) {
+  if (!smoke && !process.env.OPENROUTER_API_KEY) {
     console.error(
       'OPENROUTER_API_KEY est absente : les scénarios ne peuvent pas être exécutés contre le vrai modèle.\n' +
-      'Renseignez la clé dans .env, ou utilisez « npm run eval -- --dry-run » pour vérifier le harnais sans modèle.',
+      'Renseignez la clé dans .env, ou utilisez « npm run eval -- --smoke » pour vérifier le harnais sans modèle.',
     );
     process.exit(2);
   }
 
+  if (smoke) {
+    console.log(
+      '\n*** MODE SMOKE (modèle scripté) ***\n'
+      + 'Les réponses du modèle sont rejouées depuis les fichiers de scénario : ce mode\n'
+      + 'vérifie que le harnais fonctionne, il ne mesure PAS le comportement du modèle.\n'
+      + 'Un résultat « SMOKE » ne vaut pas une évaluation réussie. Seul « npm run eval »\n'
+      + 'contre le vrai modèle est concluant.\n',
+    );
+  }
+
   const results: ScenarioResult[] = [];
   for (const scenario of scenarios) {
-    const result = await runScenarioWithRetries(scenario, { dryRun, logger }, dryRun ? 0 : 2);
+    const result = await runScenarioWithRetries(scenario, { dryRun: smoke, logger }, smoke ? 0 : 2);
     results.push(result);
-    const status = result.ok ? 'OK  ' : 'ÉCHEC';
+    const status = result.ok ? (smoke ? 'SMOKE' : 'OK  ') : 'ÉCHEC';
     const retried = result.retries ? ` [${result.retries} relance(s)]` : '';
     console.log(`${status}  ${scenario.id}  ${scenario.name}  (${result.durationMs} ms)${retried}`);
     for (const check of result.checks.filter((item) => !item.ok)) {
@@ -573,7 +587,11 @@ async function main(): Promise<void> {
   }
 
   const failed = results.filter((result) => !result.ok);
-  console.log(`\n${results.length - failed.length}/${results.length} scénario(s) au vert.`);
+  console.log(
+    smoke
+      ? `\n${results.length - failed.length}/${results.length} scénario(s) exécuté(s) en mode smoke — NON CONCLUANT.`
+      : `\n${results.length - failed.length}/${results.length} scénario(s) au vert (modèle réel).`,
+  );
 
   if (failed.length > 0) {
     console.log('Scénarios en échec :');

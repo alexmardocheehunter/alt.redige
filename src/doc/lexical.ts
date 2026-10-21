@@ -11,40 +11,48 @@
  * faux positif doit rester nul sur un acte bien rédigé.
  */
 
-/** Mots anglais sans équivalent français usuel dans un acte juridique. */
+/**
+ * Mots anglais **sans aucun emploi français**, dans un acte juridique.
+ *
+ * Règle de constitution de la liste : n'y figure que des mots qui ne
+ * pourraient pas être du français. Les homographes français/anglais
+ * (« date », « contrat », « occupation », « user », « production », « rapport »,
+ * « équipe ») sont exclus, même peu courants : un faux positif sur un acte
+ * correct est plus coûteux qu'un anglicisme non détecté.
+ *
+ * La liste est vérifiée contre le corpus du dépôt (squelettes, notes
+ * juridiques, exemple de référence) : aucun mot de la liste ne doit y
+ * apparaître.
+ */
 const ENGLISH_WORDS = [
   // Anglicismes observés dans les documents produits.
-  'signing', 'dedication', 'methodologies', 'methodology', 'pausing', 'eventual',
-  'eventually', 'workflow', 'workflows', 'deadline', 'deadlines', 'feedback',
-  'checklist', 'checklists', 'corporate', 'stakeholder', 'stakeholders',
-  'onboarding', 'offboarding', 'deliverable', 'deliverables', 'milestone',
-  'milestones', 'prerequisite', 'prerequisites', 'prorata', 'proforma',
-  // Vocabulaire courant des contrats anglophones.
+  'signing', 'dedication', 'methodologies', 'methodology', 'pausing',
+  'eventual', 'eventually', 'workflow', 'workflows', 'deadline', 'deadlines',
+  'feedback', 'checklist', 'checklists', 'corporate', 'stakeholder',
+  'stakeholders', 'onboarding', 'offboarding', 'deliverable', 'deliverables',
+  'milestone', 'milestones', 'prerequisite', 'prerequisites', 'prorata',
+  'proforma', 'scoping', 'dashboard', 'dashboards', 'handbook', 'playbook',
+  'runbook', 'sandbox', 'staging', 'namespace', 'tracker', 'dashboard',
+  'backlog', 'roadmap', 'sprint', 'sprints', 'ticket', 'tickets',
+  'oncall', 'headcount', 'kpi', 'kpis', 'roi', 'crm', 'erp', 'saas',
+  'headline', 'api', 'apis', 'url', 'urls', 'ping', 'async', 'sync',
+  'bug', 'bugs', 'commit', 'commits', 'branch', 'branches', 'merge',
+  'deploy', 'deploys', 'payload', 'widget', 'widgets', 'login', 'logout',
+  'username', 'password', 'email', 'emails', 'handbook',
+  // Vocabulaire des contrats anglophones.
   'landlord', 'tenant', 'premises', 'lessee', 'lessor', 'lease', 'leasing',
   'rental', 'rentals', 'arrears', 'rent', 'sublet', 'sublease', 'waiver',
   'waive', 'breach', 'indemnity', 'warranty', 'guarantee', 'covenant',
   'covenants', 'escrow', 'prepayment', 'instalment', 'instalments',
-  'defaulting', 'termination', 'renewal', 'renewals', 'confidentiality',
-  'noncompete', 'procurement', 'occupier', 'invoice', 'invoices', 'refund',
-  'payment', 'payments', 'vendor', 'vendors', 'compliance', 'pricing',
-  'user', 'users', 'login', 'logout', 'username', 'password', 'email',
-  'emails', 'url', 'urls', 'ping', 'async', 'sync', 'bug', 'bugs', 'commit',
-  'commits', 'branch', 'branches', 'merge', 'deploy', 'deploys', 'build',
-  'builds', 'release', 'releases', 'ticket', 'tickets', 'sprint', 'sprints',
-  'backlog', 'roadmap', 'owner', 'owners', 'team', 'teams', 'manager',
-  'managers', 'management', 'scoping', 'tracker', 'tracking', 'oncall',
-  'dashboard', 'dashboards', 'widget', 'widgets', 'payload', 'cache',
-  'proxy', 'server', 'servers', 'client', 'clients', 'database', 'databases',
-  'meeting', 'meetings', 'handbook', 'playbook', 'runbook', 'sandbox',
-  'staging', 'production', 'namespace', 'token', 'tokens', 'layout',
-  'layouts', 'folder', 'folders', 'asset', 'assets', 'graph', 'graphs',
-  'chart', 'charts', 'widget', 'header', 'footer', 'headline', 'kpi',
-  'roi', 'kpis', 'lead', 'leads', 'crm', 'erp', 'saas', 'api', 'apis',
+  'defaulting', 'vendor', 'vendors', 'procurement', 'invoice', 'invoices',
+  'refund', 'renewal', 'renewals', 'termination', 'confidentiality',
+  'noncompete', 'compliance', 'pricing', 'payment', 'payments', 'occupier',
   // Anglicismes juridiques classiques dans un acte francophone.
   'duly', 'herein', 'hereunder', 'hereinafter', 'hereof', 'thereof',
   'therein', 'thereto', 'whereas', 'foregoing', 'aforementioned', 'namely',
   'notwithstanding', 'pursuant', 'behalf', 'favour', 'favor', 'mutatis',
-  'mutandis', 'force majeure', 'best', 'worst',
+  'mutandis', 'aforesaid', 'heretofore', 'hereinbefore', 'witness',
+  'good faith', 'best practices',
 ];
 
 const WORD_SET = new Set(ENGLISH_WORDS.map((word) => word.toLowerCase()));

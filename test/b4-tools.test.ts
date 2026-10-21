@@ -28,6 +28,8 @@ function context(overrides: Partial<Parameters<typeof executeTool>[2]> = {}) {
     safetyModel: 'nvidia/nemotron-3.5-content-safety:free',
     safetyEnabled: false,
     safetyMode: 'advisory' as const,
+    userText: 'Je veux un bail d habitation pour un studio a Yopougon, loyer 70 000 FCFA par mois, 12 mois, Monsieur Koné et Madame Aya.',
+    maxEditChangedBlocks: 6,
     signal: new AbortController().signal,
   };
   return { events, context: { ...base, ...overrides } };

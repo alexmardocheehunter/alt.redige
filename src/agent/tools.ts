@@ -8,6 +8,8 @@ import { validate } from '../doc/validate.js';
 import { lostArticles, countChangedBlocks } from '../doc/structure.js';
 import { informedRequiredFields } from '../doc/required-fields.js';
 import { checkReferences } from '../doc/references.js';
+import { checkFacts } from '../doc/facts.js';
+import type { Issue } from '../doc/validate.js';
 import type { LlmClient, LlmToolDefinition } from '../llm.js';
 import type { Logger } from '../logger.js';
 import { checkTextSafety, looksLikeContract, shouldBlock } from '../safety.js';
@@ -211,6 +213,25 @@ function getTemplate(args: Record<string, unknown>, context: ToolContext): ToolR
   return ok(templatePayload(template));
 }
 
+/**
+ * Contrôle des faits : le document ne doit pas affirmer un montant, une
+ * durée, une date ou un nom propre que personne n'a fourni (P1-3).
+ *
+ * Le résultat est un avertissement, pas un refus : une coquille vide est
+ * bloquée, mais une valeur approximative reste signalée à l'utilisateur.
+ */
+function factIssues(markdown: string, context: ToolContext, template: ContractTemplate | null): Issue[] {
+  const problems = checkFacts(markdown, context.userText, template);
+  if (problems.length === 0) return [];
+  return [{
+    code: 'fact_unverified',
+    severity: 'warning',
+    message: `Information(s) présente(s) dans le document mais absente(s) de la demande : `
+      + `${problems.slice(0, 10).map((problem) => `${problem.value} (${problem.detail})`).join(', ')}`
+      + `${problems.length > 10 ? `, et ${problems.length - 10} autre(s)` : ''}.`,
+  }];
+}
+
 async function createCanvas(args: Record<string, unknown>, context: ToolContext): Promise<ToolResult> {
   const title = typeof args.title === 'string' ? args.title.trim() : '';
   const contractType = typeof args.contract_type === 'string' ? args.contract_type.trim() : '';
@@ -242,13 +263,19 @@ async function createCanvas(args: Record<string, unknown>, context: ToolContext)
   const template = context.templates.get(contractType) ?? null;
 
   // Garde-fou P0-3 : sans information exploitable de l'utilisateur, le
-  // modèle doit poser des questions, pas rédiger un contrat vide.
+  // modèle doit poser des questions, pas rédiger un contrat.
+  //
+  // Le contrôle porte sur l'**historique** : un document produit ne prouve
+  // rien, puisque le modèle peut y avoir inventé les valeurs. Si aucun champ
+  // obligatoire n'est renseigné par l'utilisateur, l'écriture est refusée et
+  // l'agent est invité à poser une question.
   if (template) {
+    const vocabulary = context.templates.vocabulary();
     const { informed, uninformed } = informedRequiredFields(
       template,
       context.userText,
       markdown,
-      context.templates.vocabulary(),
+      vocabulary,
     );
     if (informed.length === 0 && uninformed.length > 0) {
       const missing = uninformed.map((field) => field.label).join(', ');
@@ -288,6 +315,7 @@ async function createCanvas(args: Record<string, unknown>, context: ToolContext)
   }
 
   const validation = validate(markdown, template);
+  validation.issues.push(...factIssues(markdown, context, template));
 
   context.workingDoc = markdown;
   context.workingDocType = contractType;
@@ -386,6 +414,7 @@ async function editCanvas(args: Record<string, unknown>, context: ToolContext): 
   }
 
   const validation = validate(result.markdown, template);
+  validation.issues.push(...factIssues(result.markdown, context, template));
 
   context.workingDoc = result.markdown;
 

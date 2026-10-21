@@ -5,6 +5,11 @@ import { SAMPLE_BAIL } from './fixtures.js';
 
 const CONTRACT_MARKDOWN = '# Contrat de bail à usage d\'habitation\n\n## Article 1 – Objet du contrat\n\nTexte.\n';
 
+/** Demande exploitable : sans elle, le garde-fou refuse de rédiger. */
+const COMPLETE_REQUEST =
+  'Je veux un bail d habitation pour un studio a Yopougon (Abidjan), loyer 70 000 FCFA par mois, '
+  + 'duree 12 mois. Le bailleur est Monsieur Kone et la locataire est Madame Aya.';
+
 function appWith(client: FakeOpenRouter, overrides = {}) {
   return testApp(overrides, { client: fakeClient(client) });
 }
@@ -53,7 +58,7 @@ describe('B4 — flux de création', () => {
       ],
     });
     const app = appWith(client);
-    const res = await postChat(app, { messages: [{ role: 'user', content: 'Je veux un bail' }] });
+    const res = await postChat(app, { messages: [{ role: 'user', content: COMPLETE_REQUEST }] });
     const events = parseSse(await res.text());
     const names = events.map((event) => event.event);
 
@@ -101,7 +106,7 @@ describe('B4 — flux de création', () => {
       ],
     });
     const app = appWith(client);
-    const res = await postChat(app, { messages: [{ role: 'user', content: 'Bail' }] });
+    const res = await postChat(app, { messages: [{ role: 'user', content: COMPLETE_REQUEST }] });
     const events = parseSse(await res.text());
     const streamed = events
       .filter((event) => event.event === 'canvas_delta')
@@ -126,7 +131,7 @@ describe('B4 — flux de création', () => {
     });
     const app = appWith(client);
     const res = await postChat(app, {
-      messages: [{ role: 'user', content: 'Bail' }],
+      messages: [{ role: 'user', content: COMPLETE_REQUEST }],
       document: { markdown: '# Ancien', version: 7 },
     });
     const events = parseSse(await res.text());
@@ -150,7 +155,7 @@ describe('B4 — flux de création', () => {
     });
     const app = appWith(client);
     const res = await postChat(app, {
-      messages: [{ role: 'user', content: 'Bail' }],
+      messages: [{ role: 'user', content: COMPLETE_REQUEST }],
       document: { markdown: '# Ancien', version: 7 },
     });
     const events = parseSse(await res.text());
@@ -283,7 +288,7 @@ describe('B4 — erreurs', () => {
       }],
     });
     const app = appWith(client);
-    const res = await postChat(app, { messages: [{ role: 'user', content: 'Bail' }] });
+    const res = await postChat(app, { messages: [{ role: 'user', content: COMPLETE_REQUEST }] });
     const events = parseSse(await res.text());
     const error = events.find((event) => event.event === 'error')!;
     expect(error.data.code).toBe('truncated');
@@ -301,7 +306,7 @@ describe('B4 — annulation', () => {
     const res = await app.request('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: [{ role: 'user', content: 'Bail' }] }),
+      body: JSON.stringify({ messages: [{ role: 'user', content: COMPLETE_REQUEST }] }),
       signal: controller.signal,
     });
 
@@ -360,7 +365,7 @@ describe('B4 — bascule entre modèles', () => {
       models: ['minimax/minimax-m3.1-flash:free', 'nvidia/nemotron-3.5-super-vl:free'],
     });
 
-    const res = await postChat(app, { messages: [{ role: 'user', content: 'Bail' }] });
+    const res = await postChat(app, { messages: [{ role: 'user', content: COMPLETE_REQUEST }] });
     const events = parseSse(await res.text());
     // Le second modèle n'a pas été tenté : le Canvas avait déjà commencé.
     expect(client.calls).toHaveLength(2);

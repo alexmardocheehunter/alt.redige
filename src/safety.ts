@@ -77,6 +77,27 @@ const DOMAIN_TERMS = [
   'tribunal', 'avocat', 'huissier', 'greffe', 'notaire', 'juridique', 'droit civil',
   'identite', 'testament', 'donation', 'legue', 'heritier', 'oeuvre', 'artiste',
   'apprenti', 'formation', 'scolarite', 'stage', 'franchise', 'cession',
+  // Locations et baux hors habitation : sans ces termes, un bail à usage de
+  // bureau ou un contrat d'entretien de locaux sortait du domaine et
+  // pouvait être bloqué à tort.
+  'bureau', 'commercial', 'industriel', 'artisanal', 'mixte', 'professionnel',
+  'entrepots', 'local', 'locaux', 'lot', 'immeuble', 'immobilier', 'terrain',
+  'etat des lieux', 'etats des lieux', 'inventaire', 'etat', 'mobilier',
+  'entretien', 'maintenance', 'nettoyage', 'renovation', 'travaux', 'raccordement',
+  // Obligations, impots, recouvrement.
+  'fiscal', 'fiscale', 'impot', 'impots', 'taxe', 'taxes', 'recouvrement',
+  'paiement', 'paiements', 'virement', 'cheque', 'quittance', 'mise en demeure',
+  'declaration', 'attestation', 'immatriculation', 'cnps', 'urssaf', 'csg',
+  'provision', 'echeance', 'amortissement', 'comptable', 'expert-comptable',
+  // Responsabilité, litiges, procédures.
+  'responsabilite', 'prejudice', 'dommages', 'indemnisation', 'procedure',
+  'recours', 'juridiction', 'competence', 'litige', 'transaction', 'mediation',
+  'prudence', 'diligence', 'bonne foi', 'recommandation', 'conseil', 'conseils',
+  // Statuts, règlements, coutumes.
+  'reglement', 'regles', 'statut', 'statuts', 'usage', 'usages', 'coutume',
+  'coutumes', 'coutumier', 'coutumiere', 'association', 'associations',
+  'cooperative', 'mutuelle', 'coopérative', 'syndic', 'copropriete',
+  'copropriete', 'charges', 'assurance', 'responsabilite civile',
 ];
 
 /** Le texte relève-t-il du domaine juridique/administratif de l'application ? */

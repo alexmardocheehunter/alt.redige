@@ -113,7 +113,11 @@ export function parseChatBody(raw: unknown): ParsedBody {
 }
 
 /** Opens an SSE response with the headers required by the contract. */
-function sseResponse(c: Context, callback: (stream: SSEStreamingApi) => Promise<void>): Response {
+function sseResponse(
+  c: Context,
+  logger: Logger,
+  callback: (stream: SSEStreamingApi) => Promise<void>,
+): Response {
   const { readable, writable } = new TransformStream();
   const stream = new SSEStreamingApi(writable, readable);
 
@@ -184,7 +188,7 @@ export function chatRoutes(deps: ChatDeps): Hono<AppEnv> {
       }
     }
 
-    return sseResponse(c, async (stream) => {
+    return sseResponse(c, logger, async (stream) => {
       const abortController = new AbortController();
       let clientGone = false;
       let timedOut = false;

@@ -29,6 +29,14 @@ export function resetRateLimits(): void {
   for (const b of buckets.values()) b.hits.clear();
 }
 
+/**
+ * Client IP.
+ *
+ * Derrière un proxy inverse, l'adresse de la connexion est celle du proxy :
+ * tous les clients se partagent alors le même quota. `trustProxy` permet de
+ * lire `X-Forwarded-For` ; sans lui, une adresse privée ou de boucle locale
+ * est signalée comme « proxy » et le quota retombe sur l'identité.
+ */
 export function clientIp(c: { req: { header: (name: string) => string | undefined }; env?: unknown }, trustProxy: boolean): string {
   if (trustProxy) {
     const forwarded = c.req.header('x-forwarded-for');
@@ -39,11 +47,36 @@ export function clientIp(c: { req: { header: (name: string) => string | undefine
   }
   try {
     const info = getConnInfo(c as never);
-    if (info.remote.address) return info.remote.address;
+    if (info.remote.address) {
+      const address = info.remote.address;
+      // 127.0.0.1, ::1, 10.x, 172.16-31.x, 192.168.x : on est derrière un proxy.
+      if (isPrivateAddress(address)) return PROXY_IP;
+      return address;
+    }
   } catch {
     /* not running under the node-server adapter (tests) */
   }
   return 'unknown';
+}
+
+const PROXY_IP = 'proxy';
+
+/** Le client est-il identifiable ? (adresse publique, pas un proxy). */
+function isReliableAddress(address: string): boolean {
+  return address !== PROXY_IP && address !== 'unknown';
+}
+
+function isPrivateAddress(address: string): boolean {
+  const value = address.replace(/^::ffff:/, '');
+  if (value === '127.0.0.1' || value === '::1') return true;
+  if (value.startsWith('10.')) return true;
+  if (value.startsWith('192.168.')) return true;
+  const match = /^172\.(\d+)\./.exec(value);
+  if (match) {
+    const second = Number(match[1]);
+    if (second >= 16 && second <= 31) return true;
+  }
+  return false;
 }
 
 export interface RateLimitOptions {
@@ -61,19 +94,31 @@ export function rateLimit(options: RateLimitOptions): MiddlewareHandler<AppEnv> 
     const ip = clientIp(c as never, trustProxy);
     c.set('clientIp', ip);
 
+    // Clé de quota : l'identité quand elle existe, l'adresse IP sinon.
+    // Derrière un proxy sans `TRUST_PROXY=1`, l'adresse IP est celle du
+    // proxy : elle n'identifie pas le client. On ne peut donc pas en faire
+    // une clé individuelle — le quota retombe sur l'identité, ou sur un seau
+    // partagé explicitement identifié.
+    const identity = c.get('identity') ?? null;
+    const key = identity
+      ? `id:${identity}`
+      : isReliableAddress(ip)
+        ? `ip:${ip}`
+        : `shared:${name}`;
+
     const now = Date.now();
     const cutoff = now - windowMs;
-    const kept = (store.hits.get(ip) ?? []).filter((timestamp) => timestamp > cutoff);
+    const kept = (store.hits.get(key) ?? []).filter((timestamp) => timestamp > cutoff);
 
     if (kept.length >= limit) {
-      store.hits.set(ip, kept);
+      store.hits.set(key, kept);
       const retryAfterSeconds = Math.max(1, Math.ceil((kept[0]! + windowMs - now) / 1000));
       c.header('Retry-After', String(retryAfterSeconds));
       throw new AppError('rate_limited');
     }
 
     kept.push(now);
-    store.hits.set(ip, kept);
+    store.hits.set(key, kept);
     await next();
   };
 }

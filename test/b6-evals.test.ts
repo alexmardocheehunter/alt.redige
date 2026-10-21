@@ -34,11 +34,15 @@ describe('B6 — évaluations', () => {
 
   it('exécute tous les scénarios sur le modèle scripté (mode hors ligne)', async () => {
     const scenarios = loadScenarios();
+    const report: string[] = [];
     for (const scenario of scenarios) {
       const result = await runScenario(scenario, { dryRun: true, logger });
       const failures = result.checks.filter((check) => !check.ok);
-      expect(failures.map((check) => `${check.name}: ${check.detail ?? ''}`)).toEqual([]);
-      expect(result.ok).toBe(true);
+      for (const failure of failures) {
+        report.push(`${scenario.id} — ${failure.name}: ${failure.detail ?? ''}`);
+      }
+      if (result.error) report.push(`${scenario.id} — erreur: ${result.error}`);
     }
+    expect(report).toEqual([]);
   }, 60_000);
 });

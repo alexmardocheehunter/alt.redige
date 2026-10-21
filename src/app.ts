@@ -14,7 +14,7 @@ import { createLogger, type Logger } from './logger.js';
 import { createOpenRouterClient, type LlmClient } from './llm.js';
 import { requestId } from './middleware/requestId.js';
 import { requestLogger } from './middleware/requestLogger.js';
-import { auth } from './middleware/auth.js';
+import { auth, createVerifier } from './middleware/auth.js';
 import { rateLimit } from './middleware/rateLimit.js';
 import type { AppEnv } from './types.js';
 import { TemplateStore } from './templates.js';
@@ -75,6 +75,28 @@ export function createApp({ config, logger, templates, client, onToolCall }: App
     xContentTypeOptions: 'nosniff',
     referrerPolicy: 'no-referrer',
     xFrameOptions: 'DENY',
+    // Le frontend est un fichier HTML unique servi par le serveur. Les styles
+    // sont inline dans la page : `style-src` les autorise, mais aucun script
+    // inline ne l'est. Un script inline dans le front futur devra passer par
+    // un nonce (cf. docs/INTEGRATION-CHECKLIST.md).
+    contentSecurityPolicy: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", 'data:'],
+      connectSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      frameAncestors: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"],
+    },
+    permissionsPolicy: {
+      geolocation: [],
+      microphone: [],
+      camera: [],
+      payment: [],
+      usb: [],
+    },
   }));
 
   if (config.allowedOrigin) {
@@ -86,7 +108,7 @@ export function createApp({ config, logger, templates, client, onToolCall }: App
     }));
   }
 
-  app.use('/api/*', auth(config.accessCode));
+  app.use('/api/*', auth(createVerifier(config.accessCode)));
 
   app.use('/api/*', bodyLimit({
     maxSize: config.maxBodyBytes,

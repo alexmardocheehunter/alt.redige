@@ -160,7 +160,18 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       .join(' ; ');
     throw new ConfigError(`Configuration invalide — ${details}`);
   }
-  return toAppConfig(result.data);
+  const config = toAppConfig(result.data);
+
+  // En production, aucune requête ne doit être servie sans authentification :
+  // le serveur héberge la clé du fournisseur de modèle.
+  if (config.nodeEnv === 'production' && !config.accessCode) {
+    throw new ConfigError(
+      'ACCESS_CODE est obligatoire en production : sans mécanisme d’authentification, '
+      + 'le quota du fournisseur de modèle est à la disposition de quiconque atteint le port.',
+    );
+  }
+
+  return config;
 }
 
 export const CONTRACT_VERSION = '1.0';
