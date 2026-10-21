@@ -16,29 +16,56 @@ Ce qui n'est **pas** fait, et pourquoi :
 |---|---|
 | Campagne d'évaluation contre le vrai modèle | non exécutée : pas de `ANTHROPIC_API_KEY` sur cette machine (harnais validé hors ligne, 10/10) |
 | Phase C — intégration du frontend | non commencée : le fichier `index.html` définitif n'a pas été livré par Alex. `public/index.html` est encore la page provisoire. `docs/INTEGRATION-REPORT.md` sera écrit à ce moment-là. |
-| Relecture juridique du modèle | en attente d'Alex (voir ci-dessous) |
+| Relecture juridique des modèles | **contenu reçu** (référentiel joint) et 9 modèles construits ; reste la relecture du texte rédigé par l'IA |
 | Vérification visuelle de l'export Word dans Word/LibreOffice | non faite : ni Word ni LibreOffice ne sont installés sur cette machine. L'archive OOXML est vérifiée par test (structure, surlignage, numérotation, pied de page) |
 
 ---
 
 ## En attente de décision ou de contenu (Alex)
 
-### Relecture juridique du modèle « bail-habitation » — EN ATTENTE
-`data/templates/bail-habitation.json` est passé en `"status": "ready"` pour le
-développement et l'affichage dans le frontend (un modèle `draft` n'est pas
-affiché par le front, cf. `docs/API-CONTRACT.md` §3.2).
+### Relecture juridique des modèles — CONTENU REÇU, DERNIÈRE VÉRIFICATION À FAIRE
+Alex a fourni le référentiel juridique et contractuel
+(`reference/TOUTES LES INFOS LEGALES.txt`, 70 Ko : sources S01 à S07, fiches par
+type de contrat, matrice fiscale, liste blanche des références). Les neuf
+modèles de `data/templates/` sont construits à partir de ce référentiel :
 
-Ce modèle **n'a pas été relu par un juriste** :
-- `legal_notes` est vide ;
-- `validators` est vide ;
-- `legal_review.status` vaut toujours `"pending"`.
+- `legal_notes` : les clauses interdites ou à risque de la fiche, avec leur
+  référence `[S0x, art. …]` ;
+- `validators` : les règles impératives chiffrées, **désormais exécutables** par
+  `doc/validate.ts` (durée maximale, montant minimum, pourcentage, âge,
+  mentions obligatoires, clauses interdites) ;
+- `required_fields` / `optional_fields` : les champs obligatoires et
+  conditionnels de la fiche ;
+- `skeleton_markdown` : la structure réelle des contrats types, avec des espaces
+  réservés.
 
-Tant que la relecture n'est pas faite, aucun texte juridique n'est inventé par
-le code ni par l'agent : le modèle ne cite que des éléments neutres et laisse
-les informations variables en `[À COMPLÉTER : …]`.
+**Ce qui reste à faire** : une relecture par un juriste du contenu effectivement
+rédigé par le modèle (les règles sont codées, mais le texte produit par l'IA
+n'a pas été relu). Le référentiel signale lui-même deux lacunes :
+- le régime des **baux commerciaux** sous l'Acte Uniforme OHADA (AUDCG) n'est
+  pas couvert — un bail commercial ne doit pas être rédigé sans vérification ;
+- la **signature électronique qualifiée** n'est pas encadrée par les sources.
 
-**Action attendue d'Alex** : faire valider par un juriste les clauses, plafonds
-et notes du modèle, puis fournir le contenu de `legal_notes` et `validators`.
+Ces deux points sont inscrits dans les notes du modèle `bail-habitation`.
+
+### Les validateurs sont exécutables, mais rester des garde-fous
+`doc/validate.ts` exécute les règles `validators` (type `max_duration_months`,
+`min_amount_fcfa`, `min_percentage`, `min_age_years`, `required_phrases`,
+`forbidden_phrases`). Limites assumées :
+
+- une règle dont la valeur **n'apparaît pas** dans le document est **sans
+  conclusion** : aucun problème n'est signalé (le document peut être encore
+  vide) ;
+- la recherche est faite paragraphe par paragraphe, et une règle peut être
+  bornée à un périmètre (`scope`) : sans ce périmètre, la plus petite valeur
+  trouvée dans le document est comparée, ce qui produit des faux positifs
+  (une prime plus petite que le salaire de base, par exemple) ;
+- les contrôles portent sur le texte, pas sur le sens : une règle peut être
+  respectée dans les mots et violée dans les faits.
+
+Un écart trouvé n'est pas une erreur fatale : il est remonté dans
+`validation.issues` (severité `warning` ou `error`) et affiché par le frontend
+sans bloquer l'export.
 
 ---
 
