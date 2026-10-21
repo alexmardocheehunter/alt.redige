@@ -1,0 +1,53 @@
+{
+  "id": "bail-professionnel",
+  "label": "Bail professionnel",
+  "description": "Bail d'un local à usage commercial ou professionnel",
+  "status": "ready",
+  "legal_review": { "status": "fourni", "reviewer": "Référentiel juridique joint (TOUTES LES INFOS LEGALES.txt) + modèle Bail-professionnel.docx", "date": "2026-10-21" },
+  "required_fields": [
+    { "key": "bailleur", "label": "Identité du bailleur", "question_hint": "Raison sociale, adresse et représentant du bailleur ?" },
+    { "key": "preneur", "label": "Identité du preneur", "question_hint": "Raison sociale, adresse et représentant du preneur ?" },
+    { "key": "local", "label": "Désignation du local", "question_hint": "Adresse, superficie, activités autorisées du local ?" },
+    { "key": "loyer", "label": "Loyer", "question_hint": "Loyer annuel et modalités de règlement ?" },
+    { "key": "duree", "label": "Durée du bail", "question_hint": "Durée du bail et date d'entrée en vigueur ?" },
+    { "key": "activite", "label": "Activité exercée", "question_hint": "Activité que le preneur exercera dans le local ?" }
+  ],
+  "optional_fields": [
+    { "key": "caution", "label": "Caution" },
+    { "key": "charges", "label": "Charges et frais" },
+    { "key": "renouvellement", "label": "Renouvellement" },
+    { "key": "revision_loyer", "label": "Révision du loyer" }
+  ],
+  "required_articles": [
+    "Textes de référence", "Objet", "Désignation", "Durée", "Renouvellement", "Imputation budgétaire",
+    "Loyer", "Révision du loyer", "Caution", "Charges", "État des lieux", "Entretien et réparations",
+    "Aménagements", "Usage des lieux", "Obligations des parties", "Clauses résolutoires",
+    "Cession et sous-location", "Remise des clés", "Règlement des différends", "Élection de domicile",
+    "Enregistrement et timbres", "Annexes"
+  ],
+  "legal_notes": [
+    "Le bail est régi par l'Acte Uniforme OHADA révisé portant sur le droit commercial général, adopté le 15 décembre 2010, en ses articles 102 et suivants [S11].",
+    "L'Acte Uniforme OHADA n'est pas présent dans le corpus : le citer en ses dispositions applicables, sans numéro d'article, et faire vérifier le texte par un juriste [S11, à vérifier].",
+    "Le Code civil s'applique en ses dispositions applicables en Côte d'Ivoire [S08].",
+    "La loi n° 2018-575 du 13 juin 2018 relative au bail à usage d'habitation figure au modèle de référence : son articulation avec le bail professionnel doit être vérifiée avant citation [S18, à vérifier].",
+    "En cas d'inexécution par le Bailleur de ses obligations, le Preneur peut demander la résiliation trente (30) jours après une mise en demeure restée infructueuse ; la résiliation par le Bailleur intervient quatre-vingt-dix (90) jours après mise en demeure.",
+    "En cas de résiliation du présent contrat par la faute du Bailleur, celui-ci supporte tous les frais et dépenses qui en résultent [Modèle Bail-professionnel, art. 16 — règle non vérifiée dans le corpus].",
+    "Le régime du congé commercial et de l'indemnité d'éviction relève de l'Acte Uniforme OHADA, absent du corpus : ne rédige pas de clause sur ce point sans vérification juridique [lacune BLOQUANTE]."
+  ],
+  "validators": [
+    {
+      "id": "bail_professionnel_delai_resiliation",
+      "severity": "warning",
+      "description": "Délai de résiliation : 30 jours (faute du Bailleur) / 90 jours (résiliation par le Bailleur) [Modèle Bail-professionnel, art. 16].",
+      "check": { "type": "info_only" }
+    },
+    {
+      "id": "bail_professionnel_audcg_a_verifier",
+      "severity": "warning",
+      "description": "L'Acte Uniforme OHADA sur le droit commercial général n'est pas dans le corpus : aucune clause de congé commercial ou d'indemnité d'éviction ne doit être produite sans vérification [S11].",
+      "check": { "type": "info_only" }
+    }
+  ],
+  "skeleton_markdown": "# Bail professionnel\n\nEntre les soussignés :\n\n**[À COMPLÉTER : raison sociale du bailleur]**, dont le siège est situé à [À COMPLÉTER : adresse du bailleur], représentée par [À COMPLÉTER : nom et qualité du représentant],\n\nci-après dénommé « le **Bailleur** »,\n\net\n\n**[À COMPLÉTER : raison sociale du preneur]**, dont le siège est situé à [À COMPLÉTER : adresse du preneur], représentée par [À COMPLÉTER : nom et qualité du représentant],\n\nci-après dénommé « le **Preneur** »,\n\nil a été convenu et arrêté ce qui suit :\n\n## Article 1 – Textes de référence\n\nLe présent contrat, établi en trois (3) exemplaires, est régi par :\n\n- l'Acte Uniforme révisé portant sur le droit commercial général, adopté le 15 décembre 2010, en ses dispositions applicables ;\n- le Code civil, en ses dispositions applicables en Côte d'Ivoire.\n\n## Article 2 – Objet\n\nLe Bailleur donne à bail au Preneur, qui l'accepte, le local décrit à l'article 3, pour l'exercice de l'activité de [À COMPLÉTER : activité exercée].\n\n## Article 3 – Désignation\n\nLe local loué est situé à [À COMPLÉTER : adresse complète du local], d'une superficie de [À COMPLÉTER : superficie], composé de [À COMPLÉTER : composition du local].\n\nIl est identifié [À COMPLÉTER : références du local].\n\n## Article 4 – Durée\n\nLe bail est conclu pour une durée de [À COMPLÉTER : durée du bail], à compter du [À COMPLÉTER : date d'entrée en vigueur].\n\n## Article 5 – Renouvellement\n\nÀ l'issue de la durée, le bail est [À COMPLÉTER : renouvelé / non renouvelé] selon [À COMPLÉTER : modalités et délai de demande].\n\n## Article 6 – Imputation budgétaire\n\nLa dépense correspondant au présent bail est imputée au budget [À COMPLÉTER : imputation budgétaire].\n\n## Article 7 – Loyer et modalités de règlement\n\nLe loyer est fixé à [À COMPLÉTER : montant du loyer] par an. Il est payable [À COMPLÉTER : modalités de règlement].\n\n## Article 8 – Révision du loyer\n\nLe loyer peut être révisé selon [À COMPLÉTER : modalités de révision].\n\n## Article 9 – Caution\n\nLe Preneur constitue une caution de [À COMPLÉTER : montant de la caution], sous la forme de [À COMPLÉTER : forme de la caution].\n\n## Article 10 – Charges diverses\n\n[À COMPLÉTER : répartition des charges entre le Bailleur et le Preneur].\n\n## Article 11 – État des lieux, remise en état\n\nUn état des lieux [À COMPLÉTER : date de l'état des lieux] est établi contradictoirement. Le Preneur restitue les lieux en l'état dans lequel il les a reçus, hors usure normale.\n\n## Article 12 – Entretien et réparations\n\nLe Preneur assure [À COMPLÉTER : petits entretien et réparations] ; le Bailleur assure [À COMPLÉTER : réparations importantes].\n\n## Article 13 – Aménagements, transformations, modifications\n\nTout aménagement, transformation ou modification du local nécessite l'accord écrit préalable du Bailleur.\n\n## Article 14 – Usage des lieux\n\nLe Preneur affecte les lieux à [À COMPLÉTER : usage contractuel] et s'interdit tout usage [À COMPLÉTER : usages interdits].\n\n## Article 15 – Obligations des parties\n\nLe Bailleur s'oblige à [À COMPLÉTER : obligations du bailleur].\n\nLe Preneur s'oblige à [À COMPLÉTER : obligations du preneur].\n\n## Article 16 – Clauses résolutoires\n\nEn cas d'inexécution par le Bailleur de ses obligations résultant du présent contrat, le Preneur peut demander à la juridiction compétente la résiliation du bail, trente (30) jours après une mise en demeure restée infructueuse.\n\nEn cas de résiliation du présent contrat par la faute du Bailleur, ce dernier supporte tous les frais et toutes les dépenses résultant de cette résiliation.\n\n## Article 17 – Cession, sous-location, occupation des locaux par un tiers\n\nLe Preneur ne peut céder, sous-louer ni laisser le local à un tiers sans l'accord écrit préalable du Bailleur.\n\n## Article 18 – Remise des clés\n\nÀ la fin du bail, le Preneur restitue les clés le [À COMPLÉTER : date de restitution].\n\n## Article 19 – Règlement des différends\n\nLes parties s'engagent à rechercher une solution amiable à toute différend [À COMPLÉTER : durée de la recherche amiable].\n\n## Article 20 – Élection de domicile\n\nPour l'exécution du présent contrat, les parties font election de domicile à [À COMPLÉTER : domicile élu].\n\n## Article 21 – Frais d'enregistrement et timbres\n\nLes frais d'enregistrement et de timbre sont [À COMPLÉTER : pris en charge par / supportés par].\n\n## Article 22 – Annexes\n\nLes annexes font partie intégrante du présent contrat :\n\n- [À COMPLÉTER : liste des annexes].\n",
+  "_comment_legal": "legal_notes et validators sont issus du référentiel juridique (reference/TOUTES LES INFOS LEGALES.txt) et du modèle de référence (reference/Bail-professionnel.docx). L'Acte Uniforme OHADA sur le droit commercial général est absent du corpus : il est marqué « à vérifier » dans data/legal-sources.json et ne doit pas être cité par son numéro d'article."
+}

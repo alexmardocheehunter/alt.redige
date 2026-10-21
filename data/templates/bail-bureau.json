@@ -1,0 +1,53 @@
+{
+  "id": "bail-bureau",
+  "label": "Bail à usage de bureau",
+  "description": "Bail administratif d'un local à usage de bureau, loué par une personne publique",
+  "status": "ready",
+  "legal_review": { "status": "fourni", "reviewer": "Référentiel juridique joint (TOUTES LES INFOS LEGALES.txt) + modèle Bail-à-usage-de-bureau.docx", "date": "2026-10-21" },
+  "required_fields": [
+    { "key": "bailleur", "label": "Identité du bailleur (personne publique)", "question_hint": "Raison sociale, adresse et représentant du bailleur ?" },
+    { "key": "preneur", "label": "Identité du preneur", "question_hint": "Raison sociale, adresse et représentant du preneur ?" },
+    { "key": "local", "label": "Désignation du local", "question_hint": "Adresse, superficie et composition du local ?" },
+    { "key": "loyer", "label": "Loyer", "question_hint": "Loyer annuel et modalités de règlement ?" },
+    { "key": "duree", "label": "Durée du bail", "question_hint": "Durée du bail et date d'entrée en vigueur ?" },
+    { "key": "imputation", "label": "Imputation budgétaire", "question_hint": "Imputation budgétaire de la dépense ?" }
+  ],
+  "optional_fields": [
+    { "key": "caution", "label": "Caution" },
+    { "key": "charges", "label": "Charges et frais" },
+    { "key": "renouvellement", "label": "Renouvellement" },
+    { "key": "revision_loyer", "label": "Révision du loyer" }
+  ],
+  "required_articles": [
+    "Textes de référence", "Objet", "Désignation", "Durée", "Renouvellement", "Imputation budgétaire",
+    "Loyer", "Révision du loyer", "Caution", "Charges", "État des lieux", "Entretien et réparations",
+    "Aménagements", "Usage des lieux", "Obligations des parties", "Clauses résolutoires",
+    "Cession et sous-location", "Remise des clés", "Règlement des différends", "Élection de domicile",
+    "Enregistrement et timbres", "Annexes"
+  ],
+  "legal_notes": [
+    "Le bail est régi par les articles 1709 et suivants du Code civil, en ses dispositions applicables en Côte d'Ivoire [S14].",
+    "La loi n° 77-995 du 18 décembre 1977, réglementant les rapports des bailleurs et des locataires des locaux d'habitation et à usage professionnel, s'applique en ses dispositions applicables [S16].",
+    "Le décret n° 79-715 du 02 octobre 1979 fixe les modalités d'application de la loi n° 77-995 [S17].",
+    "Les droits d'enregistrement relèvent des articles 587 à 590 et 964 du Code général des impôts [S02].",
+    "En cas de faute du Preneur, le Bailleur peut résilier six (6) mois après une mise en demeure restée infructueuse ; tout autre motif de résiliation sans faute du Preneur doit intervenir dans un délai de douze (12) mois après mise en demeure [Modèle Bail-à-usage-de-bureau, art. 16 — règle non vérifiée dans le corpus].",
+    "En cas de faute du Bailleur, y compris celle affectant l'exécution du service public, le Preneur peut résilier après une mise en demeure restée infructueuse ; le Bailleur supporte les frais [Modèle Bail-à-usage-de-bureau, art. 16 — règle non vérifiée dans le corpus].",
+    "La loi n° 77-995 et le décret n° 79-715 n'ont pas été vérifiés à la source dans le corpus : les citer en leurs dispositions applicables, sans numéro d'article [S16, S17]."
+  ],
+  "validators": [
+    {
+      "id": "bail_bureau_delai_resiliation_preneur",
+      "severity": "warning",
+      "description": "Délai de résiliation pour faute du Preneur : 6 mois après mise en demeure (12 mois pour un autre motif) [Modèle Bail-à-usage-de-bureau, art. 16].",
+      "check": { "type": "info_only" }
+    },
+    {
+      "id": "bail_bureau_enregistrement",
+      "severity": "info",
+      "description": "Droits d'enregistrement : articles 587 à 590 et 964 du CGI [S02].",
+      "check": { "type": "info_only" }
+    }
+  ],
+  "skeleton_markdown": "# Bail à usage de bureau\n\nEntre les soussignés :\n\n**[À COMPLÉTER : raison sociale du bailleur]**, dont le siège est situé à [À COMPLÉTER : adresse du bailleur], représentée par [À COMPLÉTER : nom et qualité du représentant],\n\nci-après dénommée « le **Bailleur** »,\n\net\n\n**[À COMPLÉTER : raison sociale du preneur]**, dont le siège est situé à [À COMPLÉTER : adresse du preneur], représentée par [À COMPLÉTER : nom et qualité du représentant],\n\nci-après dénommé « le **Preneur** »,\n\nil a été convenu et arrêté ce qui suit :\n\n## Article 1 – Textes de référence\n\nLe présent contrat, établi en trois (3) exemplaires, est régi par :\n\n- les articles 1709 et suivants du Code civil, en ses dispositions applicables en Côte d'Ivoire ;\n- la loi n° 77-995 du 18 décembre 1977, en ses dispositions applicables ;\n- le décret n° 79-715 du 02 octobre 1979 ;\n- les articles 587 à 590 et 964 du Code général des impôts.\n\n## Article 2 – Objet\n\nLe Bailleur donne à bail au Preneur, qui l'accepte, le local described à l'article 3, à usage de bureau.\n\n## Article 3 – Désignation\n\nLe local loué est situé à [À COMPLÉTER : adresse complète du local], d'une superficie de [À COMPLÉTER : superficie], composé de [À COMPLÉTER : composition du local].\n\nIl est identifié [À COMPLÉTER : références du local].\n\n## Article 4 – Durée\n\nLe bail est conclu pour une durée de [À COMPLÉTER : durée du bail], à compter du [À COMPLÉTER : date d'entrée en vigueur].\n\n## Article 5 – Renouvellement\n\nÀ l'issue de la durée, le bail est [À COMPLÉTER : renouvelé / non renouvelé] selon [À COMPLÉTER : modalités et délai de demande].\n\n## Article 6 – Imputation budgétaire\n\nLa dépense correspondant au présent bail est imputée au budget [À COMPLÉTER : imputation budgétaire].\n\n## Article 7 – Loyer et modalités de règlement\n\nLe loyer est fixé à [À COMPLÉTER : montant du loyer] par an. Il est payable [À COMPLÉTER : modalités de règlement].\n\n## Article 8 – Révision du loyer\n\nLe loyer peut être révisé selon [À COMPLÉTER : modalités de révision].\n\n## Article 9 – Caution\n\nLe Preneur constitue une caution de [À COMPLÉTER : montant de la caution], sous la forme de [À COMPLÉTER : forme de la caution].\n\n## Article 10 – Charges diverses\n\n[À COMPLÉTER : répartition des charges entre le Bailleur et le Preneur].\n\n## Article 11 – État des lieux, remise en état\n\nUn état des lieux [À COMPLÉTER : date de l'état des lieux] est établi contradictoirement. Le Preneur restitue les lieux en l'état dans lequel il les a reçus, hors usure normale.\n\n## Article 12 – Entretien et réparations\n\nLe Preneur assure [À COMPLÉTER : petites entretien et réparations] ; le Bailleur assure [À COMPLÉTER : réparations importantes].\n\n## Article 13 – Aménagements, transformations, modifications\n\nTout aménagement, transformation ou modification du local nécessite l'accord écrit préalable du Bailleur.\n\n## Article 14 – Usage des lieux\n\nLe Preneur Affecte les lieux à [À COMPLÉTER : usage contractuel] et s'interdit tout usage [À COMPLÉTER : usages interdits].\n\n## Article 15 – Obligations des parties\n\nLe Bailleur s'oblige à [À COMPLÉTER : obligations du bailleur].\n\nLe Preneur s'oblige à [À COMPLÉTER : obligations du preneur].\n\n## Article 16 – Clauses résolutoires\n\nEn cas de faute du Preneur, le Bailleur peut résilier le bail six (6) mois après une mise en demeure restée infructueuse. Tout autre motif de résiliation sans faute du Preneur doit intervenir dans un délai de douze (12) mois après mise en demeure du Bailleur.\n\nEn cas de faute du Bailleur, y compris celle affectant l'exécution du service public, le Preneur peut résilier le bail après une mise en demeure restée infructueuse ; le Bailleur supporte tous les frais.\n\n## Article 17 – Cession, sous-location, occupation des locaux par un tiers\n\nLe Preneur ne peut céder, sous-louer ni laisser le local à un tiers sans l'accord écrit préalable du Bailleur.\n\n## Article 18 – Remise des clés\n\nÀ la fin du bail, le Preneur restitue les clés le [À COMPLÉTER : date de restitution].\n\n## Article 19 – Règlement des différends\n\nLes parties s'engagent à rechercher une solution amiable à toute différend [À COMPLÉTER : durée de la recherche amiable].\n\n## Article 20 – Élection de domicile\n\nPour l'exécution du présent contrat, les parties font election de domicile à [À COMPLÉTER : domicile élu].\n\n## Article 21 – Frais d'enregistrement et timbres\n\nLes frais d'enregistrement et de timbre sont [À COMPLÉTER : pris en charge par / supportés par].\n\n## Article 22 – Annexes\n\nLes annexes font partie intégrante du présent contrat :\n\n- [À COMPLÉTER : liste des annexes].\n",
+  "_comment_legal": "legal_notes et validators sont issus du référentiel juridique (reference/TOUTES LES INFOS LEGALES.txt) et du modèle de référence (reference/Bail-à-usage-de-bureau.docx). La loi n° 77-995 et le décret n° 79-715 sont marqués « à vérifier » dans data/legal-sources.json : ils ne doivent pas être cités par leur numéro d'article."
+}

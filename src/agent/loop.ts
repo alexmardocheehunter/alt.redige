@@ -16,7 +16,7 @@ import type { Logger } from '../logger.js';
 import type { TemplateStore } from '../templates.js';
 import type { AgentEmit, AgentEventPayloads } from './events.js';
 import { extractPartialString, readPartialString } from './json-partial.js';
-import { buildSystemPrompt, buildUserContext } from './prompt.js';
+import { buildSystemPrompt, buildUserContext, buildModelBlock } from './prompt.js';
 import { buildSuggestions, Progress } from './progress.js';
 import { sourcesForTemplate } from '../legal-sources.js';
 import { findEnglishWords } from '../doc/lexical.js';
@@ -129,12 +129,20 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
     throw new AppError('bad_request', 'Aucun message à traiter.');
   }
 
+  // Le modèle de référence est épinglé dans le contexte : pas d'aller-retour
+  // pour `get_template` quand le type est connu, et des notes juridiques
+  // présentes à chaque tour (la troncature de l'historique ne peut pas les
+  // faire disparaître).
+  const template = contractType ? templates.get(contractType) ?? null : null;
+  const modelBlock = buildModelBlock(template, { withSkeleton: document === null });
+
   conversation.push({
     role: 'user',
     content: buildUserContext({
       document: document ? { markdown: document.markdown, version: document.version } : null,
       contractType,
       userText: lastMessage.content,
+      modelBlock,
     }),
   });
 

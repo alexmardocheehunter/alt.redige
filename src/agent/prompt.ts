@@ -45,6 +45,8 @@ export interface UserContextInput {
   document: DocumentPayload | null;
   contractType: string | null;
   userText: string;
+  /** Bloc `<modele_contrat>` : le modèle de référence, épinglé. */
+  modelBlock?: string;
 }
 
 /**
@@ -52,7 +54,7 @@ export interface UserContextInput {
  * the type chosen by the user, then the request.
  * The document is data, never an instruction.
  */
-export function buildUserContextBlocks({ document, contractType, userText }: UserContextInput): string[] {
+export function buildUserContextBlocks({ document, contractType, userText, modelBlock }: UserContextInput): string[] {
   const blocks: string[] = [];
 
   if (document && typeof document.markdown === 'string' && document.markdown.trim().length > 0) {
@@ -63,6 +65,11 @@ export function buildUserContextBlocks({ document, contractType, userText }: Use
 
   if (contractType) {
     blocks.push(`<type_choisi>${contractType}</type_choisi>`);
+  }
+
+  // Le modèle de référence, avant la demande : c'est une donnée de contexte.
+  if (modelBlock) {
+    blocks.push(modelBlock);
   }
 
   // La demande de l'utilisateur est délimitée par une balise dédiée : elle
@@ -82,4 +89,45 @@ export function buildUserContextBlocks({ document, contractType, userText }: Use
 /** Same content, as a single string. */
 export function buildUserContext(input: UserContextInput): string {
   return buildUserContextBlocks(input).join('\n\n');
+}
+
+/**
+ * Bloc `<modele_contrat>` : le modèle de référence, épinglé dans le contexte.
+ *
+ * Il évite l'aller-retour de `get_template` quand le type est déjà connu, et
+ * garantit que les notes juridiques restent présentes **à chaque tour** : la
+ * troncature de l'historique ne peut pas les faire disparaître.
+ *
+ * - à la création : squelette, articles attendus et notes juridiques ;
+ * - sur un document existant : articles attendus et notes juridiques seulement
+ *   (le document courant est déjà la structure : réinjecter le squelette
+ *   risquerait de le faire « restaurer » au lieu d'être modifié).
+ */
+export function buildModelBlock(
+  template: {
+    label: string;
+    required_articles: string[];
+    legal_notes: string[];
+    skeleton_markdown: string;
+  } | null,
+  options: { withSkeleton: boolean },
+): string {
+  if (!template) return '';
+
+  const parts: string[] = [];
+  parts.push(`Type de contrat : ${template.label}`);
+
+  if (options.withSkeleton) {
+    parts.push('Squelette de référence :');
+    parts.push(template.skeleton_markdown);
+  } else {
+    parts.push(`Articles attendus : ${template.required_articles.join(', ')}`);
+  }
+
+  if (template.legal_notes.length > 0) {
+    parts.push('Notes juridiques (règles impératives) :');
+    for (const note of template.legal_notes) parts.push(`- ${note}`);
+  }
+
+  return `<modele_contrat>\n${parts.join('\n\n')}\n</modele_contrat>`;
 }

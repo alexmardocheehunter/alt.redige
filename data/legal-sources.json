@@ -1,47 +1,219 @@
 {
-  "_comment": "Table des sources juridiques reprise du référentiel validé (reference/TOUTES LES INFOS LEGALES.txt, Tableau 1). Aucune source n'est ajoutée ici : le code ne fait que citer.",
+  "_comment": [
+    "SOURCE UNIQUE des références juridiques.",
+    "Alimente : l'événement SSE `sources`, le garde-fou de citations (src/doc/references.ts),",
+    "et les notes juridiques des modèles (data/templates/*.json).",
+    "Ne jamais dupliquer cette table ailleurs : la modifier ici.",
+    "",
+    "Champs :",
+    "  code       : identifiant canonique, cité par les notes des modèles entre crochets.",
+    "  aliases    : autres identifiants rencontres dans le corpus (fusionnés, jamais dupliqués).",
+    "  country    : pays du texte. Un texte étranger ne se transpose pas : il ne s'applique pas.",
+    "  status     : integrated | partial | to_verify | not_found.",
+    "  to_verify  : true si l'article ou le texte n'a pas été vérifié à la source.",
+    "  applies_to : types de contrat concernés.",
+    "",
+    "Convention de citation : [CODE, art. N, « extrait de 15 mots maximum »]."
+  ],
   "sources": [
     {
       "code": "S01",
+      "aliases": ["SRC-TRV-01", "Code du travail"],
       "title": "Code du travail de Côte d'Ivoire (Loi n° 2015-532)",
+      "country": "Côte d'Ivoire",
+      "kind": "law",
       "date": "20 juillet 2015 (éd. 2023)",
-      "kind": "law"
+      "status": "integrated",
+      "to_verify": false,
+      "applies_to": ["cdd-terme-precis", "cdd-terme-imprecis", "cdi", "stage-ecole", "stage-qualification", "apprentissage"]
     },
     {
       "code": "S02",
-      "title": "Code général des impôts (CGI)",
+      "aliases": ["SRC-CGI-01", "CGI"],
+      "title": "Code général des impôts (CGI 2026)",
+      "country": "Côte d'Ivoire",
+      "kind": "law",
       "date": "Édition 2026",
-      "kind": "law"
+      "status": "integrated",
+      "to_verify": false,
+      "applies_to": ["bail-habitation", "bail-bureau", "bail-professionnel", "prestation-service", "cdd-terme-precis", "cdd-terme-imprecis", "cdi"]
     },
     {
       "code": "S03",
+      "aliases": ["SRC-CPS-01", "CNPS"],
       "title": "Code de prévoyance sociale (CPS / CNPS — Ord. n° 2012-03)",
+      "country": "Côte d'Ivoire",
+      "kind": "law",
       "date": "11 janvier 2012",
-      "kind": "law"
+      "status": "integrated",
+      "to_verify": false,
+      "applies_to": ["cdd-terme-precis", "cdd-terme-imprecis", "cdi", "apprentissage"]
     },
     {
       "code": "S04",
-      "title": "Convention collective interprofessionnelle (CCI)",
+      "aliases": ["SRC-CCI-01", "Convention Collective Interprofessionnelle"],
+      "title": "Convention collective interprofessionnelle de Côte d'Ivoire (CCI)",
+      "country": "Côte d'Ivoire",
+      "kind": "law",
       "date": "20 juillet 1977",
-      "kind": "law"
+      "status": "integrated",
+      "to_verify": false,
+      "applies_to": ["cdd-terme-precis", "cdd-terme-imprecis", "cdi"]
     },
     {
       "code": "S05",
-      "title": "Décrets d'application du Code du travail (96-195 à 96-287, 2013-791, 2017-210, 2022-31)",
-      "date": "1996, 2013, 2017, 2022",
-      "kind": "law"
+      "aliases": ["SRC-DEC-APP-01", "Décrets d'application du Code du travail"],
+      "title": "Décrets d'application du Code du travail (96-195, 96-200, 96-203, 96-286, 96-287, 2013-791, 2017-210, 2022-31)",
+      "country": "Côte d'Ivoire",
+      "kind": "law",
+      "date": "1996 à 2022",
+      "status": "integrated",
+      "to_verify": false,
+      "applies_to": ["cdd-terme-precis", "cdd-terme-imprecis", "cdi", "stage-qualification", "apprentissage", "teletravail"]
     },
     {
       "code": "S06",
-      "title": "Guide d'application du SYSCOHADA révisé",
-      "date": "Version révisée 2017",
-      "kind": "law"
+      "aliases": ["SRC-SYSCOHADA-01", "SYSCOHADA"],
+      "title": "SYSCOHADA révisé — droit comptable unifié OHADA",
+      "country": "UEMOA / CEDEAO (droit communautaire)",
+      "kind": "law",
+      "date": "Révisé 2017",
+      "status": "integrated",
+      "to_verify": false,
+      "applies_to": ["prestation-service"]
     },
     {
       "code": "S07",
+      "aliases": ["SRC-FIS-01", "BODGI"],
       "title": "Annexe fiscale 2026 et Bulletin officiel DGI (BODGI)",
+      "country": "Côte d'Ivoire",
+      "kind": "law",
       "date": "Gestion 2026",
-      "kind": "law"
+      "status": "partial",
+      "to_verify": true,
+      "applies_to": ["bail-habitation", "bail-bureau", "bail-professionnel", "prestation-service"]
+    },
+
+    {
+      "code": "S08",
+      "aliases": ["SRC-CIV-01", "Code Civil Ivoirien"],
+      "title": "Code civil ivoirien — titre préliminaire et livre I (droits civils, domicile, absents)",
+      "country": "Côte d'Ivoire",
+      "kind": "law",
+      "date": "Loi n° 64-376",
+      "status": "integrated",
+      "to_verify": false,
+      "applies_to": ["bail-habitation", "bail-bureau", "bail-professionnel", "prestation-service"]
+    },
+    {
+      "code": "S09",
+      "aliases": ["SRC-ETC-01"],
+      "title": "Loi relative à l'état civil (Loi n° 2018-862)",
+      "country": "Côte d'Ivoire",
+      "kind": "law",
+      "date": "19 novembre 2018",
+      "status": "integrated",
+      "to_verify": false,
+      "applies_to": ["cdd-terme-precis", "cdd-terme-imprecis", "cdi", "stage-ecole", "stage-qualification", "apprentissage"]
+    },
+    {
+      "code": "S10",
+      "aliases": ["SRC-MAR-01", "SRC-DIV-01", "SRC-FIL-01"],
+      "title": "Lois relatives au mariage, au divorce, à la filiation et au nom patronymique",
+      "country": "Côte d'Ivoire",
+      "kind": "law",
+      "date": "Loi n° 2019-570, Loi n° 2019-571, Loi n° 64-373",
+      "status": "integrated",
+      "to_verify": false,
+      "applies_to": []
+    },
+    {
+      "code": "S11",
+      "aliases": ["SRC-OHADA", "AUDCG", "Acte uniforme OHADA sur le droit commercial général"],
+      "title": "Acte uniforme OHADA révisé portant sur le droit commercial général (renouvellement, congé commercial, indemnité d'éviction)",
+      "country": "UEMOA / CEDEAO (droit communautaire)",
+      "kind": "law",
+      "date": "Adopté le 15 décembre 2010",
+      "status": "not_found",
+      "to_verify": true,
+      "applies_to": ["bail-professionnel"]
+    },
+    {
+      "code": "S12",
+      "aliases": ["SRC-SEC-01", "Décret sur la sécurité privée"],
+      "title": "Décret portant organisation de la sécurité privée",
+      "country": "Côte d'Ivoire",
+      "kind": "law",
+      "date": "À vérifier",
+      "status": "not_found",
+      "to_verify": true,
+      "applies_to": ["prestation-service"]
+    },
+    {
+      "code": "S13",
+      "aliases": ["SRC-HYG-01", "Décret sur l'hygiène en milieu de travail"],
+      "title": "Décret portant règles d'hygiène en milieu de travail",
+      "country": "Côte d'Ivoire",
+      "kind": "law",
+      "date": "À vérifier",
+      "status": "not_found",
+      "to_verify": true,
+      "applies_to": ["prestation-service", "cdd-terme-precis", "cdi"]
+    },
+    {
+      "code": "S14",
+      "aliases": ["SRC-CIV-LOUAGE", "Code civil — louage"],
+      "title": "Code civil ivoirien — dispositions relatives au louage",
+      "country": "Côte d'Ivoire",
+      "kind": "law",
+      "date": "À vérifier",
+      "status": "not_found",
+      "to_verify": true,
+      "applies_to": ["bail-habitation", "bail-bureau"]
+    },
+    {
+      "code": "S15",
+      "aliases": ["SRC-STAGES-01", "Décrets sur les stages"],
+      "title": "Décrets d'application relatifs aux stages (convention de stage, stage de qualification)",
+      "country": "Côte d'Ivoire",
+      "kind": "law",
+      "date": "À vérifier",
+      "status": "not_found",
+      "to_verify": true,
+      "applies_to": ["stage-ecole", "stage-qualification"]
+    },
+    {
+      "code": "S16",
+      "aliases": ["SRC-LOI-77-995", "Loi 77-995"],
+      "title": "Loi n° 77-995 du 18 décembre 1977 réglementant les rapports des bailleurs et des locataires des locaux d'habitation et à usage professionnel",
+      "country": "Côte d'Ivoire",
+      "kind": "law",
+      "date": "18 décembre 1977",
+      "status": "not_found",
+      "to_verify": true,
+      "applies_to": ["bail-bureau"]
+    },
+    {
+      "code": "S17",
+      "aliases": ["SRC-DEC-79-715", "Décret 79-715"],
+      "title": "Décret n° 79-715 du 2 octobre 1979 fixant les modalités d'application de la loi n° 77-995",
+      "country": "Côte d'Ivoire",
+      "kind": "law",
+      "date": "2 octobre 1979",
+      "status": "not_found",
+      "to_verify": true,
+      "applies_to": ["bail-bureau"]
+    },
+    {
+      "code": "S18",
+      "aliases": ["SRC-LOI-2018-575", "Loi 2018-575"],
+      "title": "Loi n° 2018-575 du 13 juin 2018 relative au bail à usage d'habitation",
+      "country": "Côte d'Ivoire",
+      "kind": "law",
+      "date": "13 juin 2018",
+      "status": "not_found",
+      "to_verify": true,
+      "applies_to": ["bail-professionnel"]
     }
   ]
 }

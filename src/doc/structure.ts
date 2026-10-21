@@ -101,3 +101,130 @@ export function lostArticles(before: string, after: string): string[] {
   });
   return lost;
 }
+
+/** Un article : son numéro (si l'en-tête en porte un) et son intitulé. */
+export interface ArticleInfo {
+  number: number | null;
+  title: string;
+  /** Intitulé sans le préfixe « Article N », sans le tiret. */
+  label: string;
+}
+
+const ARTICLE_HEADING = /^##\s+(?:Article\s+(\d+)\s*[–—-]\s*)?(.+)$/;
+
+/** Liste les articles d'un document, dans l'ordre. */
+export function articles(markdown: string): ArticleInfo[] {
+  const out: ArticleInfo[] = [];
+  for (const line of markdown.split(/\r?\n/)) {
+    const match = ARTICLE_HEADING.exec(line.trim());
+    if (!match) continue;
+    const label = (match[2] ?? '').trim();
+    out.push({
+      number: match[1] ? Number(match[1]) : null,
+      title: line.trim(),
+      label: label.replace(/^Article\s+\d+\s*[–—-]\s*/i, '').trim(),
+    });
+  }
+  return out;
+}
+
+export interface RenumberResult {
+  markdown: string;
+  /** Ancienne numérotation → nouvelle numérotation (intitulé → numéro). */
+  mapping: Map<string, number>;
+  changed: boolean;
+}
+
+/**
+ * Renumérote les articles et réécrit les renvois internes.
+ *
+ * Le serveur est **l'autorité** sur la numérotation : le modèle peut écrire
+ * n'importe quel numéro, il est corrigé ici. Les renvois du texte
+ * (« conformément à l'article 12 ») suivent le déplacement de l'article visé.
+ *
+ * La correspondance se fait par intitulé : un article qui a disparu ne
+ * correspond plus à rien, et ses renvois sont signalés comme cassés.
+ */
+export function renumberArticles(before: string, after: string): RenumberResult {
+  const beforeArticles = articles(before);
+  const afterArticles = articles(after);
+
+  // Correspondance par intitulé normalisé (le numéro change, l'intitulé reste).
+  const byLabel = new Map<string, number>();
+  beforeArticles.forEach((article, index) => {
+    if (!byLabel.has(normalizeKey(article.label))) byLabel.set(normalizeKey(article.label), index + 1);
+  });
+
+  const mapping = new Map<string, number>();
+  const lines = after.split(/\r?\n/);
+  let articleIndex = 0;
+  let changed = false;
+
+  // Ancienne numérotation → nouvelle, établie par intitulé.
+  const oldToNew = new Map<number, number>();
+  beforeArticles.forEach((article) => {
+    if (article.number === null) return;
+    const target = mapping.get(normalizeKey(article.label));
+    if (target !== undefined) oldToNew.set(article.number, target);
+  });
+
+  const rewriteReference = (text: string): string => text.replace(
+    /\b(articles?)\s+(\d+)\b/gi,
+    (whole, word: string, number: string) => {
+      const target = oldToNew.get(Number(number));
+      return target === undefined ? whole : `${word} ${target}`;
+    },
+  );
+
+  const newLines = lines.map((line) => {
+    const match = ARTICLE_HEADING.exec(line.trim());
+    // Les titres d'articles sont renumérotés, pas réécrits : ils portent la
+    // nouvelle numérotation, les renvois du corps suivent le déplacement.
+    if (!match) return rewriteReference(line);
+
+    articleIndex += 1;
+    const cleanLabel = (match[2] ?? '').trim();
+    const oldPosition = byLabel.get(normalizeKey(cleanLabel));
+    if (oldPosition !== undefined) mapping.set(normalizeKey(cleanLabel), articleIndex);
+
+    const wanted = `## Article ${articleIndex} – ${cleanLabel}`;
+    if (line.trim() !== wanted) changed = true;
+    return wanted;
+  });
+
+  let markdown = newLines.join('\n');
+
+  // La correspondance par intitulé est connue après le parcours des titres :
+  // on applique alors la réécriture des renvois.
+  if (mapping.size > 0) {
+    beforeArticles.forEach((article) => {
+      if (article.number === null) return;
+      const target = mapping.get(normalizeKey(article.label));
+      if (target !== undefined) oldToNew.set(article.number, target);
+    });
+
+    if (oldToNew.size > 0) {
+      markdown = markdown.split(/\r?\n/).map((line) => {
+        if (ARTICLE_HEADING.test(line.trim())) return line;
+        return rewriteReference(line);
+      }).join('\n');
+    }
+  }
+
+  return { markdown, mapping, changed: changed || markdown !== after };
+}
+
+/**
+ * Renvois internes pointant vers un article inexistant.
+ * « conformément à l'article 12 » alors qu'il n'y a que 8 articles.
+ */
+export function brokenReferences(markdown: string): number[] {
+  const count = articles(markdown).length;
+  if (count === 0) return [];
+  const broken = new Set<number>();
+  for (const match of markdown.matchAll(/\barticles?\s+(\d+)\b/gi)) {
+    const number = Number(match[1]);
+    if (number < 1 || number > count) broken.add(number);
+  }
+  return [...broken].sort((a, b) => a - b);
+}

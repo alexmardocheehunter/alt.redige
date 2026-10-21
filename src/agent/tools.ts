@@ -5,7 +5,7 @@
  */
 import { applyEdits, type Edit } from '../doc/edit.js';
 import { validate } from '../doc/validate.js';
-import { lostArticles, countChangedBlocks } from '../doc/structure.js';
+import { lostArticles, countChangedBlocks, renumberArticles } from '../doc/structure.js';
 import { informedRequiredFields } from '../doc/required-fields.js';
 import { checkReferences } from '../doc/references.js';
 import { checkFacts } from '../doc/facts.js';
@@ -551,6 +551,15 @@ async function editCanvas(args: Record<string, unknown>, context: ToolContext): 
       { code: 'too_many_changes', changed_blocks: changed.changed, limit: context.maxEditChangedBlocks },
     );
   }
+
+  // Le serveur est l'autorité sur la numérotation des articles : le modèle
+  // peut écrire n'importe quel numéro, il est corrigé ici, et les renvois
+  // internes suivent le déplacement de l'article visé.
+  const renumbered = renumberArticles(before, result.markdown);
+  if (renumbered.changed) {
+    context.logger.info('tool_edit_canvas_renumbered', { articles: renumbered.mapping.size });
+  }
+  result.markdown = renumbered.markdown;
 
   // Garde-fou P1-2 : aucune mention normative hors du référentiel du modèle.
   const template = context.workingDocType ? context.templates.get(context.workingDocType) ?? null : null;

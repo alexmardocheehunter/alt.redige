@@ -5,10 +5,12 @@ import { validate } from '../src/doc/validate.js';
 const templates = loadTemplates();
 
 describe('B10 — modèles issus du référentiel juridique', () => {
-  it('charge les neuf modèles', () => {
-    expect(templates.length).toBeGreaterThanOrEqual(9);
+  it('charge les onze modèles', () => {
+    expect(templates.length).toBe(11);
     const ids = templates.map((template) => template.id);
     expect(ids).toContain('bail-habitation');
+    expect(ids).toContain('bail-bureau');
+    expect(ids).toContain('bail-professionnel');
     expect(ids).toContain('cdd-terme-precis');
     expect(ids).toContain('cdd-terme-imprecis');
     expect(ids).toContain('cdi');
@@ -17,6 +19,21 @@ describe('B10 — modèles issus du référentiel juridique', () => {
     expect(ids).toContain('apprentissage');
     expect(ids).toContain('teletravail');
     expect(ids).toContain('prestation-service');
+  });
+
+  it('distingue bien les deux CDD', () => {
+    const store = TemplateStore.load();
+    const precis = store.get('cdd-terme-precis')!;
+    const imprecis = store.get('cdd-terme-imprecis')!;
+
+    // Conditions de recours différentes : le CDD à terme imprécis exige une
+    // tâche précise, le CDD à terme précis une durée déterminée.
+    expect(imprecis.legal_notes.join(' ')).toMatch(/tâche précise/);
+    expect(precis.legal_notes.join(' ')).not.toMatch(/tâche précise/);
+
+    // La durée maximale de deux ans est commune aux deux.
+    expect(precis.legal_notes.join(' ')).toMatch(/deux ans/);
+    expect(imprecis.legal_notes.join(' ')).toMatch(/deux ans/);
   });
 
   it('les modèles sont valides, publiés et documentés', () => {
@@ -54,9 +71,10 @@ describe('B10 — modèles issus du référentiel juridique', () => {
     for (const template of templates) {
       expect(template.required_fields.length).toBeGreaterThan(2);
       expect(template.legal_notes.length).toBeGreaterThan(0);
-      // Chaque note cite une source.
+      // Chaque note cite sa source : un code de source du référentiel, ou le
+      // modèle de référence quand la règle n'est pas reprise dans le corpus.
       for (const note of template.legal_notes) {
-        expect(note).toMatch(/\[S\d{2}|lacune|Aucun|Interdiction|Doit|Ne |Seul|Adam/i);
+        expect(note).toMatch(/\[S\d{2}|lacune|Aucun|Interdiction|Doit|Ne |Seul|Adam|\[Modèle|\[source/i);
       }
     }
   });

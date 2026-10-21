@@ -10,6 +10,7 @@ import { fromMarkdown } from 'mdast-util-from-markdown';
 import { gfmTable } from 'micromark-extension-gfm-table';
 import { gfmTableFromMarkdown } from 'mdast-util-gfm-table';
 import type { ContractTemplate, ValidatorCheck } from '../templates.js';
+import { brokenReferences } from './structure.js';
 import { missingRequiredFields } from './required-fields.js';
 import { findEnglishWords } from './lexical.js';
 
@@ -187,6 +188,17 @@ export function validate(markdown: string, template?: ContractTemplate | null): 
       'anglicism',
       'warning',
       `Terme(s) en anglais dans le document : ${anglicisms.join(', ')}.`,
+    ));
+  }
+
+  // Renvois internes pointant vers un article inexistant : le numéro écrit
+  // par le modèle ne correspond à aucun article du document.
+  const broken = brokenReferences(text);
+  if (broken.length > 0) {
+    issues.push(issue(
+      'broken_reference',
+      'warning',
+      `Renvoi interne vers un article inexistant : ${broken.map((n) => `article ${n}`).join(', ')}.`,
     ));
   }
 
