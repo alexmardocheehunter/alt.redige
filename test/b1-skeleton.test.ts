@@ -3,11 +3,15 @@ import { readJson, testApp } from './helpers.js';
 
 describe('B1 — squelette', () => {
   it('GET /api/health répond 200 avec le contrat et le modèle', async () => {
-    const app = testApp({ model: 'claude-test' });
+    const app = testApp({ model: 'minimax/minimax-m3.1-flash:free' });
     const res = await app.request('/api/health');
     expect(res.status).toBe(200);
     const body = await readJson(res);
-    expect(body).toEqual({ ok: true, contract_version: '1.0', model: 'claude-test' });
+    expect(body).toEqual({
+      ok: true,
+      contract_version: '1.0',
+      model: 'minimax/minimax-m3.1-flash:free',
+    });
   });
 
   it('GET /api/health ne demande pas le code d’accès', async () => {
