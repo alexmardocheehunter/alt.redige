@@ -64,8 +64,9 @@ const DEFAULT_MAX_INPUT_LENGTH = 12_000;
  *
  * Conséquence : une demande qui relève manifestement du domaine n'est jamais
  * bloquée sur le seul verdict du gardien ; elle est journalisée
- * (`safety_flagged_domain`) pour relecture. Le garde-fou reste fully armed pour
- * ce qui sort du domaine.
+ * (`safety_flagged_request` côté entrée, `safety_flagged_document` côté
+ * document) pour relecture. Le garde-fou reste actif pour ce qui sort du
+ * domaine.
  */
 const DOMAIN_TERMS = [
   'bail', 'bailleur', 'locataire', 'loyer', 'caution', 'depot de garantie',

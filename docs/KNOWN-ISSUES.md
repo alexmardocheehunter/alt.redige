@@ -145,10 +145,11 @@ sur un document réellement dangereux : le mécanisme n'a été validé que sur 
 documents légitimes.
 
 ### Réseau sortant instable vers openrouter.ai
-Depuis la machine de développement, les connexions vers `openrouter.ai` sont
-coupées de façon intermittente : `UND_ERR_SOCKET : other side closed`,
-`ECONNRESET`, `UND_ERR_CONNECT_TIMEOUT`. Le même poste y accède sans problème
-avec `curl`, et le TLS 1.3 y est bloqué (TLS 1.2 passe).
+Depuis la machine de développement, les connexions `POST` vers
+`openrouter.ai` sont **coupées de façon intermittente** : `UND_ERR_SOCKET :
+other side closed`, `ECONNRESET`, `UND_ERR_CONNECT_TIMEOUT`. Le même poste y
+accède sans problème avec `curl` pour les requêtes `GET`, et le TLS 1.3 y est
+bloqué (TLS 1.2 passe).
 
 Ce n'est pas un défaut de l'application, mais cela a mis en évidence un vrai
 manque : **le code ne réessayait pas sur une erreur de socket**. Il le fait
@@ -156,8 +157,27 @@ maintenant (3 tentatives avec backoff 500 ms / 1,5 s / 3 s, puis bascule de
 modèle), et le journal `llm_socket_retry` permet de le voir. Sur un hébergeur
 avec un réseau stable, ces reprises ne se déclencheront pas.
 
+**Diagnostic** (la coupure est intermittente, pas liée à une taille de corps :
+des POST de 4 à 8 Ko passent parfois pendant que des POST de 1 Ko échouent) :
+
+```bash
+node -e "const b=JSON.stringify({model:'minimax/minimax-m3.1-flash:free',messages:[{role:'user',content:'x'.repeat(5000)}],max_tokens:8}); fetch('https://openrouter.ai/api/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+process.env.OPENROUTER_API_KEY},body:b}).then(r=>console.log('status',r.status)).catch(e=>console.log('coupé',e.cause?.code))"
+```
+
 Le contournement local (TLS 1.3 bloqué) est `NODE_OPTIONS=--tls-max-v1.2` :
 voir « Dépannage » dans `docs/EXPLOITATION.md`.
+
+**Conséquence sur les évaluations** : quand le réseau coupe, le scénario est
+relancé automatiquement (2 relances, uniquement pour un échec de transport —
+une assertion en échec n'est jamais rejouée, ce qui masquerait un vrai
+problème de comportement).
+
+### Le test de bout en bout ne dépend pas du réseau
+`test/b9-bout-en-bout.test.ts` démarre un serveur HTTP local qui parle le
+protocole OpenRouter (API compatible OpenAI) et exerce tout le chemin de
+production sur une vraie socket : client, parsing du flux SSE, appels d'outils,
+événements du Canvas, garde-fou, export Word. C'est le test de référence
+quand le réseau sortant est incertain.
 
 ### Le filtre de sécurité n'a pas été calibré sur le modèle réel
 *Ce point est résolu : le calibrage réalisé et ses résultats sont décrits dans

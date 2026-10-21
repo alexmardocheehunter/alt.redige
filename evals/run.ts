@@ -53,6 +53,8 @@ export interface ScenarioResult {
   checks: CheckResult[];
   error?: string;
   durationMs: number;
+  /** Nombre de relances dues à un échec de transport. */
+  retries?: number;
 }
 
 /* ------------------------------------------------------------------ */
@@ -502,6 +504,33 @@ export async function runScenario(
   };
 }
 
+/** Un échec de transport (réseau, quota, délai) : le scénario peut être rejoué. */
+export function isTransportFailure(result: ScenarioResult): boolean {
+  if (!result.error) return false;
+  return /Flux en erreur|HTTP \d{3}/.test(result.error)
+    && /llm_unavailable|llm_error|timeout|truncated/.test(result.error);
+}
+
+async function runScenarioWithRetries(
+  scenario: Scenario,
+  options: RunOptions,
+  retries: number,
+): Promise<ScenarioResult> {
+  let result = await runScenario(scenario, options);
+
+  for (let attempt = 1; attempt <= retries && isTransportFailure(result); attempt += 1) {
+    options.logger.info('scenario_retry', {
+      scenario: scenario.id,
+      attempt,
+      error: result.error,
+    });
+    result = await runScenario(scenario, options);
+    result.retries = attempt;
+  }
+
+  return result;
+}
+
 /* ------------------------------------------------------------------ */
 /* Point d’entrée                                                       */
 /* ------------------------------------------------------------------ */
@@ -532,10 +561,11 @@ async function main(): Promise<void> {
 
   const results: ScenarioResult[] = [];
   for (const scenario of scenarios) {
-    const result = await runScenario(scenario, { dryRun, logger });
+    const result = await runScenarioWithRetries(scenario, { dryRun, logger }, dryRun ? 0 : 2);
     results.push(result);
     const status = result.ok ? 'OK  ' : 'ÉCHEC';
-    console.log(`${status}  ${scenario.id}  ${scenario.name}  (${result.durationMs} ms)`);
+    const retried = result.retries ? ` [${result.retries} relance(s)]` : '';
+    console.log(`${status}  ${scenario.id}  ${scenario.name}  (${result.durationMs} ms)${retried}`);
     for (const check of result.checks.filter((item) => !item.ok)) {
       console.log(`        ✗ ${check.name}${check.detail ? ` — ${check.detail}` : ''}`);
     }
