@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { testApp } from './helpers.js';
-import { FakeOpenRouter, fakeClient, parseSse } from './fake-llm.js';
+import { FakeOpenRouter, fakeClient, parseSse, type FakeTurn } from './fake-llm.js';
 import { findEnglishWords } from '../src/doc/lexical.js';
 
 const COMPLETE_REQUEST =
@@ -16,7 +16,7 @@ const CONTRACT = [
   '',
 ].join('\n');
 
-async function runTurn(turns: Parameters<typeof FakeOpenRouter.prototype.constructor>[0]['turns'], userText = COMPLETE_REQUEST) {
+async function runTurn(turns: FakeTurn[], userText = COMPLETE_REQUEST) {
   const client = new FakeOpenRouter({ turns });
   const app = testApp({}, { client: fakeClient(client) });
   const res = await app.request('/api/chat', {
