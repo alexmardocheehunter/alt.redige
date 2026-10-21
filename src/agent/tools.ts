@@ -57,6 +57,8 @@ export interface ToolResult {
   emittedCanvasSet?: boolean;
   /** `true` si l'outil a posé une question : le tour s'arrête sur `awaiting_input`. */
   askedUser?: boolean;
+  /** Résumé lisible, destiné au frontend (jamais les arguments bruts). */
+  summary?: string;
 }
 
 export const TOOL_ASK_USER = 'ask_user';
@@ -316,6 +318,7 @@ function askUser(args: Record<string, unknown>, context: ToolContext): ToolResul
     }),
     isError: false,
     askedUser: true,
+    summary: 'Question posée',
   };
 }
 
@@ -333,7 +336,7 @@ function getTemplate(args: Record<string, unknown>, context: ToolContext): ToolR
 
   context.emit('status', { phase: 'template', label: `Chargement du modèle « ${template.label} »…` });
   context.logger.debug('tool_get_template', { contract_type: template.id });
-  return ok(templatePayload(template));
+  return { ...ok(templatePayload(template)), summary: `Modèle « ${template.label} »` };
 }
 
 /**
@@ -499,6 +502,9 @@ async function createCanvas(args: Record<string, unknown>, context: ToolContext)
     }),
     isError: false,
     emittedCanvasSet: true,
+    summary: validation.placeholders > 0
+      ? `Contrat écrit, ${validation.placeholders} champ(s) à compléter`
+      : 'Contrat écrit',
   };
 }
 
@@ -596,5 +602,6 @@ async function editCanvas(args: Record<string, unknown>, context: ToolContext): 
     }),
     isError: false,
     emittedCanvasSet: true,
+    summary: `${result.editsApplied} modification(s) appliquée(s)`,
   };
 }

@@ -17,6 +17,7 @@ import type { TemplateStore } from '../templates.js';
 import type { AgentEmit, AgentEventPayloads } from './events.js';
 import { extractPartialString, readPartialString } from './json-partial.js';
 import { buildSystemPrompt, buildUserContext } from './prompt.js';
+import { Progress } from './progress.js';
 import { findEnglishWords } from '../doc/lexical.js';
 import {
   executeTool,
@@ -163,6 +164,13 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
   const modelsUsed: string[] = [];
   let step = 0;
   let askedUser = false;
+  let lastPlaceholders = 0;
+
+  // Progression visible (AGENT-PROTOCOL.md §3, §4, §6, §7, §9).
+  const progress = new Progress(emit, document !== null);
+  progress.phase('understanding');
+  progress.plan();
+  progress.step('s1', 'running');
 
   /** Payload de l'événement `done` (AGENT-PROTOCOL.md §12). */
   const done = (stop_reason: 'end_turn' | 'awaiting_input' | 'max_steps'): AgentEventPayloads['done'] => ({
@@ -194,8 +202,15 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
         if (name === TOOL_CREATE_CANVAS) {
           canvasStates.set(toolCallId, createCanvasState());
           emit('status', { phase: 'drafting', label: 'Rédaction du contrat…' });
+          progress.phase('drafting');
+          progress.step('s1', 'done');
+          progress.step('s2', 'done');
+          progress.step(document === null ? 's3' : 's2', 'running');
         } else if (name === TOOL_EDIT_CANVAS) {
           emit('status', { phase: 'editing', label: 'Modification du contrat…' });
+          progress.phase('drafting');
+          progress.step('s1', 'done');
+          progress.step('s2', 'running');
         }
       },
       onToolInputDelta: (toolCallId, chunk) => {
@@ -277,12 +292,21 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
     for (const toolUse of outcome.toolUses) {
       if (signal.aborted) break;
       params.onToolCall?.(toolUse.name, toolUse.input);
+
+      const toolId = progress.toolStart(toolUse.name);
       const result = await executeTool(toolUse.name, toolUse.input, toolContext);
+      progress.toolEnd(toolId, toolUse.name, !result.isError, result.summary);
       // Le contrat d'API (API-CONTRACT.md §3.3) définit `version` comme
       // « document.version reçu + nombre de canvas_set déjà émis + 1 ».
       // Seuls les appels d'outil qui ont réellement écrit dans le Canvas
       // comptent : un `get_template` réussi ne change pas la version.
-      if (result.emittedCanvasSet) setsEmitted += 1;
+      if (result.emittedCanvasSet) {
+        setsEmitted += 1;
+        progress.phase('reviewing');
+        progress.step(document === null ? 's3' : 's2', 'done');
+        progress.step(document === null ? 's4' : 's3', 'running');
+        lastPlaceholders = readPlaceholders(result.content);
+      }
       toolResults.push({
         role: 'tool',
         toolCallId: toolUse.id,
@@ -299,13 +323,14 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
 
     if (signal.aborted) break;
 
-    if (!askedUser) conversation.push(...toolResults);
-  }
+    if (askedUser) {
+      // §8 : `ask_user` est toujours immédiatement suivi de `done(awaiting_input)`.
+      // Le tour s'arrête ici : la réponse arrive au tour suivant.
+      emit('done', done('awaiting_input'));
+      return { stopReason: 'awaiting_input', usage: totalUsage, steps: step, modelsUsed };
+    }
 
-  if (askedUser) {
-    // §8 : `ask_user` est toujours immédiatement suivi de `done(awaiting_input)`.
-    emit('done', done('awaiting_input'));
-    return { stopReason: 'awaiting_input', usage: totalUsage, steps: step, modelsUsed };
+    conversation.push(...toolResults);
   }
 
   if (signal.aborted) {
