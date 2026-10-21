@@ -199,6 +199,11 @@ export interface LlmStreamOptions {
   onToolInputDelta?: (toolCallId: string, chunk: string) => void;
   /** `false` dès qu'un événement Canvas a été émis : plus de bascule possible. */
   canRetry?: () => boolean;
+  /**
+   * Informe le frontend qu'une relance est en cours, sans fermer le flux
+   * (AGENT-PROTOCOL.md §10).
+   */
+  onRetry?: (info: { attempt: number; max: number; label: string; delay_ms: number }) => void;
   logger?: Logger;
 }
 
@@ -300,7 +305,14 @@ async function streamOnce(
         attempt: attempt + 1,
         error: describeNetworkError(error),
       });
-      await sleep(SOCKET_RETRY_DELAYS[attempt] ?? SOCKET_RETRY_DELAYS.at(-1)!, options.signal);
+      const delay = SOCKET_RETRY_DELAYS[attempt] ?? SOCKET_RETRY_DELAYS.at(-1)!;
+      options.onRetry?.({
+        attempt: attempt + 1,
+        max: MAX_SOCKET_RETRIES + 1,
+        label: 'Connexion interrompue, je réessaie',
+        delay_ms: delay,
+      });
+      await sleep(delay, options.signal);
     }
   }
 

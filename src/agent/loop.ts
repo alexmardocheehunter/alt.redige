@@ -17,11 +17,13 @@ import type { TemplateStore } from '../templates.js';
 import type { AgentEmit, AgentEventPayloads } from './events.js';
 import { extractPartialString, readPartialString } from './json-partial.js';
 import { buildSystemPrompt, buildUserContext } from './prompt.js';
-import { Progress } from './progress.js';
+import { buildSuggestions, Progress } from './progress.js';
+import { sourcesForTemplate } from '../legal-sources.js';
 import { findEnglishWords } from '../doc/lexical.js';
 import {
   executeTool,
   toolDefinitions,
+  TOOL_ASK_USER,
   TOOL_CREATE_CANVAS,
   TOOL_EDIT_CANVAS,
   type ToolContext,
@@ -98,6 +100,16 @@ function createCanvasState(): CanvasStreamState {
     emittedMarkdown: '',
     pendingDeltas: [],
   };
+}
+
+/** Nombre d'espaces réservés annoncés par un outil (0 si l'outil n'en dit rien). */
+function readPlaceholders(content: string): number {
+  try {
+    const parsed = JSON.parse(content) as { placeholders?: number };
+    return typeof parsed.placeholders === 'number' ? parsed.placeholders : 0;
+  } catch {
+    return 0;
+  }
 }
 
 export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> {
@@ -195,6 +207,14 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
       signal,
       logger,
       canRetry: () => !canvasEventEmitted,
+      onRetry: (info) => {
+        emit('retry', {
+          attempt: info.attempt,
+          max: info.max,
+          label: info.label,
+          delay_ms: info.delay_ms,
+        });
+      },
       onText: (delta) => {
         emit('text_delta', { text: delta });
       },
@@ -280,6 +300,13 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
       if (anglicisms.length > 0) {
         logger.warn('chat_anglicism', { words: anglicisms.length });
       }
+      progress.phase('finalizing');
+      progress.step(document === null ? 's4' : 's3', 'done');
+      progress.suggestions(buildSuggestions({
+        hasDocument: document !== null || setsEmitted > 0,
+        placeholders: lastPlaceholders,
+        askedUser: false,
+      }));
       emit('done', done('end_turn'));
       return { stopReason: 'end_turn', usage: totalUsage, steps: step, modelsUsed };
     }
@@ -293,9 +320,12 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
       if (signal.aborted) break;
       params.onToolCall?.(toolUse.name, toolUse.input);
 
-      const toolId = progress.toolStart(toolUse.name);
+      // §15 : `ask_user` est toujours immédiatement suivi de `done`.
+      // La question n'est donc pas encadrée par `tool_start`/`tool_end`.
+      const isQuestion = toolUse.name === TOOL_ASK_USER;
+      const toolId = isQuestion ? null : progress.toolStart(toolUse.name);
       const result = await executeTool(toolUse.name, toolUse.input, toolContext);
-      progress.toolEnd(toolId, toolUse.name, !result.isError, result.summary);
+      if (toolId) progress.toolEnd(toolId, toolUse.name, !result.isError, result.summary);
       // Le contrat d'API (API-CONTRACT.md §3.3) définit `version` comme
       // « document.version reçu + nombre de canvas_set déjà émis + 1 ».
       // Seuls les appels d'outil qui ont réellement écrit dans le Canvas
@@ -306,6 +336,9 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
         progress.step(document === null ? 's3' : 's2', 'done');
         progress.step(document === null ? 's4' : 's3', 'running');
         lastPlaceholders = readPlaceholders(result.content);
+        progress.sources(sourcesForTemplate(
+          templates.get(toolContext.workingDocType ?? contractType ?? '') ?? null,
+        ));
       }
       toolResults.push({
         role: 'tool',

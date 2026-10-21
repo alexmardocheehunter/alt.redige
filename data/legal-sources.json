@@ -1,0 +1,47 @@
+{
+  "_comment": "Table des sources juridiques reprise du référentiel validé (reference/TOUTES LES INFOS LEGALES.txt, Tableau 1). Aucune source n'est ajoutée ici : le code ne fait que citer.",
+  "sources": [
+    {
+      "code": "S01",
+      "title": "Code du travail de Côte d'Ivoire (Loi n° 2015-532)",
+      "date": "20 juillet 2015 (éd. 2023)",
+      "kind": "law"
+    },
+    {
+      "code": "S02",
+      "title": "Code général des impôts (CGI)",
+      "date": "Édition 2026",
+      "kind": "law"
+    },
+    {
+      "code": "S03",
+      "title": "Code de prévoyance sociale (CPS / CNPS — Ord. n° 2012-03)",
+      "date": "11 janvier 2012",
+      "kind": "law"
+    },
+    {
+      "code": "S04",
+      "title": "Convention collective interprofessionnelle (CCI)",
+      "date": "20 juillet 1977",
+      "kind": "law"
+    },
+    {
+      "code": "S05",
+      "title": "Décrets d'application du Code du travail (96-195 à 96-287, 2013-791, 2017-210, 2022-31)",
+      "date": "1996, 2013, 2017, 2022",
+      "kind": "law"
+    },
+    {
+      "code": "S06",
+      "title": "Guide d'application du SYSCOHADA révisé",
+      "date": "Version révisée 2017",
+      "kind": "law"
+    },
+    {
+      "code": "S07",
+      "title": "Annexe fiscale 2026 et Bulletin officiel DGI (BODGI)",
+      "date": "Gestion 2026",
+      "kind": "law"
+    }
+  ]
+}
