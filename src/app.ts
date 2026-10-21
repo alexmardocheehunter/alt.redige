@@ -15,11 +15,14 @@ import { requestId } from './middleware/requestId.js';
 import { auth } from './middleware/auth.js';
 import { rateLimit } from './middleware/rateLimit.js';
 import type { AppEnv } from './types.js';
+import { TemplateStore } from './templates.js';
 import { metaRoutes } from './routes/meta.js';
 
 export interface AppDeps {
   config: AppConfig;
   logger: Logger;
+  /** Injected by the tests; loaded from data/templates otherwise. */
+  templates?: TemplateStore;
 }
 
 const PUBLIC_INDEX = resolve(process.cwd(), 'public', 'index.html');
@@ -43,8 +46,20 @@ export function readIndexHtml(): Buffer | null {
   }
 }
 
-export function createApp({ config, logger }: AppDeps): Hono<AppEnv> {
+export function createApp({ config, logger, templates }: AppDeps): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
+
+  let templateStore = templates;
+  if (!templateStore) {
+    try {
+      templateStore = TemplateStore.load();
+    } catch (error) {
+      templateStore = new TemplateStore([]);
+      logger.error('templates_unavailable', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
 
   app.use('*', requestId());
   app.use('*', secureHeaders({
@@ -98,7 +113,7 @@ export function createApp({ config, logger }: AppDeps): Hono<AppEnv> {
     return c.text('Page introuvable.', 404, { 'Content-Type': 'text/plain; charset=utf-8' });
   });
 
-  app.route('/', metaRoutes({ config, logger }));
+  app.route('/', metaRoutes({ config, logger, templates: templateStore }));
 
   // Rate limiting is attached per route, with the bucket and window required by the contract.
   app.use('/api/chat', rateLimit({
