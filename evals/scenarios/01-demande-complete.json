@@ -13,7 +13,7 @@
         "chat_max_length": 600,
         "no_invented_facts": true,
         "placeholders_min": 1,
-        "tool_calls": [{ "name": "get_template", "count": 1 }, { "name": "create_canvas", "count": 1 }]
+        "tool_calls": [{ "name": "get_template", "count_min": 1 }, { "name": "create_canvas", "count_min": 1 }]
       }
     }
   ],

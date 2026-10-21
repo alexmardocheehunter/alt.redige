@@ -37,7 +37,7 @@ const schema = z.object({
   ACCESS_CODE: z.string().min(1).optional(),
   MAX_STEPS: positiveInt(6, 20),
   MAX_OUTPUT_TOKENS: positiveInt(16000, 64000),
-  REQUEST_TIMEOUT_MS: positiveInt(120000, 600000),
+  REQUEST_TIMEOUT_MS: positiveInt(240000, 600000),
   RATE_CHAT_PER_HOUR: positiveInt(30, 100000),
   RATE_EXPORT_PER_MIN: positiveInt(10, 100000),
   MAX_BODY_BYTES: positiveInt(1048576, 67108864),

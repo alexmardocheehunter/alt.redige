@@ -11,6 +11,7 @@ Public : l'agent de code qui construit le backend. Lire d'abord `README.md`, pui
 | Front | Un seul `public/index.html` servi par le serveur | Le front n'est pas React : pas de Next.js, pas de Vercel AI SDK `useChat` |
 | LLM | **OpenRouter** via son API compatible OpenAI, en `fetch` natif (aucun SDK). Modèles dans `LLM_MODELS` (ordre de bascule) | Choix d'Alex : trois modèles OpenRouter, le premier qui répond l'emporte. L'API OpenAI-compatible évite une dépendance supplémentaire ; `src/llm.ts` isole le fournisseur |
 | Modèles | Rédaction : `minimax/minimax-m3.1-flash:free` puis `nvidia/nemotron-3.5-super-vl:free`. Sécurité : `nvidia/nemotron-3.5-content-safety:free`, **hors bascule** | Le modèle de sécurité est un classifieur : il ne supporte pas les appels d'outils, il ne peut donc pas rédiger. Il filtre les entrées utilisateur et le contrat produit |
+| Jetons | `MAX_OUTPUT_TOKENS` = 16 000 par défaut | Les deux modèles de rédaction sont des **modèles à raisonnement** : une partie du budget part en `reasoning`, avant le contenu. Un budget trop faible coupe le contrat (`truncated`). Le champ `reasoning` n'est jamais relayé au client |
 | État | **Aucun état serveur** : le client renvoie historique + document | Déploiement trivial, pas de base de données pour la V1 |
 | Persistance | `localStorage` côté front uniquement | Suffisant pour le challenge |
 | PDF | Côté navigateur (`window.print()`) | Pas d'endpoint PDF en V1.0 |
@@ -109,6 +110,8 @@ Contexte envoyé au modèle :
 **Annulation.** Passe `AbortSignal` (lié à la fermeture de la connexion client) à la requête `fetch`. À l'annulation : aucune écriture supplémentaire, journalise `aborted`.
 
 **Erreurs fournisseur et bascule.** Les échecs qui concernent le modèle (429, 5xx, 404 « modèle inconnu », erreur réseau) font basculer sur le modèle suivant de `LLM_MODELS`, après 1 s d'attente, **uniquement avant que le moindre événement `canvas_*` ait été émis** : après, pas de nouvelle tentative (`error` avec `retryable: true`), pour ne jamais laisser un demi-document. Les erreurs globales (401, 403) ne sont pas rejouées.
+
+**Erreurs de socket.** Une coupure de connexion (`UND_ERR_SOCKET`, `ECONNRESET`, `EPIPE`, `other side closed`) est transitoire : 3 tentatives avec backoff (500 ms, 1,5 s, 3 s) sur une nouvelle connexion, tant que rien n'a encore été envoyé au client (sinon le texte serait dupliqué dans la bulle de chat). Au-delà, la bascule de modèle prend le relais. Journalisé en `llm_socket_retry`.
 
 **Garde-fou de sécurité.** Le modèle `LLM_SAFETY_MODEL` est appelé hors de la boucle, en une requête non streamée :
 1. sur le dernier message de l'utilisateur, **avant** l'ouverture du flux (réponse `400` `bad_request` si le contenu est bloqué) ;

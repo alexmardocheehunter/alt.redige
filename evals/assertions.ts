@@ -63,20 +63,41 @@ const MONTHS = 'janvier|février|mars|avril|mai|juin|juillet|août|septembre|oct
 
 const CONTRACT_STOPLIST = new Set([
   'le', 'la', 'les', 'un', 'une', 'des', 'de', 'du', 'des', 'au', 'aux', 'en', 'et', 'ou',
-  'il', 'elle', 'entre', 'les', 'soussignés', 'ci-après', 'désigné', 'désignée', 'lequel',
+  'il', 'elle', 'entre', 'soussignés', 'ci-après', 'désigné', 'désignée', 'lequel',
   'laquelle', 'qui', 'que', 'dont', 'est', 'sont', 'sera', 'seront', 'peut', 'peuvent',
   'doit', 'doivent', 'par', 'pour', 'avec', 'sans', 'sur', 'sous', 'dans', 'à', 'a',
   'bailleur', 'locataire', 'bail', 'contrat', 'article', 'parties', 'partie', 'adresse',
   'nom', 'complet', 'lieu', 'date', 'durée', 'duree', 'montant', 'loyer', 'dépôt', 'depot',
   'garantie', 'préavis', 'preavis', 'jours', 'mois', 'ans', 'année', 'exemplaires',
-  'originaux', 'signatures', 'signataire', ' objet', 'usage', 'habitation', 'résiliation',
-  'resiliation', 'obligations', 'demeure', 'demeurant', 'y', 'en', 'effet', 'prise',
+  'originaux', 'signatures', 'signataire', 'objet', 'usage', 'habitation', 'résiliation',
+  'resiliation', 'obligations', 'demeure', 'demeurant', 'y', 'effet', 'prise',
   'prix', 'charges', 'eau', 'électricité', 'electricite', 'gaz', 'taxe', 'syndic',
   'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf', 'dix', 'douze',
   'quatorze', 'quinze', 'vingt', 'trente', 'soixante', 'cent', 'mille',
   'obligations', 'obligation', 'approuvé', 'approuvée', 'convenu', 'arrêté',
   'modifié', 'modifiée', 'précise', 'domicilié', 'domiciliée', 'né', 'née',
   'signataire', 'signé', 'signée', 'visa', 'instances', 'exemplaire', 'présent',
+  // Vocabulaire juridique et administratif courant : ces mots capitalized
+  // dans le document ne sont pas des noms inventés.
+  'bien', 'aucun', 'aucune', 'toute', 'toutes', 'tout', 'tous', 'toutes', 'tels',
+  'telles', 'restitution', 'restituer', 'dispositions', 'disposition', 'clause', 'clauses',
+  'peine', 'amende', 'pénalité', 'pénalités', 'indemnité', 'indemnités', 'réparation',
+  'dommages', 'intérêts', 'exécution', 'exécuteur', 'résiliation', 'reconduction',
+  'préavis', 'demeure', 'délai', 'délais', 'suspension', 'cession', 'sous-location',
+  'assurance', 'assurances', 'règlement', 'règlements', 'paiement', 'paiements',
+  'modalités', 'modalité', 'remise', 'remises', 'inventaire', 'état', 'états', 'réparations',
+  'visite', 'visites', 'accès', 'usage', 'usages', 'destination', 'surfaces', 'surface',
+  'reconstitution', 'réparation', 'frais', 'charges', 'budget', 'prefinancement',
+]);
+
+/** Mots quiNe sont pas des inventions même capitalisés (début de phrase). */
+const SENTENCE_STARTERS = new Set([
+  'le', 'la', 'les', 'un', 'une', 'des', 'de', 'du', 'au', 'aux', 'en', 'et', 'ou', 'il',
+  'elle', 'ils', 'elles', 'on', 'qui', 'que', 'dont', 'si', 'ne', 'ni', 'ce', 'cet', 'cette',
+  'ces', 'chaque', 'toute', 'toutes', 'tout', 'tous', 'aucun', 'aucune', 'bien', 'par',
+  'pour', 'avec', 'sans', 'dans', 'sur', 'sous', 'à', 'a', 'entre', 'après', 'avant',
+  'lorsque', 'dès', 'selon', 'conformément', 'à compter', 'lundi', 'mardi', 'mercredi',
+  'jeudi', 'vendredi', 'samedi', 'dimanche',
 ]);
 
 /**
@@ -130,17 +151,25 @@ export function checkNoInventedFacts(
   for (const line of withoutPlaceholders.split(/\r?\n/)) {
     const cleaned = line.replace(/^\s*[-*\d.)\s]+/, '');
     const words = cleaned.split(/\s+/);
-    words.forEach((word, index) => {
+    let atSentenceStart = true;
+
+    for (const word of words) {
       const bare = word.replace(/[^\p{L}'’-]/gu, '');
-      if (bare.length < 4) return;
-      if (!/^\p{Lu}/u.test(bare)) return;
       const key = normalize(bare);
-      if (CONTRACT_STOPLIST.has(key)) return;
-      // The first word of a sentence is usually a common word.
-      if (index === 0) return;
-      if (properNouns.has(key)) return;
-      properNouns.add(key);
-    });
+      const capitalized = bare.length >= 4 && /^\p{Lu}/u.test(bare);
+
+      if (atSentenceStart) {
+        // Premier mot de la phrase : presque toujours un mot courant.
+        atSentenceStart = false;
+        continue;
+      }
+
+      if (capitalized && !CONTRACT_STOPLIST.has(key) && !SENTENCE_STARTERS.has(key)) {
+        properNouns.add(key);
+      }
+
+      if (/[.:!?»”]$/.test(word)) atSentenceStart = true;
+    }
   }
 
   for (const noun of properNouns) {
@@ -157,6 +186,42 @@ export function checkNoInventedFacts(
 /* ------------------------------------------------------------------ */
 /* 2. Targeted edit                                                    */
 /* ------------------------------------------------------------------ */
+
+/**
+ * Splits a document into its blocks (separated by a blank line), as the
+ * specification does: the blocks that were not asked to change must be
+ * identical, byte for byte.
+ */
+export function blocks(markdown: string): string[] {
+  return markdown
+    .split(/\r?\n\s*\r?\n/)
+    .map((block) => block.trim())
+    .filter((block) => block.length > 0);
+}
+
+/**
+ * Counts the blocks that changed between two documents.
+ * A targeted edit changes a handful of blocks; a rewrite changes them all.
+ */
+export function countChangedBlocks(before: string, after: string): { added: number; removed: number; changed: number } {
+  const beforeBlocks = blocks(before);
+  const afterBlocks = blocks(after);
+
+  const remaining = [...beforeBlocks];
+  const kept: string[] = [];
+
+  for (const block of afterBlocks) {
+    const index = remaining.indexOf(block);
+    if (index === -1) kept.push(block);
+    else remaining.splice(index, 1);
+  }
+
+  return {
+    added: kept.length,
+    removed: remaining.length,
+    changed: kept.length + remaining.length,
+  };
+}
 
 /**
  * Checks that the sections of the document that were not supposed to change
@@ -203,7 +268,6 @@ export function countChangedSections(before: string, after: string): number {
   }
   return changed;
 }
-
 /* ------------------------------------------------------------------ */
 /* 3. No contract in the chat                                          */
 /* ------------------------------------------------------------------ */

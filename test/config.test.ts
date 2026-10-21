@@ -15,7 +15,7 @@ describe('config', () => {
     expect(config.port).toBe(3000);
     expect(config.maxSteps).toBe(6);
     expect(config.maxOutputTokens).toBe(16000);
-    expect(config.requestTimeoutMs).toBe(120000);
+    expect(config.requestTimeoutMs).toBe(240000);
     expect(config.rateChatPerHour).toBe(30);
     expect(config.rateExportPerMin).toBe(10);
     expect(config.maxBodyBytes).toBe(1048576);

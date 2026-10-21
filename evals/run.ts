@@ -24,6 +24,7 @@ import {
   checkNoInventedFacts,
   checkSubset,
   checkUnchangedSections,
+  countChangedBlocks,
   countChangedSections,
   countQuestions,
   type CheckResult,
@@ -191,7 +192,10 @@ async function checkTurn(
   if (expectation.canvas_modes) {
     const modes = observation.canvasSets.map((set) => set.mode);
     const expected = expectation.canvas_modes;
-    const ok = modes.length === expected.length && modes.every((mode, index) => mode === expected[index]);
+    // Les modes attendus doivent ouvrir le flux ; l'agent peut ensuite
+    // peaufiner le document (un `edit` après un `create` est acceptable).
+    const ok = modes.length >= expected.length
+      && expected.every((mode, index) => modes[index] === mode);
     checks.push({
       name: 'Modes du Canvas',
       ok,
@@ -222,7 +226,9 @@ async function checkTurn(
   for (const expectedCall of expectation.tool_calls ?? []) {
     const calls = observation.toolCalls.filter((call) => call.name === expectedCall.name);
     const expectedCount = expectedCall.count ?? 1;
-    let ok = calls.length === expectedCount;
+    let ok = expectedCall.count_min !== undefined
+      ? calls.length >= expectedCall.count_min
+      : calls.length === expectedCount;
     let detail = '';
 
     if (!ok) {
@@ -350,6 +356,23 @@ async function checkTurn(
       ...(changed <= expectation.max_changed_sections
         ? {}
         : { detail: `${changed} section(s) modifiée(s) au lieu de ${expectation.max_changed_sections}` }),
+    });
+  }
+
+  if (expectation.max_changed_blocks !== undefined && documentBefore && documentAfter) {
+    // Comparaison par blocs (séparés par une ligne vide) : c'est la méthode
+    // décrite par la spécification, robuste à un renumérotage d'articles.
+    const changed = countChangedBlocks(documentBefore, documentAfter);
+    checks.push({
+      name: 'Blocs non concernés inchangés',
+      ok: changed.changed <= expectation.max_changed_blocks,
+      ...(changed.changed <= expectation.max_changed_blocks
+        ? {}
+        : {
+          detail:
+            `${changed.changed} bloc(s) modifié(s) au lieu de ${expectation.max_changed_blocks} `
+            + `(${changed.added} ajout(s), ${changed.removed} retiré(s))`,
+        }),
     });
   }
 

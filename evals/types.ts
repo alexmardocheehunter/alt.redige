@@ -28,7 +28,7 @@ export interface Expectation {
   /** Minimum number of questions asked in the chat. */
   min_questions?: number;
   /** Expected tool calls: name, number of calls, number of edits, replace flag. */
-  tool_calls?: Array<{ name: string; count?: number; edits?: number; replace?: boolean }>;
+  tool_calls?: Array<{ name: string; count?: number; count_min?: number; edits?: number; replace?: boolean }>;
   /** Number of edits applied reported by the last canvas_set. */
   edits_applied?: number;
   placeholders_min?: number;
@@ -42,6 +42,8 @@ export interface Expectation {
   unchanged_sections?: string[];
   /** Maximum number of sections allowed to change. */
   max_changed_sections?: number;
+  /** Maximum number of blocks (blank-line separated) allowed to change. */
+  max_changed_blocks?: number;
   /** No forbidden construct in the Markdown subset (default: true). */
   no_forbidden_construct?: boolean;
   /** No invented fact (name, amount, date) in the document. */

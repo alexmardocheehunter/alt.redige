@@ -65,10 +65,65 @@ exactement le format SSE d'OpenRouter), et les trois identifiants de modèles on
 été vérifiés sur `https://openrouter.ai/api/v1/models` (présents, et les deux
 modèles de rédaction annoncent bien la prise en charge des appels d'outils).
 
-**Reste à faire** : une campagne réelle avec une clé valide (`npm run eval`),
-pour valider le comportement de `minimax/minimax-m3.1-flash:free` sur la
-rédaction longue et sur les appels d'outils en flux. Tant que ce n'est pas fait,
-le provider OpenRouter reste « vérifié statiquement, pas en production ».
+**Constats de la campagne réelle** (clé fournie le 21/10/2026) :
+
+- une génération complète a abouti : flux `ready` → `status` → `canvas_start` →
+  `canvas_delta` → `canvas_set` → `done`, document de 6 427 caractères, 22
+  espaces réservés, **0 issue de validation**, aucun nom inventé ;
+- une modification réelle a abouti (6 edits appliqués), après une reprise de
+  l'agent sur une ancre `old_str` introuvable ;
+- la **bascule a fonctionné en conditions réelles** : sur un scénario, le
+  modèle principal a échoué (ECONNRESET), la relance a échoué aussi, et
+  `nvidia/nemotron-3.5-super-vl:free` a pris le relais (scénario au vert).
+
+**Reste à faire** : la campagne `npm run eval` complète (10 scénarios) n'est pas
+au vert sur cette machine, à cause du réseau sortant instable vers
+OpenRouter (coupures de connexion intermittentes). Voir « Réseau sortant » plus
+bas. Le harnais, lui, est validé : 10/10 en mode hors ligne.
+
+### Les modèles de la chaîne sont des modèles à raisonnement
+`minimax/minimax-m3.1-flash:free` et `nvidia/nemotron-3.5-super-vl:free` produisent
+un champ `reasoning` avant le contenu. Conséquences appliquées :
+
+- `MAX_OUTPUT_TOKENS` passe de 8 000 à **16 000** par défaut : le raisonnement
+  et la réponse doivent tenir dans le même budget, sinon le contrat est coupé
+  (`truncated`) ;
+- le champ `reasoning` n'est **jamais** relayé au client (le frontend ne voit
+  que `content`) ;
+- le classement de sécurité a besoin de 512 jetons, pas 16 : à 16 jetons, le
+  modèle raisonne, n'écrit jamais son verdict, et le filtre ne bloque rien.
+
+### Le verdict du modèle de sécurité a un format propriétaire
+Le modèle `nvidia/nemotron-3.5-content-safety:free` ne répond pas `SAFE` /
+`UNSAFE` mais `User Safety: safe` / `User Safety: unsafe` (avec parfois une
+ligne `Response Safety:`). Le parseur (`parseVerdict` dans `src/safety.ts`) lit
+la ligne **User Safety** — c'est le classement de l'entrée utilisateur.
+
+**Piège corrigé en cours de route** : la première version du parseur ne
+reconnaissait que `SAFE`/`UNSAFE` en début de réponse. Le filtre renvoyait
+donc systématiquement « illisible » et **laisse passer** : il ne bloquait
+rien. Le format réel a été relevé en interrogeant le modèle, puis le parseur a
+été corrigé et testé.
+
+**À faire** : vérifier le comportement réel sur des cas d'école (bail
+légitime → `safe`, demande hors sujet → `unsafe`) avant de considérer le
+filtre comme fiable. Le réglage s'ajuste avec `SAFETY_CHECK=0` et le prompt
+`SAFETY_SYSTEM_PROMPT` (`src/safety.ts`).
+
+### Réseau sortant instable vers openrouter.ai
+Depuis la machine de développement, les connexions vers `openrouter.ai` sont
+coupées de façon intermittente : `UND_ERR_SOCKET : other side closed`,
+`ECONNRESET`, `UND_ERR_CONNECT_TIMEOUT`. Le même poste y accède sans problème
+avec `curl`, et le TLS 1.3 y est bloqué (TLS 1.2 passe).
+
+Ce n'est pas un défaut de l'application, mais cela a mis en évidence un vrai
+manque : **le code ne réessayait pas sur une erreur de socket**. Il le fait
+maintenant (3 tentatives avec backoff 500 ms / 1,5 s / 3 s, puis bascule de
+modèle), et le journal `llm_socket_retry` permet de le voir. Sur un hébergeur
+avec un réseau stable, ces reprises ne se déclencheront pas.
+
+Le contournement local (TLS 1.3 bloqué) est `NODE_OPTIONS=--tls-max-v1.2` :
+voir « Dépannage » dans `docs/EXPLOITATION.md`.
 
 ### Le filtre de sécurité n'a pas été calibré sur le modèle réel
 Le gardien `nvidia/nemotron-3.5-content-safety:free` est appelé avec une
@@ -81,6 +136,11 @@ réponse illisible ou une erreur du gardien laisse passer (fail-open).
 comme fiable. Un faux positif bloquerait des demandes légitimes ; un faux
 négatif laisserait passer un contenu undesirable. Le réglage s'ajuste avec
 `SAFETY_CHECK=0` et le prompt `SAFETY_SYSTEM_PROMPT` (`src/safety.ts`).
+
+*(Le format réel du verdict et le budget de jetons ont été relevés et corrigés :
+voir « Les modèles de la chaîne sont des modèles à raisonnement » et « Le
+verdict du modèle de sécurité a un format propriétaire » ci-dessus. Le
+calibrage fonctionnel — ce qui est bloqué, ce qui passe — reste à faire.)*
 
 ---
 
