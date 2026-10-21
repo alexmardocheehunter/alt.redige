@@ -33,27 +33,26 @@ servi par `GET /`. Le backend est conforme à `AGENT-PROTOCOL.md` : enveloppe
 `seq`/`t`, `phase`, `plan`, `step`, `tool_start`/`tool_end`, `ask_user`,
 `sources`, `suggestions`, `retry`.
 
-**Deux écarts fonctionnels, tous deux côté front** (détails et preuves dans
-`docs/INTEGRATION-REPORT.md`) :
-
-1. **Le fichier livré est le prototype**, pas le front v2 : il appelle
-   `window.claude.use('sample')` au lieu de `fetch('/api/chat')`, et ses
-   boutons de démarrage sont codés en dur. La spécification v2 (§17) demande
-   précisément le contraire. L'adaptation du front n'est pas du ressort du
-   backend (AGENTS.md : « Le front est un fichier unique `public/index.html`
-   que tu ne codes pas »).
-2. **Les scripts externes jszip et jspdf sont bloqués par la CSP** — c'est le
-   comportement voulu (le v2 exige « aucun script externe », et l'export passe
-   par `POST /api/export/docx` et `window.print()`), mais tant que le front
-   n'est pas mis à jour, **ses boutons d'export ne fonctionnent pas**.
+**Le fichier livré est le prototype** : il appelait `window.claude.use('sample')`
+au lieu de `fetch('/api/chat')`, ses boutons de démarrage étaient codés en dur,
+ses boutons d'export n'avaient aucun gestionnaire, et il chargeait `jszip` et
+`jspdf` depuis un CDN. Il a été **branché** sur l'API (`public/app-api.js`,
+injecté dans la page par `scripts/inject-app-api.mjs`) : appels `/api/chat` en
+SSE, exports Word et PDF, boutons d'accueil alimentés par `/api/templates`,
+historique conforme au contrat, code d'accès, annulation.
 
 **La CSP a dû être adaptée** : le front livré porte un script inline, qu'une
 CSP statique (`script-src 'self'`) interdisait. Le serveur émet désormais un
-nonce par réponse et l'injecte dans le script inline au moment du service. Le
-fichier livré n'est pas modifié sur le disque.
+nonce par réponse et l'injecte dans les scripts inline au moment du service.
+
+**Ce qui reste au prototype** (écarts de confort, pas bloquants) : la
+connexion Google est simulée, la question de l'agent s'affiche dans la bulle
+plutôt que dans une carte, le mode `?mock=1` est celui d'origine, et l'affichage
+en blocs perd la mise en forme fine des listes et des tableaux.
 
 Les cinq questions laissées ouvertes par `SPEC-FRONTEND.md` §17 sont
-répondues dans `docs/DECISIONS-PHASE-C.md`.
+répondues dans `docs/DECISIONS-PHASE-C.md`. Le détail est dans
+`docs/INTEGRATION-REPORT.md`.
 
 ---
 

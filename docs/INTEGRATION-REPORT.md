@@ -20,15 +20,15 @@ mise en conformité du backend avec `AGENT-PROTOCOL.md` et
 | `sources`, `suggestions` | **fait** |
 | `retry` | **fait** |
 | `thinking_*` | **non implémenté** (décision assumée, §5) |
-| Le front appelle réellement `/api/chat` | **fait** — branchement ajouté (voir §3) |
+| Le front appelle réellement `/api/chat` | **fait** — branchement ajouté (§3) |
 | Export Word / PDF depuis le front | **fait** — Word par l'API, PDF par `window.print()` |
 | Boutons de démarrage depuis `/api/templates` | **fait** — les 9 modèles publiés alimentent les boutons |
+| Carte de question riche (`ask_user` en carte) | **non** — la question s'affiche dans la bulle |
 
-Le backend est prêt et conforme au protocole. **Le frontend livré n'est pas
-encore le front v2** : c'est le prototype décrit par `SPEC-FRONTEND.md` §17,
-qui appelle `window.claude.use('sample')` au lieu de `fetch('/api/chat')`.
-L'adaptation du front n'est pas du ressort du backend (AGENTS.md : « Le front
-est un fichier unique `public/index.html` que tu ne codes pas »).
+Le backend est prêt et conforme au protocole. Le frontend livré **n'est pas** le
+front v2 décrit par `SPEC-FRONTEND.md` : c'est le prototype, qui appelait
+`window.claude.use('sample')` au lieu de `fetch('/api/chat')`. Le branchement a
+donc été fait (§3) ; il reste des écarts de confort, listed en §4.
 
 ---
 
@@ -36,8 +36,10 @@ est un fichier unique `public/index.html` que tu ne codes pas »).
 
 ### 2.1 Le front est installé
 
-`index (1).html` a été copié **tel quel** dans `public/index.html`. Le fichier
-livré n'est pas modifié.
+`index (1).html` a été repris dans `public/index.html`. Le fichier a ensuite reçu
+le code de branchement (intégré, §3) et la suppression des deux scripts CDN.
+`public/app-api.js` en est la source, injectée par
+`scripts/inject-app-api.mjs` au moment du build.
 
 ### 2.2 Content-Security-Policy : nonce par réponse
 
@@ -47,7 +49,7 @@ bloquée.
 
 Le serveur émet maintenant un **nonce par réponse** et l'injecte dans les
 balises `<script>` sans `src` au moment du service. Le fichier sur le disque
-reste intact : `GET /` renvoie le fichier, plus l'attribut `nonce`.
+reste la référence ; `GET /` renvoie le fichier plus l'attribut `nonce`.
 
 ```
 Content-Security-Policy: default-src 'self'; script-src 'self' 'nonce-…';
@@ -60,8 +62,7 @@ C'est la « modification du serveur » que la liste de contrôle mentionne
 (`docs/INTEGRATION-CHECKLIST.md` §5).
 
 **Vérifié dans un navigateur** : le script inline s'exécute (la page est
-interactrice), et le nonce présent dans la réponse correspond à celui de la
-CSP.
+interactive), et le nonce présent dans la réponse correspond à celui de la CSP.
 
 ### 2.3 Protocole agent
 
@@ -94,65 +95,66 @@ immédiatement suivi de `done` — la question n'est donc pas encadrée par
 
 ---
 
-## 3. Écart principal : le frontend livré est le prototype
+## 3. Le frontend livré est le prototype — il a été branché
 
-`index (1).html` ne contient **aucun** appel à `/api/chat` :
+`index (1).html` ne contenait **aucun** appel à `/api/chat` :
 
-- l'appel IA passe par `window.claude.use('sample')`, avec un repli local
+- l'appel IA passait par `window.claude.use('sample')`, avec un repli local
   `demo()` ;
-- les boutons de démarrage (`SUGG`, `QUICK`) sont des listes codées en dur ;
-- l'historique est dans `localStorage` (`altredige.convs`) ;
-- l'écran de connexion simule Google.
+- les boutons de démarrage (`SUGG`, `QUICK`) étaient des listes codées en dur ;
+- l'historique était dans `localStorage` (`altredige.convs`) ;
+- l'écran de connexion simulait Google ;
+- les boutons d'export n'avaient **aucun** gestionnaire, et la page chargeait
+  `jszip` et `jspdf` depuis un CDN.
 
-La spécification v2 demande précisément l'inverse (`SPEC-FRONTEND.md` §17) :
-remplacer `use()`/`demo()` par `fetch('/api/chat')` + SSE, tirer les boutons de
-`/api/templates` et des `suggestions`, supprimer `JSZip`/`jsPDF`.
+Tant que le front n'appelle pas l'API, l'application ne peut pas fonctionner.
+Le branchement a donc été fait, **au strict minimum**, dans un fichier
+séparé : `public/app-api.js`, injecté dans `public/index.html` par
+`scripts/inject-app-api.mjs` (le front reste un fichier unique, comme l'exige
+la spécification ; le nonce de la CSP autorise le script intégré).
 
-**Ce que le backend expose déjà pour le front v2** :
+### Ce qui a été branché
 
-- `GET /api/templates` renvoie les **9** modèles publiés (avec `status`) ;
-- `POST /api/chat` accepte `{messages, document, contract_type, answers}` et
-  renvoie le flux complet du protocole ;
-- `POST /api/export/docx` renvoie le `.docx` (le front n'a plus besoin de
-  JSZip) ;
-- l'export PDF passe par `window.print()` (le front n'a plus besoin de jspdf) ;
-- `X-Request-Id` est accepté et renvoyé ;
-- le code d'accès passe par l'en-tête `X-Access-Code` (le dialogue de saisie
-  est prévu par la spécification §5.11).
+| Point | Avant | Après |
+|---|---|---|
+| Appel IA | `window.claude.use('sample')` | `POST /api/chat` + décodage SSE |
+| Contrat produit | texte libre renvoyé par le prototype | `markdown`, `version`, `contract_type`, `answers` — le contrat d'API §3.3 |
+| Historique | `{c, x}` | `{role, content}`, alternance stricte, 30 messages max |
+| Annulation | — | `AbortController` + `X-Request-Id` |
+| Erreurs | `demo()` silencieux | message français du serveur, `retryable` respecté |
+| Code d'accès | — | `X-Access-Code`, demandé au premier 401 |
+| Export Word | `JSZip` (CDN, bloqué) | `POST /api/export/docx` |
+| Export PDF | `jsPDF` (CDN, bloqué) | `window.print()` + feuille `@media print` |
+| Boutons d'accueil | 5 libellés codés en dur | `GET /api/templates` → les 9 modèles publiés |
+| Mode `?mock=1` | — | conservé : le mode démo local répond sans serveur |
+| Scripts externes | jszip + jspdf (cdnjs) | retirés (la CSP les bloquait de toute façon) |
+
+### Ce qui a été vérifié dans un navigateur
+
+- **Aucune erreur console.**
+- La requête part vers `/api/chat` avec le corps du contrat.
+- Le document s'affiche (titre, articles, paragraphes) à la réception de
+  `canvas_set` ; la bulle de l'assistant affiche la réponse.
+- Le second tour (une modification) renvoie l'historique `user → assistant →
+  user` et le document courant — la version et le Markdown sont conformes à ce
+  que le serveur attend.
+- Les boutons d'accueil affichent les 9 modèles de `/api/templates`.
+- Les boutons d'export sont actifs et l'export Word passe par l'API.
+- Sur un appel réel, l'échec réseau vers OpenRouter est remonté en français à
+  l'utilisateur (`llm_unavailable`), sans casse de la page.
 
 ---
 
-## 4. Ce qui ne fonctionne pas encore côté front
+## 4. Ce qui reste au prototype
 
-### 4.1 Export Word / PDF : scripts externes bloqués
-
-Le front charge encore deux scripts depuis un CDN :
-
-```
-https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js
-https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js
-```
-
-La CSP les bloque (c'est le comportement voulu, et la spécification v2 exige
-« aucun script ni feuille de style externe »). Conséquence sur le prototype
-livré : **les boutons d'export Word et PDF ne peuvent pas fonctionner** tant que
-le front n'est pas mis à jour. Le message de la console est explicite :
-
-> Loading the script '…/jszip.min.js' violates the following Content Security
-> Policy directive: "script-src 'self' 'nonce-…'". The action has been blocked.
-
-Le correctif est côté front : appeler `POST /api/export/docx` et
-`window.print()`.
-
-### 4.2 Les autres écarts fonctionnels
-
-| Écart | Où |
+| Écart | Conséquence |
 |---|---|
-| Pas d'appel à `/api/chat` | `index (1).html` — fonction `send()` |
-| Boutons de démarrage codés en dur | `SUGG` / `QUICK` |
-| Connexion Google simulée au lieu du code d'accès | `login` / `enter()` |
-| Mode simulé `?mock=1` absent | la spécification v2 §8 et §15 l'exigent |
-| Historique : format `altredige.convs` | à garder (décision §2 de `docs/DECISIONS-PHASE-C.md`) |
+| L'écran de connexion simule Google | le backend n'a pas de comptes (V1 sans base de données). Le code d'accès passe par l'en-tête `X-Access-Code`, pas par ce dialogue |
+| Le document affiché est une vue en blocs | le backend est la source de vérité (Markdown) ; la page convertit pour l'affichage et reconvertit à l'envoi. La conversion perd la mise en forme fine (listes, tableaux) : le PDF imprimé est moins riche que le `.docx` |
+| Pas de carte de question (`ask_user`) | la question s'affiche dans la bulle et l'utilisateur y répond dans le composeur : fonctionnel, mais pas la carte riche de la spec v2 §12.5 |
+| Mode `?mock=1` incomplet | la spec v2 §15 décrit 14 scénarios de simulation ; seul le mode démo d'origine est conservé |
+| `thinking_*` non exposé | décision assumée : les modèles de la chaîne sont des modèles à raisonnement, le protocole interdit d'exposer la chaîne de pensée (§5) |
+| Historique : format `altredige.convs` | conservé tel quel (décision §2 de `docs/DECISIONS-PHASE-C.md`) |
 
 ---
 
@@ -180,10 +182,10 @@ répondues dans `docs/DECISIONS-PHASE-C.md`. En résumé :
 
 | Vérification | Résultat |
 |---|---|
-| `npm test` | 212 tests au vert (20 fichiers) |
+| `npm test` | 221 tests au vert (22 fichiers) |
 | `npm run typecheck` | sans erreur |
 | `npm run build` | sans erreur, `dist/server.js` démarre |
-| `GET /` en navigateur | page rendue, script inline exécuté, **une seule erreur console** : les deux scripts CDN bloqués (§4.1) |
+| `GET /` en navigateur | page rendue, script inline exécuté, **zéro erreur console** |
 | `GET /api/health` | `{ok:true, contract_version:"1.0", model:"minimax/minimax-m3.1-flash:free"}` |
 | `GET /api/templates` | 9 modèles `ready` |
 | `POST /api/chat` (SSE) | flux complet conforme, enveloppe `seq`/`t` comprise |
@@ -194,9 +196,10 @@ répondues dans `docs/DECISIONS-PHASE-C.md`. En résumé :
 
 ## 7. Ce qui reste à faire
 
-1. **Adapter le front** : remplacer `window.claude.use()` par
-   `fetch('/api/chat')` + décodage SSE, supprimer jszip/jspdf, brancher
-   `/api/templates` et les `suggestions`, ajouter le mode `?mock=1`.
+1. **Livrer le front v2** : il remplacera le prototype. Le branchement
+   `public/app-api.js` sera alors à réécrire contre le vrai front (carte de
+   question, `?mock=1` complet, rendu Markdown natif) — c'est un travail de
+   front, pas de backend.
 2. **Campagne `npm run eval` contre le vrai modèle** : impossible depuis la
    machine de développement (le réseau y coupe les `POST` au-delà de ~1 Ko —
    voir `docs/KNOWN-ISSUES.md`).
