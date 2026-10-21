@@ -14,7 +14,7 @@ import type { LlmClient, LlmToolDefinition } from '../llm.js';
 import type { Logger } from '../logger.js';
 import { checkTextSafety, looksLikeContract, shouldBlock } from '../safety.js';
 import type { ContractTemplate, TemplateStore } from '../templates.js';
-import type { AgentEmit } from './events.js';
+import type { AgentEmit, AskUserPayload, QuestionField, QuestionOption } from './events.js';
 
 export const TOOL_GET_TEMPLATE = 'get_template';
 export const TOOL_CREATE_CANVAS = 'create_canvas';
@@ -44,6 +44,8 @@ export interface ToolContext {
    * toucher. Au-delà, la modification est refusée (garde-fou P0-2).
    */
   maxEditChangedBlocks: number;
+  /** Compteur des questions posées dans ce tour (identifiants uniques). */
+  askUserCounter: number;
   signal: AbortSignal;
 }
 
@@ -53,6 +55,60 @@ export interface ToolResult {
   isError: boolean;
   /** `true` si l'outil a effectivement émis un `canvas_set`. */
   emittedCanvasSet?: boolean;
+  /** `true` si l'outil a posé une question : le tour s'arrête sur `awaiting_input`. */
+  askedUser?: boolean;
+}
+
+export const TOOL_ASK_USER = 'ask_user';
+
+/** Outil `ask_user` : l'agent pose une question et le tour s'arrête. */
+export function askUserToolDefinition(): LlmToolDefinition {
+  return {
+    name: TOOL_ASK_USER,
+    description:
+      'Pose une question à l’utilisateur pour obtenir une information manquante. '
+      + 'Le tour s’arrête : la réponse arrive au tour suivant. À utiliser quand une information '
+      + 'indispensable manque, et une seule fois par tour (regroupe les questions dans un formulaire).',
+    parameters: {
+      type: 'object',
+      properties: {
+        question: { type: 'string', description: 'La question, en français, en une phrase.' },
+        kind: {
+          type: 'string',
+          enum: ['single', 'multi', 'text', 'confirm', 'form'],
+          description: 'single : un choix ; multi : plusieurs choix ; text : une saisie ; confirm : oui/non ; form : plusieurs champs.',
+        },
+        why: { type: 'string', description: 'Pourquoi cette question est nécessaire (facultatif).' },
+        options: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: { id: { type: 'string' }, label: { type: 'string' }, hint: { type: 'string' } },
+            required: ['id', 'label'],
+          },
+          description: 'Choix proposés (kind = single, multi, confirm).',
+        },
+        fields: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              label: { type: 'string' },
+              type: { type: 'string', enum: ['text', 'number', 'amount', 'date', 'select'] },
+              required: { type: 'boolean' },
+              placeholder: { type: 'string' },
+              unit: { type: 'string' },
+            },
+            required: ['id', 'label', 'type', 'required'],
+          },
+          description: 'Champs à faire saisir (kind = form, 2 à 6 champs).',
+        },
+        allow_other: { type: 'boolean', description: 'L’utilisateur peut-il saisir une autre valeur ?' },
+      },
+      required: ['question', 'kind'],
+    },
+  };
 }
 
 /** Tool definitions sent to the model (format OpenAI / OpenRouter). */
@@ -60,6 +116,7 @@ export function toolDefinitions(templates: TemplateStore): LlmToolDefinition[] {
   const enumIds = templates.ready().map((template) => template.id);
 
   return [
+    askUserToolDefinition(),
     {
       name: TOOL_GET_TEMPLATE,
       description:
@@ -191,9 +248,75 @@ export async function executeTool(
       return createCanvas(args, context);
     case TOOL_EDIT_CANVAS:
       return editCanvas(args, context);
+    case TOOL_ASK_USER:
+      return askUser(args, context);
     default:
       return fail(`Outil inconnu : ${name}.`);
   }
+}
+
+/**
+ * L'agent pose une question à l'utilisateur.
+ *
+ * Le tour s'arrête : l'événement `ask_user` est émis, puis la boucle se
+ * termine sur `done` avec `stop_reason: "awaiting_input"`. La réponse
+ * arrive au tour suivant, sous forme de texte dans l'historique.
+ */
+function askUser(args: Record<string, unknown>, context: ToolContext): ToolResult {
+  const question = typeof args.question === 'string' ? args.question.trim() : '';
+  if (!question) {
+    return fail('La question est vide : indique ce que tu dois savoir.');
+  }
+
+  const kind = (typeof args.kind === 'string' ? args.kind : 'text') as AskUserPayload['kind'];
+  const rawOptions = Array.isArray(args.options) ? args.options : [];
+  const options: QuestionOption[] = rawOptions
+    .filter((option): option is Record<string, unknown> => Boolean(option) && typeof option === 'object')
+    .map((option) => ({
+      id: String(option.id ?? option.label ?? ''),
+      label: String(option.label ?? option.id ?? ''),
+      ...(option.hint ? { hint: String(option.hint) } : {}),
+    }))
+    .filter((option) => option.id && option.label);
+
+  const rawFields = Array.isArray(args.fields) ? args.fields : [];
+  const fields: QuestionField[] = rawFields
+    .filter((field): field is Record<string, unknown> => Boolean(field) && typeof field === 'object')
+    .map((field) => ({
+      id: String(field.id ?? field.label ?? ''),
+      label: String(field.label ?? field.id ?? ''),
+      type: (String(field.type ?? 'text')) as QuestionField['type'],
+      required: field.required === true,
+      ...(field.placeholder ? { placeholder: String(field.placeholder) } : {}),
+      ...(field.unit ? { unit: String(field.unit) } : {}),
+    }))
+    .filter((field) => field.id && field.label)
+    .slice(0, 6);
+
+  const payload: AskUserPayload = {
+    question_id: `q_${context.askUserCounter++}`,
+    kind,
+    question,
+    blocking: true,
+    allow_other: args.allow_other === true,
+    ...(typeof args.why === 'string' && args.why.trim() ? { why: args.why.trim() } : {}),
+    ...(options.length > 0 ? { options } : {}),
+    ...(fields.length > 0 ? { fields } : {}),
+  };
+
+  context.emit('ask_user', payload);
+  context.logger.info('tool_ask_user', { kind, options: options.length, fields: fields.length });
+
+  return {
+    content: JSON.stringify({
+      ok: true,
+      asked: true,
+      question_id: payload.question_id,
+      note: 'La question a été posée à l’utilisateur. Le tour s’arrête ici : ne rédige pas de contrat.',
+    }),
+    isError: false,
+    askedUser: true,
+  };
 }
 
 function getTemplate(args: Record<string, unknown>, context: ToolContext): ToolResult {
@@ -268,7 +391,7 @@ async function createCanvas(args: Record<string, unknown>, context: ToolContext)
   // Le contrôle porte sur l'**historique** : un document produit ne prouve
   // rien, puisque le modèle peut y avoir inventé les valeurs. Si aucun champ
   // obligatoire n'est renseigné par l'utilisateur, l'écriture est refusée et
-  // l'agent est invité à poser une question.
+  // l'utilisateur reçoit une question structurée (AGENT-PROTOCOL.md §8).
   if (template) {
     const vocabulary = context.templates.vocabulary();
     const { informed, uninformed } = informedRequiredFields(
@@ -283,12 +406,42 @@ async function createCanvas(args: Record<string, unknown>, context: ToolContext)
         contract_type: contractType,
         missing_required_fields: uninformed.length,
       });
-      return fail(
-        `Aucune information exploitable n'a été fournie pour les champs obligatoires de « ${template.label} » `
-        + `(champs manquants : ${missing}). Ne rédige pas le contrat : pose d'abord à l'utilisateur une question `
-        + 'courte pour obtenir ces informations, puis propose le contrat.',
-        { missing_required_fields: uninformed.map((field) => field.key) },
-      );
+
+      // Une seule question par tour (AGENT-PROTOCOL.md §8) : les champs
+      // manquants sont regroupés dans un formulaire.
+      const payload: AskUserPayload = {
+        question_id: `q_${context.askUserCounter++}`,
+        kind: uninformed.length > 1 ? 'form' : 'text',
+        question: uninformed.length > 1
+          ? `Pour rédiger « ${template.label} », il me manque quelques informations.`
+          : `Pour rédiger « ${template.label} », il me manque : ${missing}.`,
+        why: 'Ces informations sont obligatoires : sans elles, le contrat serait incomplet ou fictif.',
+        blocking: true,
+        allow_other: true,
+        ...(uninformed.length > 1
+          ? {
+            fields: uninformed.slice(0, 6).map((field) => ({
+              id: field.key,
+              label: field.label,
+              type: 'text' as const,
+              required: true,
+              placeholder: field.question_hint,
+            })),
+          }
+          : {}),
+      };
+      context.emit('ask_user', payload);
+
+      return {
+        content: JSON.stringify({
+          asked: true,
+          question_id: payload.question_id,
+          missing_required_fields: uninformed.map((field) => field.key),
+          note: 'Question posée à l’utilisateur. Le tour s’arrête : ne rédige pas de contrat.',
+        }),
+        isError: false,
+        askedUser: true,
+      };
     }
   }
 

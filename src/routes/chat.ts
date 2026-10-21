@@ -35,6 +35,19 @@ interface ParsedBody {
   messages: ChatMessage[];
   document: { markdown: string; version: number } | null;
   contractType: string | null;
+  /** Réponses structurées aux questions posées au tour précédent (§8). */
+  answers: Answer[];
+}
+
+/**
+ * Réponse à une question posée par `ask_user` (AGENT-PROTOCOL.md §8).
+ * Le texte lisible est toujours porté par `messages` : `answers` est un
+ * complément, jamais la source unique.
+ */
+export interface Answer {
+  question_id: string;
+  values?: Record<string, unknown>;
+  skipped?: boolean;
 }
 
 function byteLength(value: string): number {
@@ -109,7 +122,32 @@ export function parseChatBody(raw: unknown): ParsedBody {
   }
   const contractType = typeof rawContractType === 'string' && rawContractType.length > 0 ? rawContractType : null;
 
-  return { messages, document, contractType };
+  // Réponses structurées aux questions du tour précédent (AGENT-PROTOCOL.md §8).
+  // Elles sont facultatives : le texte des messages reste la source.
+  const answers: Answer[] = [];
+  if (body.answers !== null && body.answers !== undefined) {
+    if (!Array.isArray(body.answers)) {
+      throw new AppError('bad_request', 'Réponses invalides.');
+    }
+    for (const item of body.answers) {
+      if (!item || typeof item !== 'object') {
+        throw new AppError('bad_request', 'Réponse invalide.');
+      }
+      const answer = item as Record<string, unknown>;
+      if (typeof answer.question_id !== 'string' || answer.question_id.length === 0) {
+        throw new AppError('bad_request', 'Réponse invalide : identifiant de question manquant.');
+      }
+      answers.push({
+        question_id: answer.question_id,
+        ...(answer.values && typeof answer.values === 'object'
+          ? { values: answer.values as Record<string, unknown> }
+          : {}),
+        ...(answer.skipped === true ? { skipped: true } : {}),
+      });
+    }
+  }
+
+  return { messages, document, contractType, answers };
 }
 
 /** Opens an SSE response with the headers required by the contract. */
@@ -206,8 +244,19 @@ export function chatRoutes(deps: ChatDeps): Hono<AppEnv> {
         });
       };
 
+      // Enveloppe commune (AGENT-PROTOCOL.md §2) : chaque `data:` porte un
+      // numéro de séquence croissant et le temps écoulé depuis `ready`.
+      const streamStartedAt = Date.now();
+      let seq = 0;
+
       const emit: AgentEmit = <K extends AgentEventName>(event: K, data: AgentEventPayloads[K]) => {
-        write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+        seq += 1;
+        const payload = {
+          seq,
+          t: Date.now() - streamStartedAt,
+          ...(data as Record<string, unknown>),
+        };
+        write(`event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`);
       };
 
       stream.onAbort(() => {
@@ -232,7 +281,7 @@ export function chatRoutes(deps: ChatDeps): Hono<AppEnv> {
       emit('ready', { request_id: requestId });
 
       const startedAt = Date.now();
-      let outcome: 'end_turn' | 'max_steps' | 'error' = 'error';
+      let outcome: 'end_turn' | 'max_steps' | 'awaiting_input' | 'error' = 'error';
       let usage = { input_tokens: 0, output_tokens: 0 };
       let steps = 0;
       let modelsUsed: string[] = [];
@@ -248,6 +297,8 @@ export function chatRoutes(deps: ChatDeps): Hono<AppEnv> {
           contractType: parsed.contractType,
           emit,
           signal: abortController.signal,
+          requestId,
+          startedAt: streamStartedAt,
           onToolCall: deps.onToolCall,
         });
         outcome = result.stopReason;

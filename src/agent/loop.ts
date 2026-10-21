@@ -14,7 +14,7 @@ import { AppError } from '../errors.js';
 import { streamCompletion, type LlmClient, type LlmMessage, type LlmOutcome } from '../llm.js';
 import type { Logger } from '../logger.js';
 import type { TemplateStore } from '../templates.js';
-import type { AgentEmit } from './events.js';
+import type { AgentEmit, AgentEventPayloads } from './events.js';
 import { extractPartialString, readPartialString } from './json-partial.js';
 import { buildSystemPrompt, buildUserContext } from './prompt.js';
 import { findEnglishWords } from '../doc/lexical.js';
@@ -46,12 +46,16 @@ export interface RunAgentParams {
   contractType: string | null;
   emit: AgentEmit;
   signal: AbortSignal;
+  /** Identifiant de la requête, repris dans l'événement `done`. */
+  requestId?: string;
+  /** Instant de départ du flux, pour la durée dans l'événement `done`. */
+  startedAt?: number;
   /** Test hook: observes the tool calls (used by the evaluations). */
   onToolCall?: (name: string, input: unknown) => void;
 }
 
 export interface RunAgentResult {
-  stopReason: 'end_turn' | 'max_steps';
+  stopReason: 'end_turn' | 'max_steps' | 'awaiting_input';
   usage: { input_tokens: number; output_tokens: number };
   steps: number;
   /** Models that served the request, in the order they were tried. */
@@ -151,12 +155,22 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
     safetyMode: config.safetyMode,
     userText,
     maxEditChangedBlocks: config.maxEditChangedBlocks,
+    askUserCounter: 0,
     signal,
   };
 
   const totalUsage = { input_tokens: 0, output_tokens: 0 };
   const modelsUsed: string[] = [];
   let step = 0;
+  let askedUser = false;
+
+  /** Payload de l'événement `done` (AGENT-PROTOCOL.md §12). */
+  const done = (stop_reason: 'end_turn' | 'awaiting_input' | 'max_steps'): AgentEventPayloads['done'] => ({
+    stop_reason,
+    usage: totalUsage,
+    ...(params.requestId ? { request_id: params.requestId } : {}),
+    ...(params.startedAt ? { duration_ms: Date.now() - params.startedAt } : {}),
+  });
 
   for (step = 1; step <= config.maxSteps; step += 1) {
     if (signal.aborted) break;
@@ -251,7 +265,7 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
       if (anglicisms.length > 0) {
         logger.warn('chat_anglicism', { words: anglicisms.length });
       }
-      emit('done', { stop_reason: 'end_turn', usage: totalUsage });
+      emit('done', done('end_turn'));
       return { stopReason: 'end_turn', usage: totalUsage, steps: step, modelsUsed };
     }
 
@@ -274,17 +288,30 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
         toolCallId: toolUse.id,
         content: result.content,
       });
+
+      // L'agent a posé une question : le tour s'arrête sur `awaiting_input`
+      // (AGENT-PROTOCOL.md §8). La réponse arrive au tour suivant.
+      if (result.askedUser) {
+        askedUser = true;
+        break;
+      }
     }
 
     if (signal.aborted) break;
 
-    conversation.push(...toolResults);
+    if (!askedUser) conversation.push(...toolResults);
+  }
+
+  if (askedUser) {
+    // §8 : `ask_user` est toujours immédiatement suivi de `done(awaiting_input)`.
+    emit('done', done('awaiting_input'));
+    return { stopReason: 'awaiting_input', usage: totalUsage, steps: step, modelsUsed };
   }
 
   if (signal.aborted) {
     return { stopReason: 'max_steps', usage: totalUsage, steps: step, modelsUsed };
   }
 
-  emit('done', { stop_reason: 'max_steps', usage: totalUsage });
+  emit('done', done('max_steps'));
   return { stopReason: 'max_steps', usage: totalUsage, steps: step, modelsUsed };
 }

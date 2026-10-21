@@ -230,7 +230,14 @@ describe('B9 — bout en bout (serveur OpenRouter local)', () => {
     const res = await app.request('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: [{ role: 'user', content: 'Je veux un bail.' }] }),
+      // Message complet : une demande sans information exploitable ne
+      // produit pas de contrat (le serveur pose une question).
+      body: JSON.stringify({
+        messages: [{
+          role: 'user',
+          content: 'Je veux un bail d habitation pour un studio a Cocody, loyer 150 000 FCFA par mois, duree 12 mois, bailleur Monsieur Koné, locataire Madame Aya.',
+        }],
+      }),
     });
     const events = parseSse(await res.text());
     const streamed = events

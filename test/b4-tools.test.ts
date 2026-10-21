@@ -30,15 +30,20 @@ function context(overrides: Partial<Parameters<typeof executeTool>[2]> = {}) {
     safetyMode: 'advisory' as const,
     userText: 'Je veux un bail d habitation pour un studio a Yopougon, loyer 70 000 FCFA par mois, 12 mois, Monsieur Koné et Madame Aya.',
     maxEditChangedBlocks: 6,
+    askUserCounter: 0,
     signal: new AbortController().signal,
   };
   return { events, context: { ...base, ...overrides } };
 }
 
 describe('outils — définitions', () => {
-  it('expose les trois outils', () => {
+  it('expose les outils de rédaction et de question', () => {
     const tools = toolDefinitions(TemplateStore.load());
-    expect(tools.map((tool) => tool.name)).toEqual(['get_template', 'create_canvas', 'edit_canvas']);
+    // `ask_user` est ajouté par AGENT-PROTOCOL.md §8 : l'agent pose une
+    // question et le tour s'arrête sur `awaiting_input`.
+    expect(tools.map((tool) => tool.name)).toEqual([
+      'ask_user', 'get_template', 'create_canvas', 'edit_canvas',
+    ]);
   });
 
   it('restreint get_template aux modèles disponibles', () => {

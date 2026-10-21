@@ -18,6 +18,12 @@
         "canvas_modes": ["edit"],
         "edits_applied": 2,
         "tool_calls": [{ "name": "edit_canvas", "count": 1, "edits": 2 }],
+        "unchanged_sections": [
+          "Article 1 – Objet du contrat",
+          "Article 3 – Obligations du Locataire",
+          "Article 5 – Signatures"
+        ],
+        "max_changed_sections": 2,
         "max_changed_blocks": 6,
         "chat_max_length": 600
       }

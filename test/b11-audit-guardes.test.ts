@@ -36,6 +36,7 @@ function toolContext(overrides: Partial<ToolContext> = {}): { events: any[]; con
     safetyMode: 'advisory',
     userText: 'Je veux un bail d habitation pour un studio a Cocody, loyer 150 000 FCFA par mois, duree 12 mois, bailleur Monsieur Koné, locataire Madame Aya.',
     maxEditChangedBlocks: 4,
+    askUserCounter: 0,
     signal: new AbortController().signal,
   };
   return { events, context: { ...base, ...overrides } };
@@ -136,7 +137,7 @@ describe('P0-2 — une modification ne fait pas disparaître un article', () => 
 /* ------------------------------------------------------------------ */
 
 describe('P0-3 — pas de contrat sans information exploitable', () => {
-  it('refuse de rédiger un bail à partir d\'une demande vide', async () => {
+  it('pose une question au lieu de rédiger un bail à partir d\'une demande vide', async () => {
     const { events, context } = toolContext({ userText: 'Je veux faire un bail.' });
 
     const result = await executeTool('create_canvas', {
@@ -145,11 +146,21 @@ describe('P0-3 — pas de contrat sans information exploitable', () => {
       markdown: BAIL_COMPLET,
     }, context);
 
-    expect(result.isError).toBe(true);
+    // Le garde-fou ne se contente pas de refuser : il pose la question
+    // (AGENT-PROTOCOL.md §8), et le tour s'arrête sur `awaiting_input`.
+    expect(result.askedUser).toBe(true);
     const payload = JSON.parse(result.content);
     expect(payload.missing_required_fields.length).toBeGreaterThan(0);
-    expect(payload.error).toContain('question');
-    expect(events).toHaveLength(0);
+
+    const asked = events.find((event) => event.event === 'ask_user');
+    expect(asked).toBeDefined();
+    expect(asked.data.kind).toBe('form');
+    expect(asked.data.question_id).toMatch(/^q_/);
+    expect(asked.data.blocking).toBe(true);
+    expect(asked.data.fields.length).toBeGreaterThan(0);
+
+    // Aucun document n'a été écrit.
+    expect(events.filter((event) => event.event === 'canvas_set')).toHaveLength(0);
     expect(context.workingDoc).toBeNull();
   });
 
@@ -163,6 +174,7 @@ describe('P0-3 — pas de contrat sans information exploitable', () => {
     }, context);
 
     expect(result.isError).toBe(false);
+    expect(result.askedUser).toBeUndefined();
     expect(events.map((event) => event.event)).toContain('canvas_set');
   });
 });

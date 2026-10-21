@@ -7,17 +7,22 @@ choix techniques assumés. Mis à jour à chaque jalon.
 
 ## État de la phase A (backend)
 
-Les jalons B1 à B7 sont terminés : tests au vert (120 tests), un commit par
-jalon, l'API conforme à `docs/API-CONTRACT.md` v1.0.
+Les jalons B1 à B7 sont terminés : tests au vert (195 tests, 18 fichiers), un
+commit par jalon. L'API est **conforme à `docs/API-CONTRACT.md` v1.0 sur le
+format des événements**, mais deux divergences subsistent et sont listées
+dans `docs/VERIFICATION-AUDIT.md` §6 (la durée de flux et la charge utile
+`validation`) : le contrat est normatif, il n'a pas été modifié.
 
 Ce qui n'est **pas** fait, et pourquoi :
 
 | Point | Statut |
 |---|---|
-| Campagne d'évaluation contre le vrai modèle | non exécutée : pas de `ANTHROPIC_API_KEY` sur cette machine (harnais validé hors ligne, 10/10) |
-| Phase C — intégration du frontend | non commencée : le fichier `index.html` définitif n'a pas été livré par Alex. `public/index.html` est encore la page provisoire. `docs/INTEGRATION-REPORT.md` sera écrit à ce moment-là. |
+| Campagne d'évaluation contre le vrai modèle | **1/10 au vert** (campagne du 21/10, avant les garde-fous). La campagne de contrôle après correction **n'a pas pu être conclue** : le réseau sortant vers `openrouter.ai` a été dégradé (429 et coupures de socket) pendant toute la fenêtre de travail. À relancer sur un réseau sain, 3 exécutions. |
+| Mode « smoke » (anciennement « dry-run ») | 10/10, mais **non concluant** : il rejoue des réponses écrites à l'avance dans les scénarios. Il vérifie le harnais, pas le modèle. |
+| Phase C — intégration du frontend | non commencée : le fichier `index.html` définitif n'a pas été livré. `public/index.html` est encore la page provisoire (49 lignes). La liste de contrôle que le frontend doit respecter est dans `docs/INTEGRATION-CHECKLIST.md`. |
 | Relecture juridique des modèles | **contenu reçu** (référentiel joint) et 9 modèles construits ; reste la relecture du texte rédigé par l'IA |
 | Vérification visuelle de l'export Word dans Word/LibreOffice | non faite : ni Word ni LibreOffice ne sont installés sur cette machine. L'archive OOXML est vérifiée par test (structure, surlignage, numérotation, pied de page) |
+| Relecture pédagogique des clauses | **spécifiée, non implémentée** : `docs/SPEC-EXPLICATION-CLAUSES.md`. Suppose le frontend livré et une validation humaine du contenu juridique. |
 
 ---
 
@@ -246,9 +251,16 @@ quand le réseau sortant est incertain.
 ### La campagne `npm run eval` n'a pas pu être menée à son terme
 Le harnais est complet : 10 scénarios (`evals/scenarios/*.json`), 5 familles
 d'assertions automatiques (pas d'invention, édition ciblée, pas de contrat dans
-le chat, sous-ensemble respecté, export valide). Le mode hors ligne
-(`npm run eval -- --dry-run`) rejoue un modèle scripté : **10/10 au vert**, ce qui
-valide le harnais lui-même (décodage SSE, exécution des outils, assertions).
+le chat, sous-ensemble respecté, export valide).
+
+Le mode **simulé** s'appelle maintenant `npm run eval -- --smoke` (l'ancien
+`--dry-run` reste accepté comme alias). Il rejoue un modèle scripté : il
+**vérifie le harnais** (décodage SSE, exécution des outils, assertions) et
+**ne mesure pas le comportement du modèle**. Sa sortie affiche `SMOKE` et un
+bandeau « NON CONCLUANT » : un 10/10 en mode smoke ne doit pas être présenté
+comme une évaluation réussie. Le contrôle d'invention déterministe, lui, est
+désormais dans le code de production (`src/doc/facts.ts`) et pas seulement
+dans les assertions.
 
 Ce que la campagne réelle a déjà démontré le 21/10/2026 (avant que le réseau
 ne coupe) :
@@ -260,13 +272,14 @@ ne coupe) :
 - le filtre de sécurité a été **validé sur 14 cas réels** (0 faux positif,
   4 vrais positifs).
 
-Les scénarios restants n'ont pas pu être validés : le réseau sortant de la
-machine de développement coupe les requêtes `POST` vers OpenRouter. Voir
-« Réseau sortant instable vers openrouter.ai ».
+Une campagne de contrôle après les garde-fous serveur (21/10, 17:25) a été
+lancée trois fois : **toutes trois ont été interrompues par l'indisponibilité
+du fournisseur** (429 puis `UND_ERR_SOCKET`), et aucune n'a pu être conclue.
+Voir « Réseau sortant instable vers openrouter.ai ».
 
 **À refaire** : lancer `npm run eval` depuis une machine dont le réseau vers
-OpenRouter n'est pas filtré. La commande est prête, les 10 scénarios et les
-assertions sont en place.
+OpenRouter n'est pas filtré, **3 fois**. La commande est prête, les 10
+scénarios et les assertions sont en place.
 
 ### Les assertions ont été durcies, pas assouplies
 Trois corrections ont été apportées après la première campagne réelle :
@@ -292,25 +305,30 @@ strictes : un seul `edit_canvas` pour une modification, un seul `edit_canvas`
 `replace: true` pour « recommence tout », au plus trois questions pour une
 demande vague, et pas de contrat dans le chat.
 
-### Le contrôle « pas d'invention » est heuristique
-`evals/assertions.ts` extrait les montants, durées, dates et noms propres du
-contrat, puis vérifie qu'ils proviennent des messages de l'utilisateur, des
-espaces réservés `[À COMPLÉTER …]` ou du vocabulaire du modèle (squelette et
-notes juridiques). Le vocabulaire du modèle est accepté parce que le modèle est
-*censé* le réutiliser.
+### Le contrôle « pas d'invention » est déterministe en production, heuristique en évaluation
+Le contrôle de production est `src/doc/facts.ts` : les montants, durées, dates
+et noms propres du document doivent provenir des messages de l'utilisateur, du
+modèle de référence, ou d'un calcul vérifiable (le total 400 000 × 3 = 1 200
+000 est accepté). Le vocabulaire des noms propres est celui de **tous** les
+modèles : un mot capitalisé du vocabulaire (« Bailleur », « Locataire ») n'est
+pas une invention.
 
-Les noms propres ne sont cherchés que dans la **zone d'identité des parties**
-(avant le premier article, plus les lignes portant un titre de civilité) : c'est
-là que des noms peuvent apparaître. Le reste du document est du vocabulaire
-juridique, où un mot capitalisé ne prouve rien.
+`evals/assertions.ts` conserve son propre contrôle, plus heuristique : il
+cherche les noms propres dans la zone d'identité des parties (avant le premier
+article, plus les lignes portant un titre de civilité) pour ne pas signaler
+le vocabulaire juridique du modèle. C'est une limite de l'assertion
+d'évaluation, **plus** du contrôle de production.
 
 Limites connues :
 - un nombre cité dans le document mais présent « par hasard » dans le message de
   l'utilisateur passe le contrôle (faux négatif) ;
-- un nom propre légitime absent du squelette et du message de l'utilisateur est
-  signalé comme une invention (faux positif possible) ;
-- la liste de mots courante (`CONTRACT_STOPLIST`) est faite main : elle peut
-  être incomplète.
+- le contrôle de production produit un **avertissement** (`validation.issues`),
+  pas un refus : une valeur approximative reste dans le document, signalée à
+  l'utilisateur ;
+- un nom propre légitime absent du message de l'utilisateur est signalé comme
+  une invention (faux positif possible) ;
+- la liste de mots courante (`CONTRACT_STOPLIST`) de l'assertion d'évaluation
+  est faite main : elle peut être incomplète.
 
 Le contrôle est un garde-fou, pas une preuve : il doit être lu avec le document
 produit.

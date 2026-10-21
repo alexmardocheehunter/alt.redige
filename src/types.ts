@@ -9,6 +9,8 @@ export type Variables = {
    * Sert de clé de quota : une identité = un quota.
    */
   identity: string | null;
+  /** Nonce de la Content-Security-Policy, propre à la réponse. */
+  cspNonce: string;
 };
 
 export type AppEnv = Env & { Variables: Variables };

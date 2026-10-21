@@ -55,7 +55,7 @@ Vérifié dans un dossier vierge (Node 22, `docx` 9.13.0).
 mkdir lexcanvas && cd lexcanvas
 # copie ici le contenu du dossier de passation (README.md, AGENTS.md, docs/, reference/)
 npm init -y && npm pkg set type=module
-npm install hono @hono/node-server @anthropic-ai/sdk zod docx \
+npm install hono @hono/node-server zod docx \
   mdast-util-from-markdown mdast-util-gfm-table micromark-extension-gfm-table
 npm install -D typescript tsx vitest @types/node
 

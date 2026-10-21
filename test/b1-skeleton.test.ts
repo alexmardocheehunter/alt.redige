@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { readJson, testApp } from './helpers.js';
-
 describe('B1 — squelette', () => {
   it('GET /api/health répond 200 avec le contrat et le modèle', async () => {
     const app = testApp({ model: 'minimax/minimax-m3.1-flash:free' });
@@ -20,14 +21,27 @@ describe('B1 — squelette', () => {
     expect(res.status).toBe(200);
   });
 
-  it('GET / sert la page provisoire en HTML UTF-8', async () => {
+  it('GET / sert la page en HTML UTF-8', async () => {
     const app = testApp();
     const res = await app.request('/');
     expect(res.status).toBe(200);
     expect(res.headers.get('content-type')).toContain('text/html');
     expect(res.headers.get('content-type')).toContain('charset=utf-8');
     const html = await res.text();
-    expect(html).toContain('LexCanvas');
+    expect(html).toContain('<html');
+    expect(html).toContain('</html>');
+  });
+
+  it('GET / sert le fichier public/index.html, seul le nonce de la CSP étant ajouté', async () => {
+    const app = testApp();
+    const res = await app.request('/');
+    const served = Buffer.from(await res.arrayBuffer()).toString('utf8');
+    const onDisk = readFileSync(resolve(process.cwd(), 'public', 'index.html'), 'utf8');
+
+    // Le fichier livré n'est jamais modifié sur le disque : le serveur ajoute
+    // seulement l'attribut `nonce` qui autorise le script inline de la page.
+    const withoutNonce = served.replace(/ nonce="[^"]*"/g, '');
+    expect(withoutNonce).toBe(onDisk);
   });
 
   it('pose les en-têtes de sécurité', async () => {
