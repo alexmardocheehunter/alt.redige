@@ -30,10 +30,26 @@ function main(): void {
   }, (info) => {
     logger.info('server_started', {
       port: info.port,
+      url: `http://localhost:${info.port}`,
       models: config.models.join(','),
       safety_model: config.safetyModel,
       safety_check: config.safetyCheck,
     });
+    console.log(`\nLexCanvas est en ligne : http://localhost:${info.port}\n`);
+  });
+
+  // Port déjà utilisé : message explicite plutôt qu'une pile d'exécution.
+  server.on('error', (error: NodeJS.ErrnoException) => {
+    if (error.code === 'EADDRINUSE') {
+      logger.error('port_unavailable', { port: config.port });
+      console.error(`\nERREUR — le port ${config.port} est déjà utilisé par un autre programme.`);
+      console.error('Changez la variable PORT du fichier .env (par exemple PORT=3123) et relancez.');
+      console.error(`Pour connaître les ports occupés : netstat -ano | findstr :${config.port}\n`);
+    } else {
+      logger.error('server_error', { error_kind: error.name });
+      console.error(`\nERREUR — le serveur n'a pas pu démarrer : ${error.message}\n`);
+    }
+    process.exit(1);
   });
 
   let shuttingDown = false;
