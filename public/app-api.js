@@ -503,6 +503,10 @@
         fields.appendChild(control(field.id, field.label + (field.required ? ' *' : ''), field.type, field.options));
       });
       card.appendChild(fields);
+    } else if (question.kind === 'text') {
+      var single = el('div', 'qfields');
+      single.appendChild(control('text', 'Votre réponse', 'text'));
+      card.appendChild(single);
     } else {
       var single = el('div', 'qfields');
       single.appendChild(control('text', 'Votre réponse', 'text'));
@@ -887,6 +891,7 @@
         parsed.version = data.version;
         parsed.contractType = data.contract_type || null;
         parsed.markdown = data.markdown;
+        parsed.placeholders = data.validation ? data.validation.placeholders : 0;
         parsed.issues = (data.validation && data.validation.issues) || [];
         if (cur === curConv().id) { doc = parsed; render(true); }
         curConv().doc = parsed;
@@ -909,6 +914,10 @@
       case 'suggestions':
         message.suggestions = data.items || [];
         refreshBubble(message);
+        break;
+
+      case 'done':
+        if (data.stop_reason === 'awaiting_input') setState('awaiting_input');
         break;
 
       case 'error':
