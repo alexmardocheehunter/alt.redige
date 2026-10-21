@@ -686,13 +686,13 @@ document lui-même a été suivie.
 | § | Élément | État |
 |---|---|---|
 | §2 | Enveloppe `seq` / `t` sur chaque événement | ✅ fait |
-| §3 | `phase` | ⚠️ type et charge utile prêts, **non émis** par la boucle |
-| §4 | `plan` / `step` | ⚠️ idem |
+| §3 | `phase` | ✅ fait (émis par `src/agent/progress.ts`) |
+| §4 | `plan` / `step` | ✅ fait |
 | §5 | `thinking_*` | ❌ non fait (dernier de la liste de priorité) |
-| §6 | `tool_start` / `tool_end` | ⚠️ idem |
+| §6 | `tool_start` / `tool_end` | ✅ fait |
 | §8 | **`ask_user`** | ✅ **fait** — c'est la priorité 1, et c'est le point que le constat P0-3 exigeait |
-| §9 | `suggestions` | ❌ non fait |
-| §10 | `retry` / `warning` | ❌ non fait |
+| §9 | `suggestions` (+ `sources`) | ✅ fait |
+| §10 | `retry` / `warning` | ⚠️ `retry` fait ; `warning` non émis |
 | §12 | `done` enrichi (`request_id`, `duration_ms`) | ✅ fait |
 | §16 | Codes `cancelled`, `conflict`, `content_filtered` | ❌ non faits |
 | §11 | `canvas_start` enrichi (`target`, `reason`) | ❌ non fait |
@@ -709,11 +709,16 @@ document lui-même a été suivie.
   elles sont validées, mais le texte de `messages` reste la source — le
   protocole l'exige ;
 - l'enveloppe `seq` / `t` est appliquée à **tous** les événements, y compris
-  ceux du contrat d'API v1.0, qui n'en sont pas modifiés.
+  ceux du contrat d'API v1.0, qui n'en sont pas modifiés ;
+- `phase`, `plan`, `step`, `tool_start`, `tool_end`, `sources` et
+  `suggestions` sont émis par `src/agent/progress.ts` (commit `1c55f29`),
+  avec des libellés en français et **sans jamais exposer les arguments bruts
+  des outils** — vérifié par `test/c2-protocole.test.ts`.
 
-**Ce qui reste à faire** : les §3 à §6 et §9 à §11, qui demandent de
-connaître l'interface du front pour être utiles. Ils sont typés dans
-`src/agent/events.ts` : il suffit de les émettre.
+**Ce qui reste à faire** : §5 (`thinking_*`, le dernier de la liste de
+priorité), §10 (`warning`), §11 (`canvas_start` enrichi) et §16 (trois codes
+d'erreur). Les types sont déjà déclarés dans `src/agent/events.ts` : il
+suffit de les émettre.
 
 **Divergence signalée.** Le protocole nomme `max_tokens` là où le contrat
 v1.0 nomme `max_steps` (`done.stop_reason`). La valeur du contrat est
@@ -730,7 +735,7 @@ par Alex.
 | Vague 1 | P1-2, P1-3, P1-4, P1-5, P1-6 (spécifié), P2-6, P2-7, S1, S2/S3/S8, S4/S5 | **Fait** (P1-6 spécifié, pas implémenté). |
 | Vague 2 | P2-1, P2-3, P2-5, P3-1 à P3-9, S11 | **Fait** ; P2-4 proposé, non appliqué. |
 | Hors périmètre | P0-1 | **Le fichier est livré, mais il n'appelle pas le backend** : six écarts chiffrés au §4, une liste d'actions F1 à F6 pour l'équipe frontend. `docs/INTEGRATION-CHECKLIST.md` fait foi. |
-| Protocole agent | `AGENT-PROTOCOL.md` | **§2, §8, §12 faits** (dont `ask_user`, exigé par P0-3) ; §3 à §6 et §9 à §11 typés mais non émis. |
+| Protocole agent | `AGENT-PROTOCOL.md` | **§2, §3, §4, §6, §8, §9, §10 (partiel), §12 faits** (dont `ask_user`, exigé par P0-3) ; §5, §10 (`warning`), §11 et §16 restent à faire. |
 
 **Ce qui n'a pas été fait, et doit l'être avant une mise en production :**
 
@@ -739,9 +744,10 @@ par Alex.
    — et donc tous ses garde-fous — est inerte.
 2. **L'authentification par jeton** (P2-6).
 3. **La relecture juridique tracée** des 9 modèles (J1).
-4. **Trois exécutions de l'évaluation réelle** sur un réseau sain (R1).
-5. **Les §3 à §6 et §9 à §11 du protocole agent**, une fois l'interface du
-   front connue.
+4. **Trois exécutions de l'évaluation réelle** sur un réseau sans filtre de
+   taille (§7).
+5. **Les §5, §11 et §16 du protocole agent**, une fois l'interface du front
+   connue.
 
 **Cet audit technique ne constitue pas une certification de conformité au
 droit ivoirien ou OHADA.** Il établit que le dispositif de contrôle existe,
