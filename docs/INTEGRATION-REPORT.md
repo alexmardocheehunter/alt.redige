@@ -188,7 +188,7 @@ répondues dans `docs/DECISIONS-PHASE-C.md`. En résumé :
 | `GET /api/templates` | 9 modèles `ready` |
 | `POST /api/chat` (SSE) | flux complet conforme, enveloppe `seq`/`t` comprise |
 | `POST /api/export/docx` | `.docx` valide |
-| `npm run eval -- --dry-run` | 10/10 |
+| `npm run eval -- --smoke` | 10/10 en mode **smoke** : le harnais est validé, pas le comportement du modèle (un modèle scripté rejoue les scénarios) |
 
 ---
 
