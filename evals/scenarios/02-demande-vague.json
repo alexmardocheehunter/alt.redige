@@ -1,0 +1,20 @@
+{
+  "id": "02-demande-vague",
+  "name": "Demande vague → au plus 3 questions, aucun contrat avant la réponse",
+  "description": "Une demande trop vague ne doit pas produire de document : l'agent pose au plus trois questions.",
+  "turns": [
+    {
+      "user": "Je veux faire un bail.",
+      "expect": {
+        "expect_canvas": false,
+        "max_questions": 3,
+        "chat_max_length": 600
+      }
+    }
+  ],
+  "mock": [
+    {
+      "text": "Bien sûr. Quel type de logement est-ce, quelle est la durée du bail, et qui est le bailleur ?"
+    }
+  ]
+}

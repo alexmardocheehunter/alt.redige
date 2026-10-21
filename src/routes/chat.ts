@@ -26,6 +26,8 @@ export interface ChatDeps {
   logger: Logger;
   templates: TemplateStore;
   client: Anthropic;
+  /** Test hook: observes the tool calls (used by the evaluations). */
+  onToolCall?: (name: string, input: unknown) => void;
 }
 
 interface ParsedBody {
@@ -205,6 +207,7 @@ export function chatRoutes(deps: ChatDeps): Hono<AppEnv> {
           contractType: parsed.contractType,
           emit,
           signal: abortController.signal,
+          onToolCall: deps.onToolCall,
         });
         outcome = result.stopReason;
 

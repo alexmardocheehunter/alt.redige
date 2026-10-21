@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { renderDocx, slugify, titleFromMarkdown, contentDisposition } from '../src/export/docx.js';
-import { countOccurrences, openDocx } from './docx-utils.js';
+import { countOccurrences, openDocx } from '../evals/docx-utils.js';
 import { SAMPLE_BAIL } from './fixtures.js';
 
 describe('B5 — export Word', () => {

@@ -1,0 +1,69 @@
+{
+  "id": "07-recommence-tout",
+  "name": "« Recommence tout » → create_canvas avec replace: true",
+  "description": "Une demande de refonte complète remplace le document au lieu de le modifier clause par clause.",
+  "turns": [
+    {
+      "user": "Rédige-moi un bail d'habitation pour un studio à Yopougon (Abidjan), 12 mois, loyer 70 000 FCFA par mois.",
+      "contract_type": "bail-habitation",
+      "expect": {
+        "expect_canvas": true,
+        "canvas_modes": ["create"]
+      }
+    },
+    {
+      "user": "Recommence tout, mais avec un loyer de 90 000 FCFA.",
+      "expect": {
+        "expect_canvas": true,
+        "canvas_modes": ["create"],
+        "tool_calls": [{ "name": "create_canvas", "count": 1, "replace": true }],
+        "document_contains": ["90 000 FCFA"],
+        "chat_max_length": 600
+      }
+    }
+  ],
+  "mock": [
+    {
+      "text": "Je consulte le modèle de bail d'habitation.",
+      "toolUses": [
+        { "name": "get_template", "input": { "contract_type": "bail-habitation" } }
+      ],
+      "stopReason": "tool_use"
+    },
+    {
+      "text": "Je rédige le contrat.",
+      "toolUses": [
+        {
+          "name": "create_canvas",
+          "input": {
+            "title": "Contrat de bail à usage d'habitation",
+            "contract_type": "bail-habitation",
+            "markdown": "{{BASE_CONTRACT}}"
+          }
+        }
+      ],
+      "stopReason": "tool_use"
+    },
+    {
+      "text": "V1 prête : 6 champs restent à compléter."
+    },
+    {
+      "text": "Je recommence le contrat avec le nouveau loyer.",
+      "toolUses": [
+        {
+          "name": "create_canvas",
+          "input": {
+            "title": "Contrat de bail à usage d'habitation",
+            "contract_type": "bail-habitation",
+            "replace": true,
+            "markdown": "{{BASE_CONTRACT_LOYER_90000}}"
+          }
+        }
+      ],
+      "stopReason": "tool_use"
+    },
+    {
+      "text": "C'est fait : le contrat a été refait avec un loyer de 90 000 FCFA."
+    }
+  ]
+}

@@ -29,6 +29,8 @@ export interface AppDeps {
   templates?: TemplateStore;
   /** Injected by the tests; built from the API key otherwise. */
   client?: Anthropic;
+  /** Test hook: observes the tool calls (used by the evaluations). */
+  onToolCall?: (name: string, input: unknown) => void;
 }
 
 const PUBLIC_INDEX = resolve(process.cwd(), 'public', 'index.html');
@@ -52,7 +54,7 @@ export function readIndexHtml(): Buffer | null {
   }
 }
 
-export function createApp({ config, logger, templates, client }: AppDeps): Hono<AppEnv> {
+export function createApp({ config, logger, templates, client, onToolCall }: AppDeps): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
 
   let templateStore = templates;
@@ -134,6 +136,7 @@ export function createApp({ config, logger, templates, client }: AppDeps): Hono<
     logger,
     templates: templateStore,
     client: client ?? createAnthropicClient(config.apiKey),
+    onToolCall,
   }));
 
   // Rate limiting is attached per route, with the bucket and window required by the contract.

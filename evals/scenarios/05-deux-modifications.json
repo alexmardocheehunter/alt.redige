@@ -1,0 +1,81 @@
+{
+  "id": "05-deux-modifications",
+  "name": "Deux modifications dans un message → un seul edit_canvas à deux edits",
+  "description": "Les changements demandés ensemble sont regroupés dans un seul appel d'outil.",
+  "turns": [
+    {
+      "user": "Rédige-moi un bail d'habitation pour un studio à Yopougon (Abidjan), 12 mois, loyer 70 000 FCFA par mois.",
+      "contract_type": "bail-habitation",
+      "expect": {
+        "expect_canvas": true,
+        "canvas_modes": ["create"]
+      }
+    },
+    {
+      "user": "Change le préavis à trois mois et passe le loyer à 80 000 FCFA.",
+      "expect": {
+        "expect_canvas": true,
+        "canvas_modes": ["edit"],
+        "edits_applied": 2,
+        "tool_calls": [{ "name": "edit_canvas", "count": 1, "edits": 2 }],
+        "unchanged_sections": [
+          "Article 1 – Objet du contrat",
+          "Article 3 – Obligations du Locataire",
+          "Article 5 – Signatures"
+        ],
+        "max_changed_sections": 2,
+        "chat_max_length": 600
+      }
+    }
+  ],
+  "mock": [
+    {
+      "text": "Je consulte le modèle de bail d'habitation.",
+      "toolUses": [
+        { "name": "get_template", "input": { "contract_type": "bail-habitation" } }
+      ],
+      "stopReason": "tool_use"
+    },
+    {
+      "text": "Je rédige le contrat.",
+      "toolUses": [
+        {
+          "name": "create_canvas",
+          "input": {
+            "title": "Contrat de bail à usage d'habitation",
+            "contract_type": "bail-habitation",
+            "markdown": "{{BASE_CONTRACT}}"
+          }
+        }
+      ],
+      "stopReason": "tool_use"
+    },
+    {
+      "text": "V1 prête : 6 champs restent à compléter."
+    },
+    {
+      "text": "Je modifie le préavis et le loyer.",
+      "toolUses": [
+        {
+          "name": "edit_canvas",
+          "input": {
+            "edits": [
+              {
+                "old_str": "moyennant un préavis de deux (2) mois",
+                "new_str": "moyennant un préavis de trois (3) mois"
+              },
+              {
+                "old_str": "**70 000 FCFA**",
+                "new_str": "**80 000 FCFA**"
+              }
+            ]
+          }
+        }
+      ],
+      "stopReason": "tool_use"
+    },
+    {
+      "text": "C'est fait : préavis de trois (3) mois et loyer de 80 000 FCFA. Les autres clauses sont inchangées."
+    }
+  ]
+}

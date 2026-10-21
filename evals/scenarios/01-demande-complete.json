@@ -1,0 +1,46 @@
+{
+  "id": "01-demande-complete",
+  "name": "Demande complète en un message → V1 sans question inutile",
+  "description": "Toutes les informations essentielles sont données : le contrat doit être rédigé sans poser de question.",
+  "turns": [
+    {
+      "user": "Je veux un bail d'habitation pour un studio à Yopougon (Abidjan), loyer 70 000 FCFA par mois, durée 12 mois. Le bailleur est Monsieur Koné et la locataire est Madame Aya.",
+      "contract_type": "bail-habitation",
+      "expect": {
+        "expect_canvas": true,
+        "canvas_modes": ["create"],
+        "max_questions": 0,
+        "chat_max_length": 600,
+        "no_invented_facts": true,
+        "placeholders_min": 1,
+        "tool_calls": [{ "name": "get_template", "count": 1 }, { "name": "create_canvas", "count": 1 }]
+      }
+    }
+  ],
+  "mock": [
+    {
+      "text": "Je consulte le modèle de bail d'habitation.",
+      "toolUses": [
+        { "name": "get_template", "input": { "contract_type": "bail-habitation" } }
+      ],
+      "stopReason": "tool_use"
+    },
+    {
+      "text": "Je rédige le contrat.",
+      "toolUses": [
+        {
+          "name": "create_canvas",
+          "input": {
+            "title": "Contrat de bail à usage d'habitation",
+            "contract_type": "bail-habitation",
+            "markdown": "{{BASE_CONTRACT_PARTIES}}"
+          }
+        }
+      ],
+      "stopReason": "tool_use"
+    },
+    {
+      "text": "V1 prête : 2 champs restent à compléter (dépôt de garantie et date). Le document doit être validé par un professionnel du droit avant signature."
+    }
+  ]
+}

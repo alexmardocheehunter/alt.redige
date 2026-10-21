@@ -47,6 +47,8 @@ export interface RunAgentParams {
   contractType: string | null;
   emit: AgentEmit;
   signal: AbortSignal;
+  /** Test hook: observes the tool calls (used by the evaluations). */
+  onToolCall?: (name: string, input: unknown) => void;
 }
 
 export interface RunAgentResult {
@@ -220,6 +222,7 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
 
     for (const toolUse of outcome.toolUses) {
       if (signal.aborted) break;
+      params.onToolCall?.(toolUse.name, toolUse.input);
       const result = executeTool(toolUse.name, toolUse.input, toolContext);
       if (!result.isError) setsEmitted += 1;
       toolResults.push({

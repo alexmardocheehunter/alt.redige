@@ -43,6 +43,45 @@ ANTHROPIC_API_KEY=sk-ant-...
 
 ---
 
+## Évaluations (`npm run eval`)
+
+### Les scénarios n'ont pas pu être exécutés contre le vrai modèle
+Le harnais est complet : 10 scénarios (`evals/scenarios/*.json`), 5 familles
+d'assertions automatiques (pas d'invention, édition ciblée, pas de contrat dans
+le chat, sous-ensemble respecté, export valide). Le mode hors ligne
+(`npm run eval -- --dry-run`) rejoue un modèle scripté : **10/10 au vert**, ce qui
+valide le harnais lui-même (décodage SSE, exécution des outils, assertions).
+
+La campagne réelle (`npm run eval`) **n'a pas été exécutée** : la machine de
+développement n'a pas de clé `ANTHROPIC_API_KEY`. La campagne réelle est à
+lancer avec une clé valide, puis ses éventuels échecs sont à consigner ici.
+
+### Le contrôle « pas d'invention » est heuristique
+`evals/assertions.ts` extrait les montants, durées, dates et noms propres du
+contrat, puis vérifie qu'ils proviennent des messages de l'utilisateur, des
+espaces réservés `[À COMPLÉTER …]` ou du vocabulaire du modèle (squelette et
+notes juridiques). Le vocabulaire du modèle est accepté parce que le modèle est
+*censé* le réutiliser.
+
+Limites connues :
+- un nombre cité dans le document mais présent « par hasard » dans le message de
+  l'utilisateur passe le contrôle (faux négatif) ;
+- un nom propre légitime du modèle (ville, patronyme) absent du squelette est
+  signalé comme une invention (faux positif possible) ;
+- la liste de mots courante (`CONTRACT_STOPLIST`) est faite main : elle peut
+  être incomplète.
+
+Le contrôle est un garde-fou, pas une preuve : il doit être lu avec le document
+produit.
+
+### Les contrôles externes de l'export sont optionnels
+`pandoc` et `soffice` (LibreOffice) ne sont pas installés sur la machine de
+développement : l'étape de l'export Word ne vérifie alors que l'intégrité de
+l'archive OOXML et la présence du titre et des espaces réservés. Les étapes
+externes sont signalées comme « ignorées » dans la sortie de `npm run eval`.
+
+---
+
 ## Choix techniques assumés
 
 ### Le nom du modèle par défaut (`claude-sonnet-5-5`) n'est pas vérifié

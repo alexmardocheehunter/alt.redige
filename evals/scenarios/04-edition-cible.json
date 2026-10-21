@@ -1,0 +1,79 @@
+{
+  "id": "04-edition-cible",
+  "name": "« Change le préavis de 2 à 3 mois » → un seul edit_canvas, autres articles intacts",
+  "description": "Une modification ne touche que la clause concernée.",
+  "turns": [
+    {
+      "user": "Rédige-moi un bail d'habitation pour un studio à Yopougon (Abidjan), 12 mois, loyer 70 000 FCFA par mois.",
+      "contract_type": "bail-habitation",
+      "expect": {
+        "expect_canvas": true,
+        "canvas_modes": ["create"],
+        "no_invented_facts": true
+      }
+    },
+    {
+      "user": "Change le préavis de deux mois à trois mois.",
+      "expect": {
+        "expect_canvas": true,
+        "canvas_modes": ["edit"],
+        "edits_applied": 1,
+        "tool_calls": [{ "name": "edit_canvas", "count": 1, "edits": 1 }],
+        "unchanged_sections": [
+          "Article 1 – Objet du contrat",
+          "Article 2 – Durée et loyer",
+          "Article 3 – Obligations du Locataire",
+          "Article 5 – Signatures"
+        ],
+        "max_changed_sections": 1,
+        "chat_max_length": 600
+      }
+    }
+  ],
+  "mock": [
+    {
+      "text": "Je consulte le modèle de bail d'habitation.",
+      "toolUses": [
+        { "name": "get_template", "input": { "contract_type": "bail-habitation" } }
+      ],
+      "stopReason": "tool_use"
+    },
+    {
+      "text": "Je rédige le contrat.",
+      "toolUses": [
+        {
+          "name": "create_canvas",
+          "input": {
+            "title": "Contrat de bail à usage d'habitation",
+            "contract_type": "bail-habitation",
+            "markdown": "{{BASE_CONTRACT}}"
+          }
+        }
+      ],
+      "stopReason": "tool_use"
+    },
+    {
+      "text": "V1 prête : 6 champs restent à compléter."
+    },
+    {
+      "text": "Je modifie le préavis.",
+      "toolUses": [
+        {
+          "name": "edit_canvas",
+          "input": {
+            "edits": [
+              {
+                "old_str": "moyennant un préavis de deux (2) mois",
+                "new_str": "moyennant un préavis de trois (3) mois"
+              }
+            ]
+          }
+        }
+      ],
+      "stopReason": "tool_use"
+    },
+    {
+      "text": "C'est fait : le préavis est désormais de trois (3) mois. Les autres clauses sont inchangées."
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "id": "08-type-hors-catalogue",
+  "name": "Type hors catalogue → refus clair + proposition du plus proche",
+  "description": "L'agent ne rédige pas un type de contrat absent du catalogue.",
+  "turns": [
+    {
+      "user": "Je veux un contrat de mariage.",
+      "expect": {
+        "expect_canvas": false,
+        "max_questions": 1,
+        "chat_max_length": 600,
+        "chat_contains": ["bail d'habitation"]
+      }
+    }
+  ],
+  "mock": [
+    {
+      "text": "Je ne peux pas rédiger ce type de contrat : il n'est pas au catalogue. Le seul type disponible est le bail d'habitation : voulez-vous que je le rédige ?"
+    }
+  ]
+}

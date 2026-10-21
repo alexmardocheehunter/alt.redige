@@ -1,0 +1,44 @@
+{
+  "id": "03-parties-inconnues",
+  "name": "Parties inconnues → espaces réservés, aucun nom inventé",
+  "description": "Les identités des parties ne sont pas connues : le contrat contient des espaces réservés et aucun nom inventé.",
+  "turns": [
+    {
+      "user": "Rédige-moi un bail d'habitation pour un studio à Yopougon (Abidjan), 12 mois, loyer 70 000 FCFA par mois.",
+      "contract_type": "bail-habitation",
+      "expect": {
+        "expect_canvas": true,
+        "canvas_modes": ["create"],
+        "no_invented_facts": true,
+        "placeholders_min": 4,
+        "chat_max_length": 600
+      }
+    }
+  ],
+  "mock": [
+    {
+      "text": "Je consulte le modèle de bail d'habitation.",
+      "toolUses": [
+        { "name": "get_template", "input": { "contract_type": "bail-habitation" } }
+      ],
+      "stopReason": "tool_use"
+    },
+    {
+      "text": "Je rédige le contrat.",
+      "toolUses": [
+        {
+          "name": "create_canvas",
+          "input": {
+            "title": "Contrat de bail à usage d'habitation",
+            "contract_type": "bail-habitation",
+            "markdown": "{{BASE_CONTRACT}}"
+          }
+        }
+      ],
+      "stopReason": "tool_use"
+    },
+    {
+      "text": "V1 prête : 6 champs restent à compléter (identité et adresse des parties, dépôt de garantie, préavis, date)."
+    }
+  ]
+}

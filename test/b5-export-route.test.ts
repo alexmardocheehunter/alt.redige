@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { testApp, readJson } from './helpers.js';
-import { countOccurrences, openDocx } from './docx-utils.js';
+import { countOccurrences, openDocx } from '../evals/docx-utils.js';
 import { SAMPLE_BAIL } from './fixtures.js';
 
 const DOCX_TYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
