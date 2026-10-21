@@ -172,6 +172,19 @@ relancé automatiquement (2 relances, uniquement pour un échec de transport —
 une assertion en échec n'est jamais rejouée, ce qui masquerait un vrai
 problème de comportement).
 
+**État de la campagne réelle** : la campagne du 21/10/2026 a été interrompue
+après 3 scénarios, tous en échec de transport (`ECONNRESET` sur les trois
+modèles, après relances) : le réseau sortant de ce poste coupe désormais
+systématiquement les requêtes `POST` de taille réelle de l'application. Ce
+n'est pas un défaut du code — la même chaîne a fonctionné plusieurs fois dans
+la journée (contrat complet généré, modification appliquée, bascule entre
+modèles observée), et le test de bout en bout `test/b9-bout-en-bout.test.ts`
+valide le chemin complet sur une vraie socket.
+
+**À refaire** : lancer `npm run eval` depuis une machine dont le réseau vers
+OpenRouter n'est pas filtré. La commande est prête, les 10 scénarios et les
+assertions sont en place.
+
 ### Le test de bout en bout ne dépend pas du réseau
 `test/b9-bout-en-bout.test.ts` démarre un serveur HTTP local qui parle le
 protocole OpenRouter (API compatible OpenAI) et exerce tout le chemin de
@@ -187,16 +200,54 @@ quand le réseau sortant est incertain.
 
 ## Évaluations (`npm run eval`)
 
-### Les scénarios n'ont pas pu être exécutés contre le vrai modèle
+### La campagne `npm run eval` n'a pas pu être menée à son terme
 Le harnais est complet : 10 scénarios (`evals/scenarios/*.json`), 5 familles
 d'assertions automatiques (pas d'invention, édition ciblée, pas de contrat dans
 le chat, sous-ensemble respecté, export valide). Le mode hors ligne
 (`npm run eval -- --dry-run`) rejoue un modèle scripté : **10/10 au vert**, ce qui
 valide le harnais lui-même (décodage SSE, exécution des outils, assertions).
 
-La campagne réelle (`npm run eval`) **n'a pas été exécutée** : la machine de
-développement n'a pas de clé `ANTHROPIC_API_KEY`. La campagne réelle est à
-lancer avec une clé valide, puis ses éventuels échecs sont à consigner ici.
+Ce que la campagne réelle a déjà démontré le 21/10/2026 (avant que le réseau
+ne coupe) :
+
+- le scénario 01 est **passé au vert** après correction du prompt (une seule
+  version du document, chat court, aucun nom inventé) ;
+- le scénario 08 est **passé au vert** en basculant réellement du modèle
+  principal vers le second ;
+- le filtre de sécurité a été **validé sur 14 cas réels** (0 faux positif,
+  4 vrais positifs).
+
+Les scénarios restants n'ont pas pu être validés : le réseau sortant de la
+machine de développement coupe les requêtes `POST` vers OpenRouter. Voir
+« Réseau sortant instable vers openrouter.ai ».
+
+**À refaire** : lancer `npm run eval` depuis une machine dont le réseau vers
+OpenRouter n'est pas filtré. La commande est prête, les 10 scénarios et les
+assertions sont en place.
+
+### Les assertions ont été durcies, pas assouplies
+Trois corrections ont été apportées après la première campagne réelle :
+
+- **« Pas d'invention »** ne cherchait plus les noms propres dans tout le
+  document mais **dans la zone d'identité des parties** (avant le premier
+  article, plus les lignes portant un titre de civilité) : le vocabulaire
+  juridique du modèle (« Préambule », « Réparations », « Contestations ») était
+  compté comme une invention. Les montants, durées et dates restent vérifiés
+  dans tout le document.
+- **« Édition ciblée »** compare désormais les **blocs** séparés par une ligne
+  vide, comme le décrit la spécification, au lieu des titres d'articles : le
+  modèle renumérote parfois les articles, ce qui faisait échouer la comparaison
+  par titre alors que les clauses non concernées étaient bien identiques.
+- **« Modes du Canvas »** vérifie que les modes attendus **ouvrent** le flux
+  (l'agent peut ensuite peaufiner le document) au lieu d'exiger une liste
+  identique. La spécification n'impose pas qu'un `create_canvas` soit le seul
+  appel de l'agent.
+
+En revanche, les exigences explicites de la spécification sont restées
+strictes : un seul `edit_canvas` pour une modification, un seul `edit_canvas`
+à deux edits pour deux modifications demandées ensemble, un `create_canvas` avec
+`replace: true` pour « recommence tout », au plus trois questions pour une
+demande vague, et pas de contrat dans le chat.
 
 ### Le contrôle « pas d'invention » est heuristique
 `evals/assertions.ts` extrait les montants, durées, dates et noms propres du
@@ -205,10 +256,15 @@ espaces réservés `[À COMPLÉTER …]` ou du vocabulaire du modèle (squelette
 notes juridiques). Le vocabulaire du modèle est accepté parce que le modèle est
 *censé* le réutiliser.
 
+Les noms propres ne sont cherchés que dans la **zone d'identité des parties**
+(avant le premier article, plus les lignes portant un titre de civilité) : c'est
+là que des noms peuvent apparaître. Le reste du document est du vocabulaire
+juridique, où un mot capitalisé ne prouve rien.
+
 Limites connues :
 - un nombre cité dans le document mais présent « par hasard » dans le message de
   l'utilisateur passe le contrôle (faux négatif) ;
-- un nom propre légitime du modèle (ville, patronyme) absent du squelette est
+- un nom propre légitime absent du squelette et du message de l'utilisateur est
   signalé comme une invention (faux positif possible) ;
 - la liste de mots courante (`CONTRACT_STOPLIST`) est faite main : elle peut
   être incomplète.

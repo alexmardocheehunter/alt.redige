@@ -1,0 +1,937 @@
+RAPPORT DE SYNTHÈSE : RÉFÉRENTIEL JURIDIQUE ET CONTRACTUEL (DROIT IVOIRIEN ET OHADA)
+SECTION 1 — INVENTAIRE RAPIDE
+Tableau 1 : Sources juridiques
+Code
+Intitulé
+Nature
+Date / Version
+État
+S01
+Code du Travail de Côte d'Ivoire (Loi n° 2015-532)
+Loi législative
+20 juillet 2015 (éd. 2023)
+En vigueur
+S02
+Code Général des Impôts (CGI)
+Code législatif
+Édition 2026
+En vigueur
+S03
+Code de Prévoyance Sociale (CPS / CNPS - Ord. n° 2012-03)
+Ordonnance / Loi
+11 janvier 2012
+En vigueur
+S04
+Convention Collective Interprofessionnelle (CCI)
+Convention nationale
+20 juillet 1977
+En vigueur
+S05
+Décrets d'application du Code du Travail (96-195 à 96-287, 2013-791, 2017-210, 2022-31)
+Décrets réglementaires
+1996, 2013, 2017, 2022
+En vigueur
+S06
+Guide d'application du SYSCOHADA révisé
+Guide comptable officiel
+Version révisée 2017
+En vigueur
+S07
+Annexe Fiscale 2026 & Bulletin Officiel DGI (BODGI)
+Loi de finances / BODGI
+Gestion 2026
+En vigueur
+Tableau 2 : Modèles de contrats et trames
+Code
+Type de contrat
+Anomalies ou écarts réglementaires constatés
+M01-CDD
+Contrat de travail à durée déterminée
+Risque d'omission du motif précis pour le terme imprécis [S01, art. 15.6, "Il ne peut être conclu que pour l'exécution d'une tâche précise"].
+M02-CDI
+Contrat de travail à durée indéterminée
+Risque d'insertion de clause de forfaitisation des heures supp. pour non-cadres [S05, Décret 96-203 art. 27, "Est nul et de nul effet... toute clause... fixant le salaire de façon forfaitaire"].
+M03-STAGE
+Convention Stage-École
+Absence fréquente de forme écrite entraînant requalification [S01, art. 13.11, "À défaut, elle est réputée être un contrat de travail à durée indéterminée"].
+M04-APPRENTISSAGE
+Contrat d'apprentissage
+Risque d'omission de la pré-rémunération minimale dès le 13e mois [S05, Décret 96-286 art. 15, "Elle ne peut être inférieure à 30 % du SMIG"].
+M05-TELETRAVAIL
+Accord / Avenant Télétravail
+Omission possible des 7 mentions obligatoires réglementaires [S05, Décret 2022-31 art. 5, "L'accord collectif ou individuel doit comporter les mentions obligatoires"].
+M06-BAIL
+Contrat de bail immobilier
+Absence récurrente de la condition fiscale obligatoire [S02, art. 169 bis, "doivent subordonner le paiement des loyers à la production d'une attestation"].
+Types de contrats couverts (identifiants courts) :
+cdd : Contrat de travail à durée déterminée (terme précis ou imprécis).
+cdi : Contrat de travail à durée indéterminée.
+stage-ecole : Convention de stage-école pour élève ou étudiant.
+stage-qualification : Contrat stage de qualification / expérience professionnelle.
+apprentissage : Contrat d'apprentissage.
+teletravail : Accord ou avenant de télétravail.
+bail-immeuble : Contrat de bail immobilier (habitation / professionnel).
+prestation-service : Contrat de prestation de services / sous-traitance / tâcheronnat.
+SECTION 2 — CADRE TRANSVERSAL
+2.1 Hiérarchie des textes
+Ordre public social (IMPÉRATIVE) : Le Code du Travail régit obligatoirement toutes les relations de travail [S01, art. 8, "les dispositions du présent Code sont d'ordre public"].
+Principe de favorabilité (IMPÉRATIVE) : Les conventions et contrats ne peuvent déroger aux lois qu'en faveur du salarié [S01, art. 8, "des garanties ou droits supérieurs à ceux prévus par le présent Code"].
+Prééminence de la réalité sur l'apparence (IMPÉRATIVE) : Prééminence des règles OHADA/SYSCOHADA en matière d'exécution et qualification [S06, chap. 27, "principe de la prééminence de la réalité sur l'apparence"].
+2.2 Conditions de validité
+Capacité de l'employé (IMPÉRATIVE) : Âge minimum d'embauche fixé à 16 ans [S01, art. 23.2, "Les enfants ne peuvent être employés dans aucune entreprise avant l'âge de 16 ans"].
+Capacité du maître d'apprentissage (IMPÉRATIVE) : Âge minimum fixé à 18 ans [S01, art. 13.3, "Nul ne peut recevoir des apprentis mineurs s'il n'est âgé de dix-huit ans au moins"].
+Consentement et Forme écrite (IMPÉRATIVE) : Exigence formelle d'un écrit pour CDD, stages, télétravail et essai [S01, art. 14.2, "constaté dans les formes qu'il convient", S01, art. 15.2, "doit être passé par écrit"].
+Langue du contrat (IMPÉRATIVE) : Rédaction obligatoire en langue française [S01, art. 13.1, "rédigé en langue française", S05, Décret 96-287 art. 4, "rédigé dans la langue française"].
+Protection des illettrés (IMPÉRATIVE) : Indication expresse que l'acte a été expliqué [S05, Décret 96-287 art. 4, "l'indication est faite sur le contrat que l'intéressé a pu se faire expliquer"].
+2.3 Preuve et signature
+Preuve du contrat de travail (SUPPLÉTIVE) : Se prouve par tous moyens en l'absence d'écrit [S01, art. 14.4, "L'existence du contrat de travail se prouve par tous moyens"].
+Signature physique (IMPÉRATIVE) : Signature obligatoire des deux parties [S05, Décret 96-287 art. 4, "Il doit être revêtu de la signature de l'employeur et de celle du travailleur"].
+Signature électronique : NON TROUVÉ DANS LES SOURCES.
+2.4 Clauses nulles ou réputées non écrites
+Interdiction de concurrence post-contractuelle (IMPÉRATIVE) : Nulle de plein droit sauf dérogations [S01, art. 16.5, "Est nulle de plein droit toute clause d'un contrat portant interdiction"].
+Prélèvements salariaux non autorisés (IMPÉRATIVE) : Nullité des retenues hors cessions et prélèvements légaux [S01, art. 34.3, "Les dispositions d'une Convention ou d'un contrat autorisant tous autres prélèvements sont nulles"].
+Forfaitisation des heures supplémentaires (IMPÉRATIVE) : Nulle pour les non-cadres [S05, Décret 96-203 art. 27, "Est nul et de nul effet... toute clause... fixant le salaire de façon forfaitaire"].
+Clauses contraires au Code du Travail (IMPÉRATIVE) : Nullité absolue [S01, art. 8, "non conforme aux dispositions dudit Code... est nulle de plein droit"].
+2.5 Pénalités et intérêts de retard
+Rupture abusive (IMPÉRATIVE) : Dommages-intérêts de 1 à 20 mois de salaire brut selon ancienneté [S01, art. 18.15, "équivalant à un mois de salaire brut par année d'ancienneté"].
+Inobservation du préavis (IMPÉRATIVE) : Indemnité égale à la rémunération de la période [S01, art. 18.7, "obligation... de verser à l'autre une indemnité dont le montant correspond à la rémunération"].
+Pénalités fiscales et sociales (IMPÉRATIVE) : Charge exclusive de l'employeur sans imputation possible [S03, art. 167, "Les pénalités et intérêts de travail éventuels restent à la charge de l'employeur"].
+2.6 Prescription et délais généraux
+Prescription des salaires (IMPÉRATIVE) : 2 ans à compter de l'exigibilité [S01, art. 33.5, "L'action en paiement du salaire et de ses accessoires se prescrit par deux ans"].
+Réclamation des congés (IMPÉRATIVE) : 2 ans après cessation du contrat [S04, art. 74, "dans un délai maximum de deux ans à compter du jour de la cessation"].
+Prescription disciplinaire (IMPÉRATIVE) : Faits connus depuis plus de 3 mois non sanctionnables ; fautes de plus de 6 mois non invocables [S01, art. 17.5, "Aucune sanction antérieure de plus de six mois... Passé ce délai de trois mois"].
+Conservation des documents comptables/fiscaux (IMPÉRATIVE) : 10 ans [S02, LPF art. 33, S07, BODGI 2026 p. 18, "obligation de conservation des documents comptables... sur une durée de 10 ans"].
+SECTION 3 — FICHES PAR TYPE DE CONTRAT
+Fiche 1 : cdd (Contrat à durée déterminée)
+Champs OBLIGATOIRES :
+Date et lieu d'établissement (texte) [S05, Décret 96-287 art. 2].
+Identité complète des parties (texte) [S05, Décret 96-287 art. 2].
+Mention expresse "Contrat à durée déterminée" (texte) [S05, Décret 96-287 art. 2].
+Terme précis ou motif de tâche temporaire (date ou texte) [S01, art. 15.3, 15.6].
+Classification, salaire de base et accessoires (texte/nombre) [S05, Décret 96-287 art. 2].
+Champs CONDITIONNELS :
+Si salarié étranger : Numéro de visa de l'Emploi (texte) [S05, Décret 96-287 art. 7].
+Si essai : Clause écrite de durée d'essai (texte) [S01, art. 14.5].
+Clauses INTERDITES ou à risque :
+Dépassement de la durée de 2 ans pour terme précis [S01, art. 15.4, "ne peuvent être conclus pour une durée supérieure à deux ans"].
+Interdiction de concurrence post-contractuelle [S01, art. 16.5].
+Règles IMPÉRATIVES CHIFFRÉES : | Règle | Valeur exacte | Source + article | Date | | :--- | :--- | :--- | :--- | | Durée maximale cumulative du CDD à terme précis | 2 ans | S01, art. 15.4 | 2015 | | Quota maximal de CDD sur emplois permanents | 1/3 de l'effectif total | S01, art. 15.1 | 2015 | | Prime de fin de contrat (précarité) | 3 % des salaires bruts | S01, art. 15.8 | 2015 |
+Fiche 2 : cdi (Contrat à durée indéterminée)
+Champs OBLIGATOIRES :
+Date et lieu d'établissement (texte) [S05, Décret 96-287 art. 2].
+Identité et domicile des parties (texte) [S05, Décret 96-287 art. 2].
+Emploi, catégorie et salaire convenu (texte/nombre) [S05, Décret 96-287 art. 2].
+Convention collective applicable (texte) [S05, Décret 96-287 art. 2].
+Champs CONDITIONNELS :
+Si période d'essai : Clause écrite stipulant la durée (texte) [S01, art. 14.5, S05, Décret 96-195 art. 2].
+Clauses INTERDITES ou à risque :
+Forfaitisation des heures supplémentaires pour non-cadres [S05, Décret 96-203 art. 27].
+Modification unilatérale d'un élément substantiel sans accord [S01, art. 16.6].
+Règles IMPÉRATIVES CHIFFRÉES : | Règle | Valeur exacte | Source + article | Date | | :--- | :--- | :--- | :--- | | Durée max. essai (ouvriers/employés mensuels) | 1 mois (renouvelable 1 fois) | S05, Décret 96-195 art. 2 | 1996 | | Durée max. essai (agents de maîtrise) | 2 mois (renouvelable 1 fois) | S05, Décret 96-195 art. 2 | 1996 | | Durée max. essai (cadres) | 3 mois (renouvelable 1 fois) | S05, Décret 96-195 art. 2 | 1996 | | SMIG mensuel légal minimal | 60 000 FCFA / mois | S05, Décret n° 2013-791 | 2013 |
+Fiche 3 : stage-ecole (Convention Stage-École)
+Champs OBLIGATOIRES :
+Forme écrite obligatoire (acte écrit) [S01, art. 13.11, "Cette convention doit être constatée par écrit"].
+Désignation de l'étudiant, l'entreprise et l'établissement (texte) [S01, art. 13.11].
+Champs CONDITIONNELS :
+Si indemnité versée : Montant libre (nombre) [S01, art. 13.12].
+Clauses INTERDITES ou à risque :
+Défaut d'écrit (entraîne requalification directe en CDI) [S01, art. 13.11].
+Règles IMPÉRATIVES CHIFFRÉES : | Règle | Valeur exacte | Source + article | Date | | :--- | :--- | :--- | :--- | | Indemnité minimale légale obligatoire | 0 FCFA (fin sans préavis ni indemnité) | S01, art. 13.12 | 2015 |
+Fiche 4 : stage-qualification (Stage de qualification)
+Champs OBLIGATOIRES :
+Forme écrite obligatoire (acte écrit) [S01, art. 13.15, "doit être constaté par écrit"].
+Engagement de formation qualifiante (texte) [S01, art. 13.14].
+Indemnité forfaitaire mensuelle obligatoire (nombre) [S01, art. 13.17].
+Champs CONDITIONNELS :
+Si vacance d'emploi : Priorité d'embauche sur 6 mois (texte) [S01, art. 13.18].
+Clauses INTERDITES ou à risque :
+Dépassement de la durée totale de 12 mois [S01, art. 13.14].
+Règles IMPÉRATIVES CHIFFRÉES : | Règle | Valeur exacte | Source + article | Date | | :--- | :--- | :--- | :--- | | Durée maximale totale du stage de qualification | 12 mois (renouvellements compris) | S01, art. 13.14 | 2015 | | Durée de la priorité d'embauche post-stage | 6 mois | S01, art. 13.18 | 2015 |
+Fiche 5 : apprentissage (Contrat d'apprentissage)
+Champs OBLIGATOIRES :
+Écrit rédigé en français (acte écrit) [S01, art. 13.1, S05, Décret 96-286 art. 12].
+Métier enseigné et cours professionnels (texte) [S05, Décret 96-286 art. 12].
+Couverture accidents du travail (texte) [S05, Décret 96-286 art. 17].
+Champs CONDITIONNELS :
+Si durée > 12 mois : Pré-rémunération obligatoire dès le 13e mois (nombre) [S05, Décret 96-286 art. 15].
+Clauses INTERDITES ou à risque :
+Pré-rémunération inférieure au minimum légal [S05, Décret 96-286 art. 15].
+Règles IMPÉRATIVES CHIFFRÉES : | Règle | Valeur exacte | Source + article | Date | | :--- | :--- | :--- | :--- | | Âge minimum du maître d'apprentissage | 18 ans | S01, art. 13.3 | 2021 | | Pre-rémunération minimale (dès 13e mois) | 30 % du SMIG | S05, Décret 96-286 art. 15 | 1996 |
+Fiche 6 : teletravail (Avenant / Contrat de Télétravail)
+Champs OBLIGATOIRES :
+Forme écrite obligatoire (accord ou avenant) [S05, Décret 2022-31 art. 4].
+Inscription des 7 mentions obligatoires réglementaires (texte) [S05, Décret 2022-31 art. 5].
+Champs CONDITIONNELS :
+Si force majeure : Notification écrite préalable [S05, Décret 2022-31 art. 4].
+Clauses INTERDITES ou à risque :
+Atteinte au respect de la vie privée du télétravailleur [S05, Décret 2022-31 art. 7].
+Règles IMPÉRATIVES CHIFFRÉES : | Règle | Valeur exacte | Source + article | Date | | :--- | :--- | :--- | :--- | | Égalité de droits avec salariés sur site | 100 % d'égalité des droits | S05, Décret 2022-31 art. 6 | 2022 |
+Fiche 7 : bail-immeuble (Contrat de bail immobilier)
+Champs OBLIGATOIRES :
+Parties, description du bien, loyer et durée (texte/nombre) [S02, art. 666, 713].
+Condition suspensive de remise de la déclaration foncière [S02, art. 169 bis].
+Champs CONDITIONNELS :
+Si bail habitation particulier < 500k/mois : Exemption d'enregistrement (booleen) [S02, art. 530].
+Clauses INTERDITES ou à risque :
+Paiement du loyer sans justification d'immatriculation fiscale du bailleur [S02, art. 169 bis].
+Règles IMPÉRATIVES CHIFFRÉES : | Règle | Valeur exacte | Source + article | Date | | :--- | :--- | :--- | :--- | | Seuil d'exonération d'enregistrement (habitation) | < 500 000 FCFA / mois | S02, CGI an. fiscale 2016 art. 13 | 2016 | | Droit d'enregistrement cession droit au bail | 10 % | S02, art. 716 | 1991 |
+Fiche 8 : prestation-service (Prestation de services)
+Champs OBLIGATOIRES :
+Définition du service et prix forfaitaire convenu (texte/nombre) [S01, art. 11.6].
+Indépendance et direction effective de la main-d'œuvre (texte) [S01, art. 11.6].
+Champs CONDITIONNELS :
+Si exécution dans locaux de l'entrepreneur : Substitution de garantie de salaire [S01, art. 11.7].
+Clauses INTERDITES ou à risque :
+Prêt de main-d'œuvre à but lucratif hors travail temporaire [S01, art. 11.5].
+Règles IMPÉRATIVES CHIFFRÉES : | Règle | Valeur exacte | Source + article | Date | | :--- | :--- | :--- | :--- | | Taux retenue BNC prestataire non immatriculé | 20 % | S02, art. 93, 108 | 2026 |
+SECTION 4 — FISCALITÉ (CGI 2026)
+Type de contrat
+Impôt / Droit
+Taux ou montant
+Base imposable
+Délai d'exigibilité
+Redevable
+Source + article
+cdd / cdi
+Enregistrement & Timbre
+0 FCFA (Exempt)
+Gratuit
+N/A
+N/A
+S01 art. 14.2, S02 art. 655
+cdd / cdi
+Impôt sur Salaires (ITS)
+Barème progressif
+Salaires bruts imposables
+Mensuel (avant le 15)
+Employeur (retenue)
+S02 art. 115, 118, 125
+cdd / cdi
+Cotisations CNPS
+Taux réglementaires
+Salaires bruts plafonnés
+Mensuel / Trimestriel
+Employeur & Salarié
+S03 art. 5, 18, 167
+stage-ecole
+Enregistrement & Timbre
+0 FCFA (Exempt)
+Gratuit
+N/A
+N/A
+S01 art. 14.2
+stage-qualification
+Impôt sur Salaires (ITS)
+Exempt (si <= 150k/mois, max 12m)
+Indemnité mensuelle
+Mensuel
+Employeur
+S02 art. 116, 137
+apprentissage
+Enregistrement & Timbre
+0 FCFA (Exempt)
+Gratuit
+N/A
+N/A
+S01 art. 13.1
+bail-immeuble
+Droit d'enregistrement
+2 % à 3 % (Exempt si hab. < 500k)
+Cumul des loyers de la durée
+15 jours à 3 mois
+Bailleur / Preneur
+S02 art. 530, 547, 666
+bail-immeuble
+Timbre fiscal
+Tarif légal par feuille
+Nombre de pages de l'acte
+À la signature
+Parties
+S02 art. 805, 829
+prestation-service
+Retenue BNC prestataires
+7.5 % (immatriculé) / 20 % (non immatriculé)
+Montant brut honoraires
+Mensuel (avant le 15)
+Client versant
+S02 art. 58, 93, 108
+prestation-service
+TVA
+18 % (Taux commun)
+Prix HT de la prestation
+Mensuel (encaissement)
+Prestataire
+S02 art. 339, 345, 358
+SECTION 5 — RÉFÉRENCES AUTORISÉES & POINTS À VÉRIFIER
+5.1 Liste blanche des références normatives autorisées
+Référence exacte
+Intitulé officiel
+Date
+Types concernés
+En vigueur
+Loi n° 2015-532
+Code du Travail de la République de Côte d'Ivoire
+20 juillet 2015
+cdd, cdi, stage, apprentissage, teletravail
+Oui
+CGI 2026
+Code Général des Impôts de Côte d'Ivoire
+Édition 2026
+Tous types
+Oui
+Ordonnance n° 2012-03
+Code de Prévoyance Sociale (CNPS)
+11 janvier 2012
+cdd, cdi, apprentissage
+Oui
+CCI 1977
+Convention Collective Interprofessionnelle de Côte d'Ivoire
+20 juillet 1977
+cdd, cdi
+Oui
+Décret n° 96-195
+Décret relatif à la durée de la période d'essai
+7 mars 1996
+cdd, cdi
+Oui
+Décret n° 96-200
+Décret relatif au préavis de rupture du contrat de travail
+7 mars 1996
+cdd, cdi
+Oui
+Décret n° 96-203
+Décret relatif à la durée du travail et horaire collectif
+7 mars 1996
+Tous contrats de travail
+Oui
+Décret n° 96-286
+Décret relatif à l'apprentissage
+3 avril 1996
+apprentissage
+Oui
+Décret n° 96-287
+Décret relatif au contrat de travail
+3 avril 1996
+cdd, cdi
+Oui
+Décret n° 2013-791
+Décret portant revalorisation du SMIG (60 000 FCFA)
+20 novembre 2013
+Tous contrats de travail
+Oui
+Décret n° 2017-210
+Décret relatif à l'indemnité de licenciement
+30 mars 2017
+cdd, cdi
+Oui
+Décret n° 2022-31
+Décret fixant les modalités du télétravail
+12 janvier 2022
+teletravail
+Oui
+SYSCOHADA révisé
+Droit comptable unifié OHADA
+Révisé 2017
+prestation-service, tous
+Oui
+5.2 Contradictions entre sources ou entre modèles et textes
+Délai de prévenance de fin d'essai [Gravité : IMPORTANT] :
+Décret 96-195 art. 4 [S05] fixe 8 jours pour essai de 1 mois.
+CCI art. 14 [S04] fixe 8 jours pour essai de 2 mois et 15 jours pour 3 mois.
+Prévalence : La disposition conventionnelle s'applique prioritairement car plus favorable au salarié [S01, art. 8, "des garanties ou droits supérieurs... sont accordés"].
+Suspension du contrat pour maladie [Gravité : IMPORTANT] :
+Code du Travail art. 16.7 [S01] fixe 6 mois (12 mois pour longue maladie).
+CCI art. 28 [S04] porte la durée à 8 ou 10 mois selon l'ancienneté.
+Prévalence : La règle conventionnelle plus favorable prévaut [S01, art. 8].
+5.3 Lacunes majeures dans les sources du notebook
+Régime des baux commerciaux sous l'Acte Uniforme OHADA (AUDCG) [Gravité : BLOQUANT] :
+Les sources intègrent la fiscalité du bail (CGI 2026), mais ne contiennent pas l'Acte Uniforme OHADA sur le droit commercial général (renouvellement, congé commercial, indemnité d'éviction).
+Réglementation sur la signature électronique qualifiée [Gravité : IMPORTANT] :
+Absence des textes spécifiques encadrant la signature électronique des contrats en droit ivoirien.
+
+
+
+
+
+SECTION 1 — INVENTAIRE RAPIDE
+Tableau 1 : Sources juridiques
+Code
+Intitulé
+Nature
+Date / Version
+État
+S01
+Code du Travail de Côte d'Ivoire
+Loi n° 2015-992 (modifiée Ord. n° 2021-902)
+20 juillet 2015 / 22 décembre 2021
+En vigueur
+S02
+Code Général des Impôts (CGI) & Annexes Fiscales
+Code national / Lois de Finances
+Édition 2026 (Annexe Fiscale 2026)
+En vigueur
+S03-A
+Loi relative à la protection des données à caractère personnel
+Loi n° 2013-450
+19 juin 2013
+En vigueur
+S03-B
+Loi relative au commerce électronique & transactions électroniques
+Loi n° 2013-546
+30 juillet 2013
+En vigueur
+S04
+Acte Uniforme OHADA relatif au Droit Comptable et à l'Information Financière (SYSCOHADA)
+Traité / Acte Uniforme communautaire
+Révisé 2017 / 2026
+En vigueur
+S05
+Conditions Générales des Services Numériques et Plateformes
+Texte réglementaire d'utilisation
+Version administrative 2026
+En vigueur
+Tableau 2 : Modèles de contrat identifiés dans les sources
+Code
+Type de modèle
+Anomalies / Écarts constatés par rapport au droit positif
+M01
+Modèle de contrat de travail écrit (Décret n° 96-198)
+Absence de mention obligatoire sur l'affiliation CNPS et la CMU [S01, Décret 96-198].
+M02
+Modèle de convention de stage-école
+Risque de requalification en CDI si la durée ou la mention d'immatriculation de l'établissement d'enseignement manque [S01, Art. 13.11].
+M03
+Modèle de contrat de travail temporaire (Intérim)
+Clause de renouvellement tacite prohibée non spécifiée clairement dans le corps du texte [S01, Art. 11.8].
+Types de contrats couverts et identifiants courts :
+cdd : Contrat de travail à durée déterminée
+cdi : Contrat de travail à durée indéterminée
+stage-ecole : Convention de stage d'étudiant / élève
+travail-temporaire : Contrat de mission d'intérim
+commerce-electronique : Contrat de fourniture de services ou vente en ligne (SaaS / B2C / B2B)
+bail-habitation : Contrat de location d'immeuble à usage d'habitation
+SECTION 2 — CADRE TRANSVERSAL
+2.1 Hiérarchie des textes
+IMPÉRATIVE — Les normes OHADA prévalent sur le droit interne : "Les Actes uniformes sont directement applicables et obligatoires dans les États parties" [S04, Art. 1].
+IMPÉRATIVE — Les dispositions du Code du travail sont d'ordre public général : "Toute clause d'un contrat en cours qui ne serait pas conforme aux dispositions du présent Code... est nulle de plein droit" [S01, Art. 110.1].
+2.2 Conditions de validité
+IMPÉRATIVE — Consentement exprès préalable en matière électronique : "Nul ne peut être contraint de poser un acte juridique par voie électronique" [S03-B, Art. 17].
+IMPÉRATIVE — Capacité légale : Mineur fixé à moins de 18 ans [S03-A, Art. 39, "mineur, toute personne âgée de moins de dix-huit ans"].
+SUPPLÉTIVE — Forme du contrat de travail : "Le contrat de travail est passé librement et... constaté dans les formes qu'il convient aux parties" [S01, Art. 14.2].
+2.3 Preuve et signature
+IMPÉRATIVE — Preuve du contrat de travail : "L'existence du contrat de travail se prouve par tous moyens" [S01, Art. 14.4].
+IMPÉRATIVE — Valeur de la signature électronique : "La signature électronique sécurisée liée à un certificat électronique qualifié a la même force probante que la signature manuscrite" [S03-B, Art. 37].
+SUPPLÉTIVE — Assistance pour les personnes ne sachant écrire : "il doit se faire assister de deux témoins qui certifient... l'identité de la personne" [S03-B, Art. 29].
+2.4 Clauses nulles ou réputées non écrites
+IMPÉRATIVE — Prohibition de la clause de non-concurrence post-contractuelle : "Est nulle de plein droit toute clause d'un contrat portant interdiction pour le travailleur d'exercer une activité quelconque à l'expiration du contrat" [S01, Art. 16.5].
+IMPÉRATIVE — Renonciation aux droits de licenciement : "Les parties ne peuvent renoncer à l'avance au droit de se prévaloir des règles relatives au licenciement" [S01, Art. 18.17].
+IMPÉRATIVE — Clause d'amende salariale ou de modification unilatérale du salaire dans le règlement intérieur : "Toutes autres clauses y figurant, notamment celles relatives à la rémunération sont considérées comme nulles de plein droit" [S01, Art. 16.1].
+2.5 Pénalités et intérêts de retard
+IMPÉRATIVE — Majoration de retard fiscale : 10 % au premier mois de retard + 1 % par mois supplémentaire [S02, LPF Art. 161, "Sanctions fiscales, règles générales"].
+NON TROUVÉ DANS LES SOURCES — Taux légal d'intérêt usuraire civil ou commercial non chiffré dans les textes extraits.
+2.6 Prescription et délais généraux
+IMPÉRATIVE — Conservation légale des pièces comptables, factures et livres : "doivent être conservés pendant un délai de dix ans" [S02, CGI Art. 440].
+IMPÉRATIVE — Priorité de réembauchage après licenciement économique : "bénéficie pendant deux ans d'une priorité d'embauche" [S01, Art. 18.9].
+SECTION 3 — FICHES PAR TYPE DE CONTRAT
+📄 FICHE 1 : cdi (Contrat de travail à durée indéterminée)
+Champs OBLIGATOIRES :
+Date et lieu d'établissement [Texte, S01 / Décret 96-198 Art. 2].
+Identité, profession et domicile de l'employeur [Texte, S01 / Décret 96-198 Art. 2].
+Nom, prénoms, sexe, date/lieu de naissance, nationalité, domicile du salarié [Texte, S01 / Décret 96-198 Art. 2].
+Classification professionnelle et salaire de base [Texte, S01 / Décret 96-198 Art. 2].
+Champs CONDITIONNELS :
+Durée et notification écrite de la période d'essai [Condition : Si l'essai est stipulé, S01 Art. 14.5, "le contrat doit être passé par écrit ou constaté par une lettre d'embauche"].
+Montant et nature de la garantie financière [Condition : Si poste à manipulation de fonds, S01 / Décret 96-196 Art. 1].
+Clauses INTERDITES :
+Interdiction d'exercice d'activité à l'expiration du contrat [Prohibée par S01 Art. 16.5, "Est nulle de plein droit toute clause... portant interdiction... à l'expiration du contrat"].
+Règles IMPÉRATIVES CHIFFRÉES : | Règle | Valeur exacte | Source + Article | Date | | :--- | :--- | :--- | :--- | | Période d'essai max (Ouvriers / Employés mensuels) | 1 mois | S01 / Décret 96-198 Art. 2 | 07/03/1996 | | Période d'essai max (Agents de maîtrise & Techniciens) | 2 mois | S01 / Décret 96-198 Art. 2 | 07/03/1996 | | Période d'essai max (Ingénieurs & Cadres) | 3 mois | S01 / Décret 96-198 Art. 2 | 07/03/1996 | | Préavis de rupture en période d'essai (Essai de 2 à 3 mois) | 15 jours | S01 / Décret 96-198 Art. 4 | 07/03/1996 |
+📄 FICHE 2 : cdd (Contrat de travail à durée déterminée)
+Champs OBLIGATOIRES :
+Mentions identiques au CDI + Terme précis ou événement futur certain [Texte, S01 Art. 14.3].
+Motif précis du recours au terme déterminable [Texte, S01 Art. 15.1].
+Champs CONDITIONNELS :
+Nom du salarié remplacé [Condition : Si CDD à terme imprécis pour remplacement, S01 Art. 15.9].
+Clauses INTERDITES :
+Clause de rupture unilatérale anticipée hors faute lourde ou force majeure [Prohibée par S01 Art. 15.9, "Le contrat de travail à durée déterminée ne peut être rompu avant terme que pour force majeure, accord commun ou faute lourde"].
+Règles IMPÉRATIVES CHIFFRÉES : | Règle | Valeur exacte | Source + Article | Date | | :--- | :--- | :--- | :--- | | Indemnité de fin de contrat (précarité) | 3 % du total des salaires bruts | S01 Art. 15.8 | 20/07/2015 | | Ancienneté minimale pour rupture unilatérale du salarié sur CDD imprécis | 6 mois | S01 Art. 15.9 | 20/07/2015 |
+📄 FICHE 3 : stage-ecole (Convention de stage-école)
+Champs OBLIGATOIRES :
+Constat par écrit [Texte, S01 Art. 13.11, "Cette convention doit être constatée par écrit"].
+Objectif de validation de diplôme ou formation professionnelle [Texte, S01 Art. 13.11].
+Champs CONDITIONNELS :
+Montant de l'indemnité forfaitaire de transport [Condition : Si durée supérieure à 1 mois, S01 / Décret d'application].
+Clauses INTERDITES :
+Absence d'écrit [Pénalité : Requalification automatique en CDI selon S01 Art. 13.11, "À défaut, elle est réputée être un contrat de travail à durée indéterminée"].
+Règles IMPÉRATIVES CHIFFRÉES : | Règle | Valeur exacte | Source + Article | Date | | :--- | :--- | :--- | :--- | | Crédit d'impôt stage-école (PME) | 25 000 FCFA par stagiaire | S02, CGI Art. 111 ter | 2026 | | Crédit d'impôt stage-école (Grandes Entreprises) | 50 000 FCFA par stagiaire | S02, CGI Art. 111 ter | 2026 |
+📄 FICHE 4 : commerce-electronique (Contrat de vente / service en ligne)
+Champs OBLIGATOIRES :
+Identité, raison sociale, adresse, e-mail, téléphone, RCCM et NFI [Texte, S03-B Art. 5].
+Indication claire des prix TTC, frais de livraison et taxes incluses [Texte, S03-B Art. 6].
+Étapes techniques pour conclure le contrat et corriger les erreurs de saisie [Texte, S03-B Art. 21].
+Champs CONDITIONNELS :
+Références de l'autorisation préalable [Condition : Si activité réglementée, S03-B Art. 5-5°].
+Clauses INTERDITES :
+Prospection directe par e-mail / SMS sans consentement préalable [Prohibée par S03-A Art. 22, "Est interdite... la prospection directe... sans consentement préalable"].
+Exemption automatique de responsabilité de plein droit du fournisseur [Prohibée par S03-B Art. 7].
+Règles IMPÉRATIVES CHIFFRÉES : | Règle | Valeur exacte | Source + Article | Date | | :--- | :--- | :--- | :--- | | Amende pour prospection directe non consentie (spam) | 1 000 000 à 10 000 000 FCFA | S03-A Art. 22 | 19/06/2013 | | Peine d'emprisonnement pour prospection non consentie | 1 à 5 ans | S03-A Art. 22 | 19/06/2013 | | Sanction pécuniaire maximale APDP (manquement simple) | 10 000 000 FCFA | S03-A Art. 51 | 19/06/2013 | | Sanction pécuniaire maximale APDP (récidive) | 5 % du CA HT (plafond 500M FCFA) | S03-A Art. 51 | 19/06/2013 |
+📄 FICHE 5 : bail-habitation (Contrat de bail à usage d'habitation)
+Champs OBLIGATOIRES :
+Identité des parties, consistance des locaux et montant du loyer [Texte, S02, CGI Art. 557].
+Attestation de régularité fiscale du bailleur / souscription [Texte, S02, LPF Art. 147 ter].
+Champs CONDITIONNELS :
+Mentions du bail principal en cas de sous-location [Condition : Si sous-bail, S02, CGI Art. 467].
+Clauses INTERDITES :
+Dépôt de garantie et avance de loyer supérieurs au plafond légal [Pénalisé par S02, CGI Art. 1143].
+Règles IMPÉRATIVES CHIFFRÉES : | Règle | Valeur exacte | Source + Article | Date | | :--- | :--- | :--- | :--- | | Plafond légal combiné (Caution + Avance sur loyer) | 2 mois caution + 2 mois avance | S02, CGI Art. 1143 | 2026 | | Taxe sur l'excédent des cautions/avances autorisées | 300 % du montant excédentaire | S02, CGI Art. 1143 | 2026 |
+SECTION 4 — FISCALITÉ (Tableau unique)
+Version du CGI utilisée : Code Général des Impôts Édition 2026 (avec Annexe Fiscale 2026).
+Type de contrat
+Impôt / Droit applicable
+Taux ou montant
+Base d'imposition
+Délai de déclaration / paiement
+Redevable légal
+Source + Article
+cdi / cdd
+Droits d'enregistrement & Timbre
+Exonération totale (0 FCFA)
+N/A
+Aucun
+Aucun
+S01 Art. 14.2 / S02 Art. 655
+cdi / cdd
+Impôt sur Traitements et Salaires (ITS)
+Barème progressif
+Salaire brut imposable
+Mensuel (au plus tard le 15)
+Employeur (retenue)
+S02, CGI Art. 115, 125
+bail-habitation
+Droits d'enregistrement
+2,5 %
+Montant cumulé des loyers de la durée du bail
+Dans le mois suivant la signature
+Preneur (solidaire)
+S02, CGI Art. 530, 666
+bail-habitation
+Taxe sur l'excédent de caution/avance
+300 %
+Montant dépassant 2 mois de caution + 2 mois d'avance
+Lors de la formalité d'enregistrement
+Propriétaire / Bailleur
+S02, CGI Art. 1143
+commerce-electronique
+TVA sur prestations / ventes
+18 % (taux normal) / 9 % (réduit)
+Prix HT des biens / services facturés
+Mensuel (au plus tard le 15)
+Prestataire / Vendeur
+S02, CGI Art. 359, 361
+Non-enregistrement d'acte obligatoire
+Amende pour défaut d'enregistrement
+Pénalité de 10 % + majorations
+Montant des droits simples dus
+Immédiat à la constatation
+Parties contractantes
+S02, LPF Art. 161
+SECTION 5 — RÉFÉRENCES AUTORISÉES & POINTS À VÉRIFIER
+5.1 Liste blanche des références normatives
+Loi n° 2015-992 du 20 juillet 2015 portant Code du Travail | Concernes : cdi, cdd, stage-ecole, travail-temporaire | En vigueur : Oui.
+Ordonnance n° 2021-902 du 22 décembre 2021 modifiant la Loi n° 2015-992 | Concernes : cdi, cdd | En vigueur : Oui.
+Loi n° 2013-450 du 19 juin 2013 relative à la protection des données à caractère personnel | Concernes : Tous contrats traités informatiquement, commerce-electronique | En vigueur : Oui.
+Loi n° 2013-546 du 30 juillet 2013 relative aux transactions électroniques | Concernes : commerce-electronique, signature numérique | En vigueur : Oui.
+Code Général des Impôts (CGI 2026) | Concernes : Fiscalité de tous les contrats | En vigueur : Oui.
+5.2 Contradictions entre sources ou modèles et textes
+Point 1 — Traitement du préavis de licenciement en cas d'essai :
+Décret n° 96-198 prévoit des préavis d'information de 2 à 15 jours selon la durée de l'essai [S01, Décret 96-198 Art. 4].
+Code du travail Art. 18.1 dispose que la rupture en période d'essai s'effectue "librement sans préavis et sans que l'une ou l'autre des parties puisse prétendre à indemnités" [S01, Art. 18.1].
+Règle prévalente : Le Code du Travail (Loi) prévaut sur le Décret. Gravité : IMPORTANT.
+5.3 Lacunes majeures dans les sources du notebook
+Point 1 : Absence du texte intégral du Code de Commerce ivoirien relatif aux baux commerciaux (seules les règles fiscales du CGI et du SYSCOHADA sont présentes). Gravité : BLOQUANT pour les baux commerciaux.
+Point 2 : Absence des barèmes exacts de l'ITS et du barème progressif de l'Impôt Général sur le Revenu (IGR) pour le calcul chiffré au centime des bulletins de paie. Gravité : IMPORTANT.
+
+
+
+
+
+
+
+
+
+
+Référentiel Juridique Backend pour l'Assistant de Rédaction Contractuelle « alt.redige »
+
+SECTION 1 — INVENTAIRE RAPIDE ET CARTOGRAPHIE DES SOURCES
+
+La construction du backend de l'assistant de rédaction contractuelle « alt.redige » exige un recensement rigoureux, exhaustif et traçable de l'ensemble des ressources juridiques, réglementaires et institutionnelles constituant le corpus de données. Dans le cadre de l'ingénierie d'un générateur automatique d'actes juridiques soumis au droit ivoirien et au droit communautaire OHADA, la traçabilité absolue des sources d'information d'entrée représente l'unique rempart contre le risque d'hallucination des modèles de langage (LLM). L'inventaire synthétisé ci-dessous cartographie la hiérarchie des textes normatifs applicables, l'ensemble des trames contractuelles disponibles ainsi que la typologie technique des contrats cibles, posant ainsi le socle d'ancrage déterministe et de sécurité juridique du moteur backend.
+
+1.1 Tableau des Sources Juridiques de Référence
+
+Code Source	Intitulé du texte / Document	Nature juridique	Date / Version	État d'intégration
+SRC-CIV-01	Code Civil Ivoirien — Titre Préliminaire & Livre I (Droits civils, Domicile, Absents)	Loi nationale	Loi n° 64-376 / Code Civil I	Intégré (Texte intégral fourni)
+SRC-NOM-01	Loi relative au Nom patronymique	Loi nationale	Loi n° 64-373 du 07/10/1964 mod. par Loi n° 83-799 du 02/08/1983	Intégré (Texte intégral fourni)
+SRC-ETC-01	Loi relative à l'État Civil	Loi nationale	Loi n° 2018-862 du 19/11/2018	Intégré (Texte intégral fourni)
+SRC-ETC-02	Loi instituant une procédure spéciale de déclaration de naissance, de rétablissement d'identité et de transcription	Loi nationale (spéciale)	Loi n° 2018-863 du 19/11/2018	Intégré (Texte intégral fourni)
+SRC-MAR-01	Loi relative au Mariage	Loi nationale	Loi n° 2019-570 du 26/06/2019	Intégré (Texte intégral fourni)
+SRC-DIV-01	Loi relative au Divorce et à la Séparation de corps	Loi nationale	Loi n° 64-376 du 07/10/1964 mod. par Loi n° 83-801 et Loi n° 98-748 du 23/12/1998	Intégré (Texte intégral fourni)
+SRC-FIL-01	Loi relative à la Filiation	Loi nationale	Loi n° 2019-571 du 26/06/2019	Intégré (Texte intégral fourni)
+SRC-FIS-01	Annexe Fiscale à la Loi de Finances	Texte fiscal / Tarifs	Version 2025 / 2026 (Annexe 1)	Partiel (Seuls les tarifs d'analyses/teneurs figurent au corpus)
+SRC-CGI-01	Code Général des Impôts (CGI 2026)	Code fiscal	Édition 2026	NON TROUVÉ DANS LES SOURCES (Fichier texte vide dans le corpus fourni)
+SRC-INT-01	Catalogue Solutions & Tarifs 2025 — DC-KNOWING CGA / Suite Flow	Document commercial & technique interne	Catalogue 2025	Intégré
+SRC-INT-02	Procès-verbal de réunion d'orientation & Naming (« Knowers »)	Transcriptions audio brutes & récapitulatif interne	Octobre 2026 / Récapitulatif	Intégré
+SRC-INT-03	Messages groupe WhatsApp — KNOWERS	Directives opérationnelles d'animation interne	Octobre 2026	Intégré
+SRC-TOOL-01	Spécification technique « Red Team Verifier » (Patrick Munro)	Instruction de vérification algorithmique	Version 2026.02.17	Intégré
+SRC-TOOL-02	Spécification fonctionnelle « IP Legal / Takedown » (§512 DMCA)	Instruction fonctionnelle backend	Version 1.0.0	Intégré
+SRC-OHADA	Actes Uniformes OHADA (Droit commercial général, Droit du travail)	Droit communautaire	À VÉRIFIER	NON TROUVÉ DANS LES SOURCES (Textes réels non transmis dans le corpus)
+SRC-TRV-01	Code du Travail de Côte d'Ivoire	Loi nationale	À VÉRIFIER	NON TROUVÉ DANS LES SOURCES (Texte législatif non transmis dans le corpus)
+
+1.2 Tableau des Modèles de Contrats & Anomalies Visibles
+
+Code Modèle	Type de contrat	Anomalies / Lacunes juridiques visibles
+MOD-FLOW-01	Convention d'abonnement / Licence logicielle « Suite Flow » (Solo, Business, Premium)	Incohérence de dénomination inter-sources : le catalogue et les messages WhatsApp mentionnent indifféremment « logiciels » et « applications » sans prévoir de clause formelle de licence d'utilisation (SaaS) ni de pénalités contractuelles exprès.
+MOD-FLOW-02	Contrat de prestations « Direction Financière Externalisée / DAF Senior »	Absence de trame contractuelle dans le corpus transmis ; mention tarifaire sous condition de « devis sur-mesure » sans encadrement des obligations de moyens ou de résultat.
+MOD-CDD-01	Contrat de Travail à Durée Déterminée (cdd)	NON TROUVÉ DANS LES SOURCES (Aucun modèle ni texte du Code du Travail ne figure dans le corpus).
+MOD-CDI-01	Contrat de Travail à Durée Indéterminée (cdi)	NON TROUVÉ DANS LES SOURCES (Aucun modèle ni texte du Code du Travail ne figure dans le corpus).
+MOD-STG-01	Convention de Stage École (stage-ecole)	NON TROUVÉ DANS LES SOURCES (Aucun modèle ne figure dans le corpus).
+MOD-CTT-01	Contrat de Travail Temporaire (travail-temporaire)	NON TROUVÉ DANS LES SOURCES (Aucun modèle ne figure dans le corpus).
+MOD-EC-01	Contrat de Commerce Électronique (commerce-electronique)	NON TROUVÉ DANS LES SOURCES (Absence des conditions générales de vente e-commerce dans le corpus).
+MOD-BAIL-01	Contrat de Bail d'Habitation (bail-habitation)	NON TROUVÉ DANS LES SOURCES (Absence de la loi sur les baux d'habitation dans le corpus).
+
+1.3 Typologie des Contrats Couverts
+
+Pour garantir la normalisation des appels d'API, du filtrage par le moteur d'IA et de la structuration de la base de données backend, la liste suivante fixe les identifiants techniques uniques au format minuscules-tirets :
+
+* cdd : Contrat de travail à durée déterminée
+* cdi : Contrat de travail à durée indéterminée
+* stage-ecole : Convention de stage école
+* travail-temporaire : Contrat de travail temporaire / d'intérim
+* commerce-electronique : Contrat de vente ou de prestation par voie électronique
+* bail-habitation : Contrat de bail à usage d'habitation
+
+Cet inventaire exhaustif des sources et cette standardisation des identifiants conditionnent la rigueur des règles transversales et des filtres de sécurité juridique analysés dans la section suivante.
+
+SECTION 2 — CADRE JURIDIQUE TRANSVERSAL & RÈGLES STRUCTURANTES
+
+Le cadre transversal réunit les principes fondamentaux du droit civil ivoirien et du droit communautaire régissant la validité des engagements, la capacité des parties contractantes, le formalisme probatoire et la hiérarchie des normes. Pour le backend de l'assistant de rédaction contractuelle « alt.redige », ces dispositions forment des barrières algorithmiques de sécurité (guardrails) destinées à empêcher l'émission automatique d'actes entachés de nullité d'ordre public.
+
+Règles de Rédaction & Qualification des Normes (Sévérité)
+
+Pour chaque sous-section ci-dessous, le contenu est ségrégé et classé selon une échelle stricte à 4 niveaux de sévérité juridique : IMPÉRATIVES, SUPPLÉTIVES, USAGE-PRATIQUE, et INCERTAINES. Chaque affirmation est assortie de sa citation exacte respectant strictement le format [Code source, Article/Section précis, "Extrait de 15 mots max"].
+
+2.1 Hiérarchie des Textes Normatifs (Droit Ivoirien / OHADA / Conventions)
+
+1. Règles IMPÉRATIVES :
+  * Territorialité des lois de police : Les lois de police et de sûreté obligent obligatoirement tous ceux qui habitent le territoire [Code Civil I, Art. 3, « Les lois de police et de sûreté obligent tous ceux qui habitent »].
+  * Intangibilité de l'ordre public : Il est strictement interdit de déroger, par des conventions particulières, aux lois qui intéressent l'ordre public et les bonnes mœurs [Code Civil I, Art. 6, « On ne peut déroger, par des conventions particulières, aux lois »].
+  * Condition de force exécutoire : Les lois ne sont exécutoires que du fait de leur promulgation par le Président de la République [Code Civil I, Art. 1, « Les lois sont exécutoires, dans tout le territoire ivoirien »].
+2. Règles SUPPLÉTIVES :
+  * Principe de non-rétroactivité : La loi ne dispose que pour l'avenir ; elle n'a point d'effet rétroactif [Code Civil I, Art. 2, « La loi ne dispose que pour l'avenir »], sous réserve d'amnisties légales ou dispositions expresses de lois spéciales [Loi n° 2018-863, Art. 12, « Les infractions commises dans le cadre de l'établissement... sont amnistiées »].
+3. Règles d'USAGE-PRATIQUE :
+  * Détermination du tribunal territorialement compétent en fonction du lieu d'exécution de l'obligation ou du domicile des parties [Code Civil I, Art. 111].
+4. Règles INCERTAINES :
+  * Primauté du Droit OHADA sur le Droit Ivoirien : En doctrine communautaire, les Actes Uniformes OHADA abrogent les dispositions de droit interne contraires et s'appliquent directement. Cependant, la justification textuelle exacte à partir des articles d'Actes Uniformes est : NON TROUVÉ DANS LES SOURCES (les textes d'Actes Uniformes OHADA n'étant pas physiquement fournis dans le corpus).
+
+2.2 Conditions Générales de Validité Contractuelle
+
+1. Règles IMPÉRATIVES :
+  * Jouissance des droits civils : Tout Ivoirien jouit des droits civils de plein droit [Code Civil I, Art. 8, « Tout Ivoirien jouira des droits civils »]. L'exercice des droits civils est indépendant de la citoyenneté politique [Code Civil I, Art. 7, « L'exercice des droits civils est indépendant »].
+  * Capacité des majeurs protégés : Le majeur interdit a légalement son domicile établi chez son tuteur [Code Civil I, Art. 108, « le majeur interdit aura le sien chez son tuteur »].
+  * Exigences fondamentales de validité : Tout contrat requiert le consentement non vicié, la capacité d'obliger, un objet certain et une cause licite [Code Civil I, Art. 6].
+2. Règles SUPPLÉTIVES :
+  * Élection de domicile : Lorsqu'un acte contient élection de domicile pour son exécution, les significations et poursuites peuvent être faites au domicile convenu [Code Civil I, Art. 111, « les significations, demandes et poursuites relatives de cet acte »].
+3. Règles d'USAGE-PRATIQUE :
+  * Insertion et vérification obligatoires du Numéro National d'Identification (NNI) ou du numéro RCCM dans l'acte [Loi n° 2018-862, Art. 24, « le numéro national d'identification du bénéficiaire de l'acte »].
+4. Règles INCERTAINES :
+  * Procédures d'annulation pour vices du consentement (erreur, dol, violence) appliquées spécifiquement aux contrats SaaS B2B en droit ivoirien : NON TROUVÉ DANS LES SOURCES.
+
+2.3 Preuve, Écrit et Signature Électronique
+
+1. Règles IMPÉRATIVES :
+  * Langue officielle de rédaction : Tous les actes juridiques et d'état civil doivent obligatoirement être rédigés en langue officielle [Loi n° 2018-862, Art. 24, « Ils sont rédigés dans la langue officielle »]. L'intervention d'un interprète assermenté est requise si une partie ne maîtrise pas la langue officielle [Loi n° 2018-862, Art. 27].
+  * Formalisme notarié obligatoire : Les conventions touchant aux régimes matrimoniaux ou aux biens immobiliers exigent l'acte notarié à peine de nullité [Loi n° 2019-570, Art. 58, « Toutes les conventions matrimoniales seront rédigées par acte notarié »].
+2. Règles SUPPLÉTIVES :
+  * Dématérialisation des actes : La déclaration, l'enregistrement, la conservation et la transmission des actes peuvent s'effectuer par voie électronique [Loi n° 2018-862, Art. 108, « la transmission dématérialisée des copies et extraits »].
+3. Règles d'USAGE-PRATIQUE :
+  * Mise en œuvre obligatoire des protocoles de sécurité, d'intégrité et de protection des données personnelles [Loi n° 2018-862, Art. 108, 109].
+4. Règles INCERTAINES :
+  * Valeur probante exacte et équivalence juridique de la signature électronique non certifiée dans les transactions commerciales B2B : NON TROUVÉ DANS LES SOURCES.
+
+2.4 Regard Critique sur les Clauses Nulles ou Réputées Non Écrites
+
+1. Règles IMPÉRATIVES :
+  * Nullité des clauses contraires à l'ordre public : Toute stipulation contractuelle dérogeant aux lois d'ordre public est nulle de plein droit [Code Civil I, Art. 6, « On ne peut déroger, par des conventions particulières, aux lois »].
+  * Nullité des actes accomplis en fraude des droits du conjoint : Toute obligation souscrite à la charge de la communauté ou aliénation faite en fraude des droits du conjoint après ordonnance de résidence séparée est nulle [Loi n° 64-376, Art. 8, « sera déclarée nulle, s'il est prouvé par ailleurs »].
+  * Prohibition des renonciations anticipées : Sont réputées non écrites les clauses privant une partie de ses recours judiciaires d'ordre public.
+2. Règles SUPPLÉTIVES :
+  * Confirmation ultérieure possible de certains actes frappés de nullité relative après la cessation de la cause de nullité [Loi n° 2019-570, Art. 82].
+3. Règles d'USAGE-PRATIQUE :
+  * Filtrage algorithmique préalable des mots-clés et clauses prohibées par le module de contrôle du backend.
+4. Règles INCERTAINES :
+  * Pouvoir de révision ou de modération judiciaire des clauses pénales manifestement excessives en droit civil général ivoirien : NON TROUVÉ DANS LES SOURCES.
+
+2.5 Pénalités, Intérêts de Retard & Sanctions Contractuelles
+
+1. Règles IMPÉRATIVES :
+  * Sanctions pénales des fausses déclarations : Emprisonnement de 1 à 5 ans et amende de 500 000 à 1 000 000 FCFA en cas de fausse déclaration ou de production d'attestation de complaisance [Loi n° 2018-863, Art. 20, « Est puni d'un emprisonnement d'un à cinq ans »].
+2. Règles SUPPLÉTIVES :
+  * NON TROUVÉ DANS LES SOURCES (Le régime légal d'encadrement des taux d'intérêts moratoires et de plafonnement des clauses pénales contractuelles d'affaires n'est pas précisé dans le corpus transmis).
+3. Règles d'USAGE-PRATIQUE :
+  * Envoi d'alertes automatiques multi-canaux (WhatsApp / SMS / Mail) avant application de pénalités contractuelles de retard [Catalogue DC-KNOWING, p. 7].
+4. Règles INCERTAINES :
+  * Taux de l'intérêt légal commercial ou bancaire applicable aux retards de paiement contractuels en Côte d'Ivoire : NON TROUVÉ DANS LES SOURCES.
+
+2.6 Prescription et Délais Généraux
+
+Le corpus documentaire contient un ensemble de délais légaux et de prescriptions dont la logique arithmétique doit être rigoureusement codée dans le backend, catégorisée selon les quatre niveaux de sévérité :
+
+1. Règles IMPÉRATIVES :
+  * Prescription trentenaire (30 ans) : Action en nullité relative du mariage [Loi n° 2019-570, Art. 31, « L'action en nullité se prescrit par trente ans »] ; Envoi en possession définitif des biens de l'absent après 30 ans d'absence [Code Civil I, Art. 128] ; Restitution des biens de l'absent par ses descendants dans les 30 ans de l'envoi définitif [Code Civil I, Art. 133].
+  * Prescription décennale (10 ans) : Déclaration d'absence en cas de procuration [Code Civil I, Art. 121, « après dix années révolues depuis sa disparition »] ; Jugement déclaratif de décès d'un disparu [Loi n° 2018-862, Art. 70, « sans que l'on ait de ses nouvelles depuis dix ans »].
+  * Prescription quadriennale (4 ans) : Requête en déclaration d'absence sans procuration [Code Civil I, Art. 115, « depuis quatre ans on n'en aura point eu »].
+  * Délais d'ordre public d'action ou de procédure : Délai de 300 jours du délai de viduité [Loi n° 2019-570, Art. 6] ; Délai de 3 mois (90 jours) pour la déclaration de naissance [Loi n° 2018-862, Art. 41] ; Délai de 15 jours pour la déclaration de décès [Loi n° 2018-862, Art. 53] ; Délai de 10 jours d'affichage obligatoire des publications de mariage [Loi n° 2019-570, Art. 15] ; Délai de 2 mois pour l'action en désaveu de paternité par le mari [Loi n° 2019-571, Art. 6] ; Délai de 6 mois pour la reprise de l'action en désaveu par les héritiers [Loi n° 2019-571, Art. 7] ; Délai d'un (1) an pour l'action en nullité des actes de disposition du logement familial [Loi n° 2019-570, Art. 53] et pour la déclaration de décès d'un disparu en péril [Loi n° 2018-862, Art. 64].
+2. Règles SUPPLÉTIVES :
+  * Délais biennaux (2 ans) : Application minimale de 2 ans avant demande de changement de régime matrimonial [Loi n° 2019-570, Art. 62, « après deux années d'application du régime adopté »] ; Durée de 2 ans requise avant demande de divorce par consentement mutuel [Loi n° 98-748, Art. 1] ; Durée maximale de 2 ans pour les mesures d'urgence ordonnées par le juge [Loi n° 2019-570, Art. 54].
+  * Délais d'instance et de réflexion : Délai de réflexion de 3 mois pour le divorce par consentement mutuel [Loi n° 98-748, Art. 12] ; Délai d'appel d'un (1) mois contre les ordonnances de rectification [Loi n° 2018-862, Art. 81] ; Délai d'appel de 15 jours sur les mesures provisoires de divorce [Loi n° 83-801, Art. 6].
+3. Règles d'USAGE-PRATIQUE :
+  * Calcul automatique par le backend des dates d'échéance et envoi de rappels calendaires automatisés avant l'expiration des délais légaux.
+4. Règles INCERTAINES :
+  * Délais de prescription accomplie pour les créances commerciales B2B sous le droit commun civil ivoirien sans texte OHADA d'appui : NON TROUVÉ DANS LES SOURCES.
+
+L'ensemble de ces règles de validité et de délais forme le sous-bassement normatif qui alimente les fiches techniques par type de contrat présentées ci-après.
+
+SECTION 3 — FICHES TECHNIQUES PAR TYPE DE CONTRAT
+
+Les fiches techniques ci-après constituent les règles d'injection et de validation (prompt engineering) destinées au moteur d'IA contractuel backend. Elles définissent pour chaque contrat les champs strictement obligatoires, les variables conditionnelles, les clauses prohibées et un tableau des règles chiffrées impératives.
+
+Règle de gestion des lacunes législatives : En l'absence des textes du Code du Travail ou des lois spéciales dans le corpus source, le moteur backend doit immédiatement lever un drapeau d'arrêt bloquant (ERR_MISSING_LABOR_CODE ou ERR_MISSING_STATUTE) lors de toute tentative de génération d'un contrat dont la base légale sous-jacente est absente.
+
+3.1 Contrat à Durée Déterminée (cdd)
+
+Bloc 1 : Champs OBLIGATOIRES
+
+* employer_name / employer_rccm : Raison sociale et numéro RCCM de l'employeur.
+* employee_fullname / employee_nni / employee_address : Identité, NNI et domicile de l'employé [Code Civil I, Art. 102].
+* job_title / job_category : Intitulé exact du poste et qualification professionnelle.
+* cdd_reason : Motif légal du recours au CDD (remplacement, surcroît d'activité) : NON TROUVÉ DANS LES SOURCES.
+* contract_start_date / contract_end_date : Date de prise d'effet et échéance du terme.
+* base_salary / payment_frequency : Montant de la rémunération et périodicité de paiement.
+* work_location : Lieu d'exécution des prestations.
+
+Bloc 2 : Champs CONDITIONNELS
+
+* probation_period_days : Clause de période d'essai (activée si renseignée).
+* non_compete_clause_active / confidentiality_clause_active : Clauses spécifiques de protection.
+* daily_worker_fortnight_pay : Périodicité de paie par quinzaine pour les journaliers [Catalogue DC-KNOWING, p. 6].
+
+Bloc 3 : Clauses INTERDITES ou à Risque
+
+* Clause d'insertion d'une condition résolutoire illicite ou contraire à l'ordre public [Code Civil I, Art. 6].
+* Clause de renouvellement tacite indéfini : NON TROUVÉ DANS LES SOURCES (Absence du Code du Travail dans le corpus).
+
+Bloc 4 : Tableau des Règles IMPÉRATIVES CHIFFRÉES
+
+Règle / Seuil	Valeur chiffrée (durée, taux, montant)	Qualification (IMPÉRATIVE)	Source & Citation (15 mots max)
+Durée maximale cumulative du CDD	NON TROUVÉ DANS LES SOURCES	IMPÉRATIVE	NON TROUVÉ DANS LES SOURCES
+Âge minimal de capacité de droit commun	18 ans révolus	IMPÉRATIVE	[Loi n° 2019-570, Art. 2, « L'homme et la femme avant dix-huit ans »]
+Amende pour fausse déclaration d'identité	500 000 à 1 000 000 FCFA	IMPÉRATIVE	[Loi n° 2018-863, Art. 20, « Est puni d'un emprisonnement d'un à cinq ans »]
+
+3.2 Contrat à Durée Indéterminée (cdi)
+
+Bloc 1 : Champs OBLIGATOIRES
+
+* employer_name / employer_rccm : Désignation complète de l'employeur.
+* employee_fullname / employee_nni / employee_address : Identité et domicile de l'employé [Code Civil I, Art. 102].
+* contract_start_date : Date de prise d'effet du contrat.
+* job_title / job_category : Poste et catégorie socio-professionnelle.
+* base_salary / allowances_details : Rémunération de base et accessoires.
+* work_location : Lieu principal de travail.
+
+Bloc 2 : Champs CONDITIONNELS
+
+* probation_period_days : Clause d'essai initiale et modalités de renouvellement.
+* mobility_clause_active : Zone géographique de mobilité.
+* ip_assignment_active : Clause de cession des droits de propriété intellectuelle sur les créations informatiques.
+
+Bloc 3 : Clauses INTERDITES ou à Risque
+
+* Clause de résiliation unilatérale sans préavis ni motif légitime : NON TROUVÉ DANS LES SOURCES.
+* Clause dérogeant aux dispositions d'ordre public civil [Code Civil I, Art. 6].
+
+Bloc 4 : Tableau des Règles IMPÉRATIVES CHIFFRÉES
+
+Règle / Seuil	Valeur chiffrée (durée, taux, montant)	Qualification (IMPÉRATIVE)	Source & Citation (15 mots max)
+Durée maximale de la période d'essai CDI	NON TROUVÉ DANS LES SOURCES	IMPÉRATIVE	NON TROUVÉ DANS LES SOURCES
+Majorité civile légale	18 ans révolus	IMPÉRATIVE	[Loi n° 2019-570, Art. 2, « L'homme et la femme avant dix-huit ans »]
+
+3.3 Convention de Stage École (stage-ecole)
+
+Bloc 1 : Champs OBLIGATOIRES
+
+* school_name / company_name / intern_fullname : Désignation tripartite des parties.
+* educational_program : Intitulé du cursus d'enseignement suivi.
+* internship_objectives : Missions pédagogiques confiées.
+* internship_start_date / internship_end_date : Durée précise du stage.
+* stipend_amount : Gratification minimale : NON TROUVÉ DANS LES SOURCES.
+
+Bloc 2 : Champs CONDITIONNELS
+
+* transport_allowance / meal_allowance : Prise en charge des frais de transport et de restauration.
+* evaluation_certificate_terms : Conditions de délivrance de l'attestation de fin de stage.
+
+Bloc 3 : Clauses INTERDITES ou à Risque
+
+* Clause affectant le stagiaire à une tâche permanente correspondant à un poste de travail permanent.
+* Clause d'interdiction absolue de recrutement post-stage.
+
+Bloc 4 : Tableau des Règles IMPÉRATIVES CHIFFRÉES
+
+Règle / Seuil	Valeur chiffrée (durée, taux, montant)	Qualification (IMPÉRATIVE)	Source & Citation (15 mots max)
+Durée maximale légale du stage école	NON TROUVÉ DANS LES SOURCES	IMPÉRATIVE	NON TROUVÉ DANS LES SOURCES
+Gratification minimale obligatoire	NON TROUVÉ DANS LES SOURCES	SUPPLÉTIVE	NON TROUVÉ DANS LES SOURCES
+
+3.4 Contrat de Travail Temporaire (travail-temporaire)
+
+Bloc 1 : Champs OBLIGATOIRES
+
+* agency_name / user_company_name / temporary_worker_fullname : Identification tripartite (ETT, Entreprise utilisatrice, Intérimaire).
+* mission_reason : Motif précis du recours à l'intérim.
+* mission_start_date / mission_end_date : Terme précis de la mission.
+* temp_salary_rate : Rémunération et indemnités de précarité : NON TROUVÉ DANS LES SOURCES.
+
+Bloc 2 : Champs CONDITIONNELS
+
+* ppe_equipment_list : Équipements de protection individuelle fournis par l'utilisateur.
+
+Bloc 3 : Clauses INTERDITES ou à Risque
+
+* Clause visant le remplacement de salariés en grève.
+* Clause prohibant l'embauche définitive par l'entreprise utilisatrice à l'issue de la mission.
+
+Bloc 4 : Tableau des Règles IMPÉRATIVES CHIFFRÉES
+
+Règle / Seuil	Valeur chiffrée (durée, taux, montant)	Qualification (IMPÉRATIVE)	Source & Citation (15 mots max)
+Durée maximale du contrat de travail temporaire	NON TROUVÉ DANS LES SOURCES	IMPÉRATIVE	NON TROUVÉ DANS LES SOURCES
+
+3.5 Contrat de Commerce Électronique (commerce-electronique)
+
+Bloc 1 : Champs OBLIGATOIRES
+
+* vendor_name / vendor_nni_rccm : Identité, coordonnées et immatriculation du vendeur [Loi n° 2018-862, Art. 24].
+* saas_product_module : Désignation des services ou applications (ex. modules Suite Flow) [Catalogue DC-KNOWING, p. 5].
+* price_ht / tax_rate / payment_terms : Prix HT, taxes applicables et modalités de paiement.
+* electronic_consent_flow : Procédure de validation électronique [Loi n° 2018-862, Art. 108].
+* privacy_policy_ref : Mentions relatives à la protection des données personnelles [Loi n° 2018-862, Art. 108].
+
+Bloc 2 : Champs CONDITIONNELS
+
+* saas_license_tier : Niveau de licence (Solo, Business, Premium).
+* sla_support_terms : Engagements de niveau de service et support technique [Catalogue DC-KNOWING, p. 7].
+
+Bloc 3 : Clauses INTERDITES ou à Risque
+
+* ERR-JUR-01 (Interdiction absolue) : Insertion de mécanismes de retrait ou de soumission à la juridiction fédérale américaine (ex. §512 DMCA US) dans un contrat local de droit civil/OHADA. Le moteur backend doit le bloquer automatiquement.
+* Clause déclinant toute responsabilité en cas de facturation non conforme FNE / DGI [Catalogue DC-KNOWING, p. 4, 7].
+
+Bloc 4 : Tableau des Règles IMPÉRATIVES CHIFFRÉES
+
+Règle / Seuil	Valeur chiffrée (durée, taux, montant)	Qualification (IMPÉRATIVE)	Source & Citation (15 mots max)
+Délai de rétractation consommateur e-commerce	NON TROUVÉ DANS LES SOURCES	IMPÉRATIVE	NON TROUVÉ DANS LES SOURCES
+Durée minimale de conservation des registres électroniques	NON TROUVÉ DANS LES SOURCES	IMPÉRATIVE	NON TROUVÉ DANS LES SOURCES
+
+3.6 Contrat de Bail d'Habitation (bail-habitation)
+
+Bloc 1 : Champs OBLIGATOIRES
+
+* lessor_fullname / tenant_fullname : Identités complètes du bailleur et du preneur.
+* property_description / property_address : Désignation des locaux et équipements.
+* monthly_rent_amount / payment_due_date : Montant du loyer et modalités de paiement.
+* security_deposit_amount : Dépôt de garantie : NON TROUVÉ DANS LES SOURCES.
+* lease_duration_months : Durée de la location.
+
+Bloc 2 : Champs CONDITIONNELS
+
+* rent_indexation_clause : Modalités de révision du loyer.
+* utility_charges_breakdown : Répartition des charges locatives.
+* termination_clause_active : Clause résolutoire pour défaut de paiement.
+
+Bloc 3 : Clauses INTERDITES ou à Risque
+
+* Clause imposant un mode de paiement exclusif du loyer sans alternative.
+* Clause interdisant au preneur d'héberger ses ascendants ou descendants en ligne directe [Code Civil I, Art. 6 ; Loi n° 2019-570, Art. 48].
+
+Bloc 4 : Tableau des Règles IMPÉRATIVES CHIFFRÉES
+
+Règle / Seuil	Valeur chiffrée (durée, taux, montant)	Qualification (IMPÉRATIVE)	Source & Citation (15 mots max)
+Plafond légal du dépôt de garantie locatif	NON TROUVÉ DANS LES SOURCES	IMPÉRATIVE	NON TROUVÉ DANS LES SOURCES
+Plafond d'avance de loyer exigible	NON TROUVÉ DANS LES SOURCES	IMPÉRATIVE	NON TROUVÉ DANS LES SOURCES
+
+Les conditions de forme et de fond encadrant ces typologies contractuelles s'articulent directement avec le régime fiscal et d'enregistrement applicable aux actes juridiques en Côte d'Ivoire.
+
+SECTION 4 — MATRICE FISCALE CONTRACTUELLE
+
+L'intégration de la dimension fiscale dans le backend de l'assistant de rédaction est indispensable pour prémunir les utilisateurs contre tout risque d'exigibilité tardive, de redressement ou de pénalités de retard appliquées par la Direction Générale des Impôts (DGI). La matrice ci-dessous rassemble l'ensemble des données fiscales, tarifs et redevances expressément vérifiés dans le corpus transmis.
+
+4.1 Tableau Synthétique Unique de la Fiscalité Contractuelle
+
+Type de contrat / Acte	Impôt / Droit / Taxe applicable	Taux ou Montant	Assiette / Base imposable	Délai d'exigibilité	Redevable légal	Source précise (Code/Annexe + Article + Extrait <= 15 mots)
+Prestations de laboratoire / Teneur en eau	Tarif d'analyse réglementé	18 000 FCFA	Par échantillon / analyse	À la commande / prestation	Client requérant	[Annexe Fiscale, p. 1, « Teneur en eau : 18 000 francs »]
+Prestations de laboratoire / Teneur en sédiment	Tarif d'analyse réglementé	32 000 FCFA	Par échantillon / analyse	À la commande / prestation	Client requérant	[Annexe Fiscale, p. 1, « Teneur en sédiment : 32 000 francs »]
+Prestations de laboratoire / Viscosité cinématique	Tarif d'analyse réglementé	32 000 FCFA	Par échantillon / analyse	À la commande / prestation	Client requérant	[Annexe Fiscale, p. 1, « Viscosité cinématique : 32 000 francs »]
+Total pack d'analyses combinées	Tarif d'analyse réglementé	197 000 FCFA	Pack d'analyses global	À la prestation	Client requérant	[Annexe Fiscale, p. 1, « Total 197 000 francs »]
+Abonnement Logiciel SaaS (Sell Flow)	Facturation normalisée FNE / TVA	Taux TVA standard / Tarification : à partir de 10 000 FCFA HT/mois	Montant mensuel HT de la licence	Mensuel / À la facturation	Prestataire éditeur / Client	[Catalogue DC-KNOWING, p. 7, « À partir de 10 000 FCFA HT/mois »]
+Abonnement Logiciel SaaS (Compta / RH / Task / ATS Flow)	Facturation normalisée FNE / TVA	Taux TVA standard / Tarification : à partir de 15 000 FCFA HT/mois	Montant mensuel HT de la licence	Mensuel / À la facturation	Prestataire éditeur / Client	[Catalogue DC-KNOWING, p. 6, 8, « À partir de 15 000 FCFA HT/mois »]
+Régime fiscal des Microentreprises (RME) / Facturation TVA	Interdiction de facturer la TVA	Impôt synthétique RME / TVA non facturable	Chiffre d'affaires global	Selon échéancier DGI	Exploitant RME	[PV Réunion Knowers, p. 2 / WhatsApp, p. 2, « Régime des Microentreprises »]
+Régime du Très Petit Entreprenariat (TEE / TCE)	Régime fiscal simplifié	Selon barème DGI (À VÉRIFIER)	Chiffre d'affaires / Activité	Selon échéancier DGI	Entreprenant	[PV Réunion Knowers, p. 2, « obligations fiscales des TEE et des RME »]
+Contrat de Bail d'Habitation (bail-habitation)	Droits d'enregistrement & Timbre	NON TROUVÉ DANS LES SOURCES	Loyers cumulés + charges	À VÉRIFIER	Preneur / Bailleur	NON TROUVÉ DANS LES SOURCES (Fichier CGI 2026 vide)
+Contrat de Travail (cdd / cdi)	Taxe sur les salaires (ITS, CNPS)	NON TROUVÉ DANS LES SOURCES	Masse salariale brute	Mensuel	Employeur	NON TROUVÉ DANS LES SOURCES (Fichier CGI 2026 vide)
+Enregistrement des Contrats Commerciaux	Droits d'enregistrement proportionnels / fixes	NON TROUVÉ DANS LES SOURCES	Montant total du marché / contrat	À VÉRIFIER	Parties contractantes	NON TROUVÉ DANS LES SOURCES (Fichier CGI 2026 vide)
+
+Avertissement d'intégrité backend : Le fichier d'entrée CGI 2026 TEXT.txt transmis dans le corpus source étant intégralement vide, les taux de droits d'enregistrement, taxes sur salaires et droits de timbre généraux sur les contrats n'ont pas pu être extraits de manière certifiée. Leur imputation directe par le moteur IA sans validation préalable par un fiscaliste est strictement bloquée.
+
+L'identification de ces données manquantes s'inscrit dans la démarche globale de contrôle qualité et de vérification contradictoire détaillée dans la section finale.
+
+SECTION 5 — RÉFÉRENCES AUTORISÉES, INCOHÉRENCES ET LACUNES
+
+Cette section constitue le protocole d'assurance qualité (Red Teaming) du système. Elle fixe le périmètre fermé des sources de connaissances autorisées pour l'IA, répertorie les contradictions constatées entre les documents du corpus et dresse la matrice des lacunes majeures devant être comblées avant la mise en production.
+
+5.1 Liste Blanche des Références Normatives Autorisées
+
+L'assistant de rédaction « alt.redige » est formellement restreint à l'exploitation exclusive des sources documentaires suivantes :
+
+1. Textes Législatifs & Réglementaires Ivoiriens :
+  * Code Civil Ivoirien (Code Civil I — Loi n° 64-376).
+  * Loi n° 64-373 modifiée par Loi n° 83-799 (Nom patronymique).
+  * Loi n° 2018-862 (État Civil).
+  * Loi n° 2018-863 (Procédure spéciale de déclaration de naissance et de rétablissement d'identité).
+  * Loi n° 2019-570 (Mariage).
+  * Loi n° 64-376 modifiée par Lois n° 83-801 et n° 98-748 (Divorce et Séparation de corps).
+  * Loi n° 2019-571 (Filiation).
+  * Annexe Fiscale (Tarifs d'analyses de laboratoire - Annexe 1).
+2. Documents de Doctrine et Spécifications Internes DC-KNOWING CGA :
+  * Catalogue Solutions & Tarifs 2025 — Suite Flow (Compta Flow, RH Flow, Sell Flow, Legal Flow, Task Flow, ATS Flow).
+  * Procès-verbal d'orientation stratégique et choix de Naming (« Knowers »).
+  * Directives opérationnelles d'animation du groupe WhatsApp « KNOWERS ».
+3. Spécifications Techniques Backend :
+  * Module de vérification « Legal Red Team Verifier » (Patrick Munro, v2026.02.17).
+  * Module de gestion de propriété intellectuelle et retrait « Takedown / DMCA §512 » (v1.0.0).
+
+Interdiction absolue : Tout recours à une source externe non listée ci-dessus (jurisprudence non transmise, coutumes non codifiées, lois étrangères non visées) est strictement prohibé par le moteur d'inférence.
+
+5.2 Relevé des Contradictions Inter-Sources et Modèles
+
+Réf. Contradiction	Description du conflit / Divergence constatée	Niveau de Gravité	Impact opérationnel Backend
+ERR-NOM-01	Terminologie de la Suite Flow : Le catalogue commercial emploie indifféremment « 6 logiciels » (p. 5) et « applications » (p. 8), tandis que les échanges internes (PV p. 3) soulignent la nécessité de trancher avec les informaticiens entre « application » ou « logiciel ».	MINEUR	Risque de confusion dans la génération automatique des clauses d'objet du contrat SaaS.
+ERR-PUB-01	Mention publique de la Suite Flow : Le document de cadrage interne interdit la promotion commerciale directe dans la communauté, alors que les messages WhatsApp officiels arrêtés par la direction incluent explicitement « La Suite Flow — une suite d'applications bureautiques » parmi les piliers du groupe (Message 1).	IMPORTANT	Divergence de posture rédactionnelle entre la doctrine interne et les gabarits de communication.
+ERR-JUR-01	Champ territorial du module Takedown : Le module de gestion IP Legal / Takedown est entièrement structuré sur la section 512 du DMCA (droit fédéral américain), alors que le référentiel contractuel général est ancré en Côte d'Ivoire (droit civil/OHADA).	BLOQUANT	Injection intempestive de mécanismes de juridiction fédérale US (§512g) dans des contrats B2B locaux. Le backend doit lever une erreur bloquante si ce module est invoqué hors contexte US.
+ERR-NAM-01	Dénomination de la communauté d'affaires : Arbitrage non stabilisé entre la marque actuelle « KNOWERS » et la proposition « Fiscalité, Gestion et Technologie » (PV p. 1).	MINEUR	Incohérence potentielle dans les en-têtes et clauses de désignation des parties partenariales.
+
+5.3 Matrice des Lacunes Majeures du Corpus Documentaire
+
+Réf. Lacune	Élément manquant dans le corpus	Niveau de Gravité	Action corrective requise
+LAC-TRV-01	Absence intégrale du Code du Travail Ivoirien : Aucun article du Code du Travail régissant la durée du CDD, les préavis, les indemnités de licenciement ou le travail temporaire ne figure au corpus.	BLOQUANT	Impossibilité de générer des contrats cdd, cdi, stage-ecole ou travail-temporaire certifiés sans intégration préalable de la loi sociale. Levée obligatoire du drapeau ERR_MISSING_LABOR_CODE.
+LAC-CGI-01	Vacuité du fichier Code Général des Impôts (CGI 2026) : Le fichier transmis est vide (CGI 2026 TEXT.txt), ne contenant aucun tarif de droit de timbre ou d'enregistrement contractuel.	BLOQUANT	Blocage de la matrice fiscale automatique pour les baux, ventes et prestations de services.
+LAC-OHADA-01	Absence des Actes Uniformes OHADA : Bien que le SYSCOHADA et l'environnement communautaire soient cités (Catalogue p. 2, 5), aucun texte de loi OHADA (Droit Commercial Général, Sociétés) n'est transmis.	BLOQUANT	Interdiction de générer des baux commerciaux ou des actes d'affaires régis par l'OHADA.
+LAC-EC-01	Absence de la législation spécifique sur le Commerce Électronique : Défaut du texte de loi ivoirien régissant la cybercroissance, la signature électronique qualifiée et la protection du consommateur en ligne.	IMPORTANT	Encadrement des contrats commerce-electronique limité au droit commun civil.
+LAC-BAIL-01	Absence de la Loi sur les Baux d'Habitation : Défaut du texte réglementant le plafonnement des loyers, avances et cautions locatives en Côte d'Ivoire.	IMPORTANT	Impossibilité de valider automatiquement les plafonds chiffrés des contrats bail-habitation.
+
+Statut : extrait des sources, à valider par un juriste.
