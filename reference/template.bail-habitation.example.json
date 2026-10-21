@@ -1,0 +1,26 @@
+{
+  "id": "bail-habitation",
+  "label": "Bail d'habitation",
+  "description": "Location d'un logement à usage d'habitation",
+  "status": "draft",
+  "legal_review": { "status": "pending", "reviewer": null, "date": null },
+  "required_fields": [
+    { "key": "bailleur", "label": "Identité du bailleur", "question_hint": "Nom complet du bailleur ?" },
+    { "key": "locataire", "label": "Identité du locataire", "question_hint": "Nom complet du locataire ?" },
+    { "key": "logement", "label": "Désignation du logement", "question_hint": "Type de logement et adresse ?" },
+    { "key": "loyer", "label": "Loyer mensuel en FCFA", "question_hint": "Montant du loyer mensuel ?" },
+    { "key": "duree", "label": "Durée du bail", "question_hint": "Durée du bail ?" }
+  ],
+  "optional_fields": [
+    { "key": "depot_garantie", "label": "Dépôt de garantie" },
+    { "key": "preavis", "label": "Durée du préavis" },
+    { "key": "date_effet", "label": "Date de prise d'effet" }
+  ],
+  "required_articles": [
+    "Objet", "Durée", "Loyer", "Obligations du locataire", "Résiliation", "Signatures"
+  ],
+  "legal_notes": [],
+  "validators": [],
+  "_comment_legal": "legal_notes et validators restent VIDES tant qu'Alex n'a pas fourni du contenu validé par un juriste. Ne rien inventer ici. Format prévu pour legal_notes : tableau de chaînes courtes, ex. « Le dépôt de garantie ne peut pas excéder N mois de loyer (source : ..., validé par : ...) ». Format prévu pour validators : { id, severity, description, check } où check sera défini avec le juriste.",
+  "skeleton_markdown": "# Contrat de bail à usage d'habitation\n\nEntre les soussignés :\n\n**[À COMPLÉTER : nom complet du bailleur]**, demeurant à [À COMPLÉTER : adresse du bailleur], ci-après désigné « le **Bailleur** »,\n\net\n\n**[À COMPLÉTER : nom complet du locataire]**, demeurant à [À COMPLÉTER : adresse du locataire], ci-après désigné « le **Locataire** »,\n\nil a été convenu et arrêté ce qui suit :\n\n## Article 1 – Objet du contrat\n\nLe Bailleur donne à bail au Locataire, qui l'accepte, [À COMPLÉTER : désignation du logement] situé à [À COMPLÉTER : adresse du logement], à usage exclusif d'habitation.\n\n## Article 2 – Durée et loyer\n\n1. Le bail est consenti pour une durée de [À COMPLÉTER : durée du bail].\n2. Le loyer mensuel est fixé à [À COMPLÉTER : montant du loyer] FCFA, payable d'avance au plus tard le [À COMPLÉTER : jour du mois] de chaque mois.\n3. Le dépôt de garantie s'élève à [À COMPLÉTER : montant du dépôt de garantie].\n\n## Article 3 – Obligations du Locataire\n\nLe Locataire s'engage à :\n\n- payer le loyer aux échéances convenues ;\n- user paisiblement des lieux ;\n- ne pas sous-louer sans accord écrit du Bailleur ;\n- restituer les lieux en bon état à la fin du bail.\n\n## Article 4 – Résiliation\n\n1. Chacune des parties peut résilier le bail moyennant un préavis de [À COMPLÉTER : durée du préavis].\n2. Le congé est notifié par écrit.\n\n## Article 5 – Signatures\n\nFait à [À COMPLÉTER : lieu], le [À COMPLÉTER : date], en deux exemplaires originaux.\n\n| Le Bailleur | Le Locataire |\n|---|---|\n| Lu et approuvé | Lu et approuvé |\n|  |  |\n"
+}
