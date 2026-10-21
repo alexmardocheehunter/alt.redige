@@ -115,20 +115,65 @@ Gravité réévaluée par l'auditeur, avec justification en §4.
 
 ## 4. Détail des verdicts et corrections
 
-### P0-1 — L'interface n'est pas livrée · **hors périmètre de correction**
+### P0-1 — L'interface livrée ne parle pas au backend · **hors périmètre de correction — BLOQUANT**
 
-`public/index.html` est une page provisoire de 49 lignes. Le backend
-fonctionne, mais **l'utilisateur final n'a rien devant lui** : ni chat, ni
-Canvas, ni export, ni impression.
+**État constaté à la fin de la vérification.** Le fichier `public/index.html` a
+été remplacé par le frontend livré par l'humain (35 413 octets, « alt.redige »).
+**Il n'est pas une page provisoire : c'est une maquette fonctionnelle.**
 
-Conformément à la consigne, le frontend n'a pas été écrit. À la place,
-`docs/INTEGRATION-CHECKLIST.md` liste tout ce que le frontend doit consommer
-(routes, en-têtes, événements SSE, codes d'issue, règles de restauration du
-document, export PDF par `window.print()`, CSP).
+**Mais il ne consomme pas l'API.** Analyse du fichier livré :
 
-**Point de vigilance nouveau** : la CSP posée par le serveur
-(`script-src 'self'`) **interdit tout script inline**. Le frontend livré
-devra donc référencer ses scripts, ou il faudra demander un nonce.
+| Contrôle | Résultat |
+|---|---|
+| Appels `fetch` / `XMLHttpRequest` / `EventSource` / `WebSocket` | **aucun** |
+| Chaînes contenant `/api/` | **aucune** |
+| Noms d'événements SSE (`ready`, `text_delta`, `canvas_start`, `canvas_delta`, `canvas_set`, `done`) | **aucun** |
+| Clés de `canvas_set` (`placeholders`, `issues`, `contract_type`, `edits_applied`) | **aucune** |
+| Appel réseau réel | `window.claude.use('sample')` — **un fournisseur d'IA dans le navigateur**, pas le serveur |
+| Prompt utilisé | le sien (« Tu es un juriste rédacteur… »), pas `prompts/system.fr.md` |
+| Repli | `demo(text)` : un contrat **codé en dur** dans le fichier |
+| Export Word | **jsPDF/JSZip dans le navigateur**, pas `POST /api/export/docx` |
+| Export PDF | **jsPDF dans le navigateur**, pas `window.print()` (contrairement au contrat §3.4) |
+| Authentification | fausse : nom et e-mail demandés, stockés dans `localStorage` (`altredige.user`) |
+
+**Conséquences.**
+
+1. **Tout le backend est hors circuit** : boucle agentique, outils, modèles de
+   contrat, validateurs juridiques, garde-fou de sécurité, contrôle
+   d'invention, export Word serveur, journalisation. Aucun n'est appelé.
+2. **Le garde-fou P0-3 ne peut pas jouer** : le contrôle serveur des champs
+   obligatoires n'a lieu que si le front appelle `/api/chat`.
+3. **Les données du contrat partent ailleurs** : vers le fournisseur d'IA du
+   navigateur, hors du périmètre de `docs/NOTE-CONFORMITE-DONNEES.md`.
+4. **L'export PDF/Word du navigateur produit un document différent de celui
+   que le serveur validerait** : la maquette produit des blocs
+   `{t:"h"|"p"}`, pas le Markdown restreint du contrat.
+5. **La CSP bloque les deux scripts externes** : `script-src 'self' 'nonce-…'`
+   n'autorise pas `https://cdnjs.cloudflare.com`, d'où `jszip.min.js` et
+   `jspdf.umd.min.js` ne sont pas chargés → `JSZip` et `jspdf` sont
+   **indéfinis** → les boutons d'export lèvent une exception. Le nonce
+   injecté par le serveur ne s'applique qu'au script inline de la page.
+6. **L'implémentation d'`AGENT-PROTOCOL.md` est nulle** : aucun des nouveaux
+   événements n'est produit ni consommé.
+
+**Ce que j'ai fait.** Conformément à la consigne (« n'écris pas le frontend »),
+je n'ai **pas** modifié le fichier livré. J'ai vérifié que le serveur le sert
+tel quel (avec le nonce CSP injecté à la volée, sans modifier le disque) et
+que la CSP correspond au nonce de la page.
+
+**Ce qu'il reste à faire — c'est désormais le premier obstacle du projet :**
+
+| # | Action | Responsable |
+|---|---|---|
+| F1 | Faire consommer `/api/chat` (SSE) au lieu de `window.claude.use(...)` : lecture du flux, `previousDoc`, restauration en cas d'erreur, `canvas_set` comme seule source de vérité. | Équipe frontend |
+| F2 | Faire consommer `POST /api/export/docx` (le serveur produit déjà un `.docx` conforme et l'archive est vérifiée). | Équipe frontend |
+| F3 | Faire produire le PDF par `window.print()` avec la feuille `@media print` (contrat §3.4), ou faire une décision explicite sur jsPDF + l'autoriser dans la CSP. | Équipe frontend + Alex |
+| F4 | Supprimer la dépendance au CDN : héberger `jszip`/`jspdf` localement, ou les retirer. Une application qui rédige des contrats ne doit pas charger du code exécuté depuis un tiers au moment de la génération. | Équipe frontend |
+| F5 | Remplacer la fausse authentification (nom/e-mail dans `localStorage`) par le vrai mécanisme (`ACCESS_CODE` ou jeton d'identité). | Alex + frontend |
+| F6 | Implémenter les événements d'`AGENT-PROTOCOL.md` côté front (`ask_user`, `phase`, `plan`, `step`, `sources`, `suggestions`). | Équipe frontend |
+
+Le détail des routes, des événements et des règles client figure dans
+`docs/INTEGRATION-CHECKLIST.md`.
 
 ### P0-2 — Une modification ciblée peut supprimer un article · **corrigé**
 
@@ -609,19 +654,72 @@ du modèle (§2).
 
 ---
 
-## 10. Récapitulatif
+## 10. `AGENT-PROTOCOL.md` — implémentation partielle
+
+L'humain a fourni `AGENT-PROTOCOL.md` (extension **additive** du contrat
+d'API) pendant les travaux. Conformément à la consigne, ces éléments étaient
+« hors audit » ; le protocole étant arrivé, la priorité listée par le
+document lui-même a été suivie.
+
+| § | Élément | État |
+|---|---|---|
+| §2 | Enveloppe `seq` / `t` sur chaque événement | ✅ fait |
+| §3 | `phase` | ⚠️ type et charge utile prêts, **non émis** par la boucle |
+| §4 | `plan` / `step` | ⚠️ idem |
+| §5 | `thinking_*` | ❌ non fait (dernier de la liste de priorité) |
+| §6 | `tool_start` / `tool_end` | ⚠️ idem |
+| §8 | **`ask_user`** | ✅ **fait** — c'est la priorité 1, et c'est le point que le constat P0-3 exigeait |
+| §9 | `suggestions` | ❌ non fait |
+| §10 | `retry` / `warning` | ❌ non fait |
+| §12 | `done` enrichi (`request_id`, `duration_ms`) | ✅ fait |
+| §16 | Codes `cancelled`, `conflict`, `content_filtered` | ❌ non faits |
+| §11 | `canvas_start` enrichi (`target`, `reason`) | ❌ non fait |
+
+**Ce qui est fait, précisément :**
+
+- un **outil `ask_user`** est exposé au modèle (4ᵉ outil) : il émet
+  l'événement `ask_user` et **arrête le tour** sur `done(awaiting_input)` ;
+- le **garde-fou P0-3** ne se contente plus de refuser l'écriture : il
+  **pose la question**. Sur une demande sans information exploitable,
+  l'événement `ask_user` est de type `form`, avec un champ par champ
+  obligatoire manquant ; le tour s'arrête, le contrat n'est pas écrit ;
+- le client peut renvoyer des **réponses structurées** (`answers`) ;
+  elles sont validées, mais le texte de `messages` reste la source — le
+  protocole l'exige ;
+- l'enveloppe `seq` / `t` est appliquée à **tous** les événements, y compris
+  ceux du contrat d'API v1.0, qui n'en sont pas modifiés.
+
+**Ce qui reste à faire** : les §3 à §6 et §9 à §11, qui demandent de
+connaître l'interface du front pour être utiles. Ils sont typés dans
+`src/agent/events.ts` : il suffit de les émettre.
+
+**Divergence signalée.** Le protocole nomme `max_tokens` là où le contrat
+v1.0 nomme `max_steps` (`done.stop_reason`). La valeur du contrat est
+conservée, pour ne pas casser un front déjà écrit contre lui. À trancher
+par Alex.
+
+---
+
+## 11. Récapitulatif
 
 | Vague | Constats traités | État |
 |---|---|---|
-| Vague 0 | P0-2, P0-3, P0-4 (résiduel), P1-1 / P2-2 | **Fait** — tests au vert (195/195), typecheck exit 0, smoke 10/10. Évaluation réelle **non conclue** (réseau). |
+| Vague 0 | P0-2, P0-3, P0-4 (résiduel), P1-1 / P2-2 | **Fait** — tests au vert, typecheck exit 0, smoke 10/10. Évaluation réelle **non conclue** (réseau). |
 | Vague 1 | P1-2, P1-3, P1-4, P1-5, P1-6 (spécifié), P2-6, P2-7, S1, S2/S3/S8, S4/S5 | **Fait** (P1-6 spécifié, pas implémenté). |
 | Vague 2 | P2-1, P2-3, P2-5, P3-1 à P3-9, S11 | **Fait** ; P2-4 proposé, non appliqué. |
-| Hors périmètre | P0-1 | **Checklist d'intégration livrée** ; le frontend reste à faire. |
+| Hors périmètre | P0-1 | **Le fichier est livré, mais il n'appelle pas le backend** : six écarts chiffrés au §4, une liste d'actions F1 à F6 pour l'équipe frontend. `docs/INTEGRATION-CHECKLIST.md` fait foi. |
+| Protocole agent | `AGENT-PROTOCOL.md` | **§2, §8, §12 faits** (dont `ask_user`, exigé par P0-3) ; §3 à §6 et §9 à §11 typés mais non émis. |
 
 **Ce qui n'a pas été fait, et doit l'être avant une mise en production :**
-l'interface (P0-1), l'authentification par jeton (P2-6), la relecture
-juridique tracée des modèles (J1), et trois exécutions de l'évaluation réelle
-sur un réseau sain (R1).
+
+1. **Le front doit consommer le backend** (F1 à F6). C'est le premier
+   obstacle : tant que le front appelle `window.claude.use(...)`, le backend
+   — et donc tous ses garde-fous — est inerte.
+2. **L'authentification par jeton** (P2-6).
+3. **La relecture juridique tracée** des 9 modèles (J1).
+4. **Trois exécutions de l'évaluation réelle** sur un réseau sain (R1).
+5. **Les §3 à §6 et §9 à §11 du protocole agent**, une fois l'interface du
+   front connue.
 
 **Cet audit technique ne constitue pas une certification de conformité au
 droit ivoirien ou OHADA.** Il établit que le dispositif de contrôle existe,
