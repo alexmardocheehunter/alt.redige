@@ -176,7 +176,7 @@ Fonction pure `validate(markdown, template?) → { placeholders: number, issues:
 - `multiple_titles` / `missing_title` (warning) : il faut exactement un `# `.
 - `missing_article` (warning) : pour chaque entrée de `template.required_articles`, un `##` dont l'intitulé contient ce mot (insensible à la casse et aux accents).
 - `placeholder_format` (info) : crochets `[À COMPLÉTER` sans `]` fermant.
-- `validators` du modèle (règles juridiques chiffrées) : **vide en V1**. Prévois l'emplacement, n'implémente aucune règle sans contenu validé par un juriste.
+- `validators` du modèle (règles juridiques chiffrées) : **implémentées** depuis la réception du référentiel juridique (`reference/TOUTES LES INFOS LEGALES.txt`). Types de contrôles : `max_duration_months`, `min_amount_fcfa`, `max_amount_fcfa`, `min_percentage`, `min_age_years`, `required_phrases`, `forbidden_phrases`. Un contrôle peut être borné à un périmètre (`scope`) : sans périmètre, la valeur la plus extrême du document est comparée, ce qui produit des faux positifs. Une valeur absente du document rend le contrôle **sans conclusion** : aucun problème n'est signalé.
 
 Tests unitaires obligatoires (vitest) avec `reference/sample-bail.md` : 8 placeholders, 0 issue.
 

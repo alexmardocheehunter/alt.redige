@@ -166,3 +166,10 @@ npm start                 # compile puis lance le serveur
 
 Points d'entrée : `GET /`, `GET /api/health`, `GET /api/templates`,
 `POST /api/chat` (SSE), `POST /api/export/docx`.
+
+Neuf types de contrats sont disponibles (bail d'habitation, CDD terme précis et
+imprécis, CDI, stage-école, stage de qualification, apprentissage,
+télétravail, prestation de services). Ils sont construits à partir du
+référentiel juridique joint dans `reference/` : chaque modèle porte ses champs
+obligatoires, ses notes juridiques sourcées et ses règles chiffrées, que le
+serveur vérifie sur le document produit. Voir `docs/EXPLOITATION.md` §3.
