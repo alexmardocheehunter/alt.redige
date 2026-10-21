@@ -5,6 +5,22 @@ choix techniques assumés. Mis à jour à chaque jalon.
 
 ---
 
+## État de la phase A (backend)
+
+Les jalons B1 à B7 sont terminés : tests au vert (120 tests), un commit par
+jalon, l'API conforme à `docs/API-CONTRACT.md` v1.0.
+
+Ce qui n'est **pas** fait, et pourquoi :
+
+| Point | Statut |
+|---|---|
+| Campagne d'évaluation contre le vrai modèle | non exécutée : pas de `ANTHROPIC_API_KEY` sur cette machine (harnais validé hors ligne, 10/10) |
+| Phase C — intégration du frontend | non commencée : le fichier `index.html` définitif n'a pas été livré par Alex. `public/index.html` est encore la page provisoire. `docs/INTEGRATION-REPORT.md` sera écrit à ce moment-là. |
+| Relecture juridique du modèle | en attente d'Alex (voir ci-dessous) |
+| Vérification visuelle de l'export Word dans Word/LibreOffice | non faite : ni Word ni LibreOffice ne sont installés sur cette machine. L'archive OOXML est vérifiée par test (structure, surlignage, numérotation, pied de page) |
+
+---
+
 ## En attente de décision ou de contenu (Alex)
 
 ### Relecture juridique du modèle « bail-habitation » — EN ATTENTE
