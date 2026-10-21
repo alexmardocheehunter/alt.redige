@@ -1,0 +1,29 @@
+{
+  "skill_name": "redaction-contrats",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Rédige-moi un contrat de gardiennage pour ma société Alpha Distribution SARL (siège à Abidjan Marcory, représentée par son gérant M. Konan Serge). Le prestataire est Sentinelle Sécurité SA. 2 sites, 12 mois à partir du 1er janvier 2027, 1 800 000 FCFA TTC par mois.",
+      "expected_output": "Un .docx basé sur le modèle sécurité privée, parties Client/Prestataire renseignées avec les noms fournis, montant mensuel et durée repris, champs manquants (RCCM, adresses des sites…) laissés à compléter, aucun nom hérité des modèles sources, synthèse des champs vides.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "J'ai besoin d'un contrat pour embaucher un comptable pendant que notre titulaire est en congé maternité. Entreprise privée au Sénégal.",
+      "expected_output": "Choix du CDD à terme imprécis (remplacement) ; références au droit ivoirien NON transposées au Sénégal (champs à compléter ou vérification signalée) ; vocabulaire secteur public absent ; question ou hypothèse sur le salaire et la date de début.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Fais un contrat de vente de 50 ordinateurs portables entre deux sociétés.",
+      "expected_output": "Type hors corpus : squelette universel + articles vente/fourniture (livraison, transfert des risques, réception, garantie), mention que ces articles sont des extrapolations, .docx généré, champs à compléter.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "Voici un vieux bail de bureau de notre administration, neutralise-le pour qu'on puisse le réutiliser pour n'importe quel bailleur privé.",
+      "expected_output": "Identités et vocabulaire administratif retirés, clause résolutoire rendue symétrique, parties Bailleur/Preneur, annexe état des lieux conservée.",
+      "files": []
+    }
+  ]
+}
