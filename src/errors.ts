@@ -13,6 +13,15 @@ export type ErrorCode =
   | 'timeout'
   | 'internal';
 
+/**
+ * Statuts HTTP associés aux codes d'erreur.
+ *
+ * `truncated` et `timeout` n'apparaissent qu'**après** l'ouverture du flux
+ * SSE : ils sont émis en événement `error` (API-CONTRACT.md §4), jamais en
+ * réponse HTTP. Les statuts ci-dessous ne servent que de repli si un de ces
+ * codes était un jour levé par une route ; ils ne correspondent à aucun
+ * statut prévu par le contrat.
+ */
 const STATUS_BY_CODE: Record<ErrorCode, number> = {
   bad_request: 400,
   unauthorized: 401,
@@ -43,7 +52,7 @@ const DEFAULT_MESSAGE: Record<ErrorCode, string> = {
   payload_too_large: 'Le document ou le message est trop long.',
   rate_limited: 'Trop de demandes. Réessayez dans quelques instants.',
   llm_unavailable: 'Le service de rédaction est momentanément indisponible. Réessayez.',
-  llm_error: 'Le service de rédaction est momentanément indisponible. Réessayez.',
+  llm_error: 'La rédaction n’a pas pu aboutir. Réessayez ou simplifiez votre demande.',
   truncated:
     'Le contrat est trop long pour être généré d’un seul coup. Réessayez ou demandez-le en plusieurs parties.',
   timeout: 'La génération a pris trop de temps. Réessayez.',

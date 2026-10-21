@@ -5,6 +5,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { z } from 'zod';
+import { normalizeKey } from './doc/structure.js';
 
 /** Types of contract requested by the user. */
 export interface TemplateField {
@@ -199,5 +200,38 @@ export class TemplateStore {
   catalogue(): string {
     const lines = this.ready().map((template) => `- ${template.id} — ${template.label} — ${template.description}`);
     return lines.length > 0 ? lines.join('\n') : '- (aucun type de contrat disponible)';
+  }
+
+  /**
+   * Vocabulaire commun à tous les modèles : squelettes et notes juridiques.
+   *
+   * Sert de liste de mots connus : un mot capitalisé qui figure dans ce
+   * vocabulaire (« Bailleur », « Locataire », « Partie ») n'est pas un nom
+   * propre inventé. Le vocabulaire est calculé une fois et mémorisé.
+   */
+  private cachedVocabulary: Set<string> | null = null;
+
+  vocabulary(): Set<string> {
+    if (this.cachedVocabulary) return this.cachedVocabulary;
+
+    const words = new Set<string>();
+    const add = (text: string) => {
+      for (const word of text.split(/[^\p{L}\p{N}]+/u)) {
+        if (word.length >= 3) words.add(normalizeKey(word));
+      }
+    };
+
+    for (const template of this.templates) {
+      add(template.skeleton_markdown);
+      for (const note of template.legal_notes) add(note);
+      for (const article of template.required_articles) add(article);
+      for (const field of [...template.required_fields, ...template.optional_fields]) {
+        add(field.key);
+        add(field.label);
+      }
+    }
+
+    this.cachedVocabulary = words;
+    return words;
   }
 }

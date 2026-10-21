@@ -528,7 +528,9 @@ export async function streamCompletion(
       logger?.warn('llm_model_failed', {
         model,
         status: error instanceof LlmHttpError ? error.status : undefined,
-        error: error instanceof Error ? error.message : String(error),
+        // Jamais le message du fournisseur : il peut reprendre un extrait de
+        // la demande ou du contrat.
+        error_kind: error instanceof Error ? error.name : 'unknown',
       });
 
       if (model !== options.models[options.models.length - 1]) {

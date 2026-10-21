@@ -32,9 +32,12 @@ const schema = z.object({
   // Gardien de sécurité : hors bascule, appelé séparément.
   LLM_SAFETY_MODEL: z.string().min(1).default('nvidia/nemotron-3.5-content-safety:free'),
   SAFETY_CHECK: z.enum(['0', '1']).default('1'),
-  // `block` : une demande hors du domaine juridique est bloquée sur le verdict.
-  // `advisory` : le verdict est journalisé, rien n'est bloqué.
-  SAFETY_MODE: z.enum(['off', 'advisory', 'block']).default('block'),
+  // `advisory` (défaut) : un contenu **hors du domaine juridique** est bloqué
+  //   sur le verdict du gardien ; un contenu du domaine n'est jamais bloqué
+  //   (le gardien se trompe trop souvent sur du droit), il est journalisé.
+  // `block` : tout verdict « unsafe » bloque, y compris dans le domaine.
+  // `off` : le gardien n'est jamais consulté.
+  SAFETY_MODE: z.enum(['off', 'advisory', 'block']).default('advisory'),
 
   PORT: z.coerce.number().int().min(0).max(65535).default(3000),
   ACCESS_CODE: z.string().min(1).optional(),
@@ -44,10 +47,23 @@ const schema = z.object({
   RATE_CHAT_PER_HOUR: positiveInt(30, 100000),
   RATE_EXPORT_PER_MIN: positiveInt(10, 100000),
   MAX_BODY_BYTES: positiveInt(1048576, 67108864),
+  /**
+   * Nombre maximal de blocs qu'une modification ciblée a le droit de
+   * toucher. Au-delà, la modification est refusée : le modèle réécrit
+   * le document au lieu de modifier une clause.
+   */
+  MAX_EDIT_CHANGED_BLOCKS: positiveInt(4, 50),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
   TRUST_PROXY: z.enum(['0', '1']).default('0'),
   ALLOWED_ORIGIN: z.string().min(1).optional(),
   EXPORT_FOOTER: z.string().min(1).optional(),
+  /**
+   * Nombre maximal de messages de l'historique renvoyés au modèle.
+   * Le premier message de l'utilisateur et le dernier sont toujours conservés.
+   * Au-delà, l'historique est tronqué : le document et les messages sont
+   * retransmis à chaque étape, ce qui multiplie le volume transmis.
+   */
+  MAX_HISTORY_MESSAGES: positiveInt(12, 30),
 });
 
 export type RawConfig = z.infer<typeof schema>;
@@ -73,6 +89,8 @@ export interface AppConfig {
   rateChatPerHour: number;
   rateExportPerMin: number;
   maxBodyBytes: number;
+  maxEditChangedBlocks: number;
+  maxHistoryMessages: number;
   logLevel: 'debug' | 'info' | 'warn' | 'error';
   trustProxy: boolean;
   allowedOrigin: string | null;
@@ -117,6 +135,8 @@ function toAppConfig(raw: RawConfig): AppConfig {
     rateChatPerHour: raw.RATE_CHAT_PER_HOUR,
     rateExportPerMin: raw.RATE_EXPORT_PER_MIN,
     maxBodyBytes: raw.MAX_BODY_BYTES,
+    maxEditChangedBlocks: raw.MAX_EDIT_CHANGED_BLOCKS,
+    maxHistoryMessages: raw.MAX_HISTORY_MESSAGES,
     logLevel: raw.LOG_LEVEL,
     trustProxy: raw.TRUST_PROXY === '1',
     allowedOrigin: raw.ALLOWED_ORIGIN ?? null,

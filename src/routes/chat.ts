@@ -126,7 +126,13 @@ function sseResponse(c: Context, callback: (stream: SSEStreamingApi) => Promise<
     try {
       await callback(stream);
     } catch (error) {
-      console.error('sse_stream_error', error);
+      // Jamais de texte libre ici : le message d'un fournisseur peut reprendre
+      // un extrait de la demande ou du contrat. On ne journalise que la
+      // nature de l'erreur.
+      logger.error('sse_stream_error', {
+        request_id: c.get('requestId') ?? '-',
+        error_kind: error instanceof Error ? error.name : 'unknown',
+      });
     } finally {
       await stream.close();
     }
@@ -266,15 +272,18 @@ export function chatRoutes(deps: ChatDeps): Hono<AppEnv> {
           logger.info('request_aborted', { duration_ms: Date.now() - startedAt });
         } else {
           const providerError = isModelFailure(error);
+          // Le message d'erreur d'un fournisseur peut reprendre un extrait de
+          // la demande ou du contrat : on ne journalise que sa nature.
           logger.error('agent_failed', {
             duration_ms: Date.now() - startedAt,
-            error: error instanceof Error ? error.message : String(error),
+            error_kind: error instanceof Error ? error.name : 'unknown',
+            provider_error: providerError,
           });
           emit('error', {
             code: providerError ? 'llm_unavailable' : 'llm_error',
             message: providerError
               ? 'Le service de rédaction est momentanément indisponible. Réessayez.'
-              : 'Le service de rédaction est momentanément indisponible. Réessayez.',
+              : 'La rédaction n’a pas pu aboutir. Réessayez ou simplifiez votre demande.',
             retryable: true,
           });
         }

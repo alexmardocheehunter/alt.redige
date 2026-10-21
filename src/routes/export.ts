@@ -8,6 +8,7 @@ import { Hono } from 'hono';
 import type { AppConfig } from '../config.js';
 import { AppError } from '../errors.js';
 import { contentDisposition, renderDocx, slugify, titleFromMarkdown } from '../export/docx.js';
+import { validate } from '../doc/validate.js';
 import type { Logger } from '../logger.js';
 import type { AppEnv } from '../types.js';
 
@@ -78,6 +79,23 @@ export function exportRoutes({ config, logger }: ExportDeps): Hono<AppEnv> {
     const body = parseExportBody(raw, config.exportFooter);
     const title = body.title ?? titleFromMarkdown(body.markdown);
     const filename = `${slugify(title)}.docx`;
+
+    // Le document exporté doit être conforme au sous-ensemble Markdown : le
+    // convertisseur Word ignore silencieusement ce qu'il ne sait pas traiter
+    // (blocs de code, images, URL de liens). On refuse l'export plutôt que
+    // de livrer un fichier différent du contrat affiché.
+    const validation = validate(body.markdown);
+    const forbidden = validation.issues.filter((issue) => issue.code === 'forbidden_construct');
+    if (forbidden.length > 0) {
+      logger.warn('export_refused', {
+        request_id: c.get('requestId') ?? '-',
+        issues: forbidden.length,
+      });
+      throw new AppError(
+        'bad_request',
+        `Le document contient des éléments qui ne peuvent pas être exportés en Word : ${forbidden.map((issue) => issue.message).join(' ')} Corrigez le document avant de l'exporter.`,
+      );
+    }
 
     let result;
     try {

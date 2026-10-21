@@ -20,6 +20,11 @@ const FORBIDDEN_KEYS = new Set([
   'body',
   'user',
   'assistant',
+  // Réponses brutes d'un fournisseur : elles peuvent reprendre un extrait de
+  // la demande de l'utilisateur ou du contrat.
+  'answer',
+  'provider_message',
+  'raw_answer',
 ]);
 
 export type LogFields = Record<string, unknown>;

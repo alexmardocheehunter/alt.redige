@@ -173,19 +173,40 @@ documents légitimes.
 
 ### Réseau sortant instable vers openrouter.ai
 Depuis la machine de développement, les connexions `POST` vers
-`openrouter.ai` sont **coupées de façon intermittente** : `UND_ERR_SOCKET :
-other side closed`, `ECONNRESET`, `UND_ERR_CONNECT_TIMEOUT`. Le même poste y
-accède sans problème avec `curl` pour les requêtes `GET`, et le TLS 1.3 y est
-bloqué (TLS 1.2 passe).
+`openrouter.ai` sont **coupées au-delà d'environ 1 Ko de corps de requête**.
+Mesure reproductible (le 21/10/2026, sur la même machine) :
 
-Ce n'est pas un défaut de l'application, mais cela a mis en évidence un vrai
-manque : **le code ne réessayait pas sur une erreur de socket**. Il le fait
-maintenant (3 tentatives avec backoff 500 ms / 1,5 s / 3 s, puis bascule de
-modèle), et le journal `llm_socket_retry` permet de le voir. Sur un hébergeur
-avec un réseau stable, ces reprises ne se déclencheront pas.
+```
+corps    215 o  status 200
+corps    415 o  status 200
+corps    715 o  status 200
+corps   1015 o  status 200
+corps   1315 o  coupe (ECONNRESET)
+corps   2115 o  coupe (UND_ERR_SOCKET)
+corps   4115 o  coupe (UND_ERR_SOCKET)
+```
 
-**Diagnostic** (la coupure est intermittente, pas liée à une taille de corps :
-des POST de 4 à 8 Ko passent parfois pendant que des POST de 1 Ko échouent) :
+Les `GET` passent, et les petits `POST` passent. Le corps envoyé par
+l'application fait **environ 8 Ko** (prompt système 6,3 Ko + schémas des outils
+1,3 Ko + message) : il est donc systématiquement coupé depuis cette machine.
+`curl` échoue exactement de la même façon : ce n'est pas un défaut du client
+HTTP, c'est le réseau du poste. Le TLS 1.3 y est par ailleurs bloqué (TLS 1.2
+passe).
+
+**Ce que cela a mis en évidence** : le code ne réessayait pas sur une erreur
+de socket. Il le fait maintenant (3 tentatives avec backoff 500 ms / 1,5 s /
+3 s, puis bascule de modèle) et le journal `llm_socket_retry` permet de le
+voir. Sur un hébergeur avec un réseau normal, ces reprises ne se déclencheront
+pas.
+
+**Conséquence sur les évaluations** : quand le réseau coupe, le scénario est
+relancé automatiquement (2 relances, uniquement pour un échec de transport —
+une assertion en échec n'est jamais rejouée, ce qui masquerait un vrai
+problème de comportement). Depuis cette machine, la campagne réelle ne peut
+pas aboutir : il faut la lancer depuis un poste dont le réseau sortant vers
+OpenRouter n'est pas filtré.
+
+**Diagnostic** (à rejouer ailleurs) :
 
 ```bash
 node -e "const b=JSON.stringify({model:'minimax/minimax-m3.1-flash:free',messages:[{role:'user',content:'x'.repeat(5000)}],max_tokens:8}); fetch('https://openrouter.ai/api/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+process.env.OPENROUTER_API_KEY},body:b}).then(r=>console.log('status',r.status)).catch(e=>console.log('coupé',e.cause?.code))"
@@ -193,11 +214,6 @@ node -e "const b=JSON.stringify({model:'minimax/minimax-m3.1-flash:free',message
 
 Le contournement local (TLS 1.3 bloqué) est `NODE_OPTIONS=--tls-max-v1.2` :
 voir « Dépannage » dans `docs/EXPLOITATION.md`.
-
-**Conséquence sur les évaluations** : quand le réseau coupe, le scénario est
-relancé automatiquement (2 relances, uniquement pour un échec de transport —
-une assertion en échec n'est jamais rejouée, ce qui masquerait un vrai
-problème de comportement).
 
 **État de la campagne réelle** : la campagne du 21/10/2026 a été interrompue
 après 3 scénarios, tous en échec de transport (`ECONNRESET` sur les trois

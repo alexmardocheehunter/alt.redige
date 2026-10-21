@@ -17,6 +17,7 @@ import type { TemplateStore } from '../templates.js';
 import type { AgentEmit } from './events.js';
 import { extractPartialString, readPartialString } from './json-partial.js';
 import { buildSystemPrompt, buildUserContext } from './prompt.js';
+import { findEnglishWords } from '../doc/lexical.js';
 import {
   executeTool,
   toolDefinitions,
@@ -57,6 +58,26 @@ export interface RunAgentResult {
   modelsUsed: string[];
 }
 
+/**
+ * Sélectionne l'historique renvoyé au modèle.
+ *
+ * L'historique complet et le document courant sont retransmis à chaque étape
+ * de la boucle : le volume transmis au fournisseur croît donc avec la
+ * longueur de la conversation. On conserve toujours le **premier** message de
+ * l'utilisateur (la demande initiale) et les derniers messages (le contexte
+ * immédiat), et on retire le milieu.
+ */
+export function selectHistory(messages: ChatMessage[], max: number): ChatMessage[] {
+  if (messages.length <= max) return [...messages];
+
+  const firstUserIndex = messages.findIndex((message) => message.role === 'user');
+  const first = firstUserIndex === -1 ? messages[0]! : messages[firstUserIndex]!;
+  const tail = messages.slice(-(max - 1));
+
+  if (first === tail[0]) return tail;
+  return [first, ...tail];
+}
+
 /** Tracks the streaming of the `create_canvas` arguments. */
 interface CanvasStreamState {
   started: boolean;
@@ -82,7 +103,7 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
 
   const conversation: LlmMessage[] = [];
 
-  for (const message of messages.slice(0, -1)) {
+  for (const message of selectHistory(messages, config.maxHistoryMessages).slice(0, -1)) {
     conversation.push({ role: message.role, content: message.content });
   }
 
@@ -105,6 +126,13 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
   let setsEmitted = 0;
   let canvasEventEmitted = false;
 
+  // Ce que l'utilisateur a réellement dit : sert au garde-fou P0-3 (refuser
+  // de rédiger un contrat sans information exploitable).
+  const userText = messages
+    .filter((message) => message.role === 'user')
+    .map((message) => message.content)
+    .join('\n');
+
   const toolContext: ToolContext = {
     workingDoc: document?.markdown ?? null,
     workingDocType: contractType,
@@ -121,6 +149,8 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
     safetyModel: config.safetyModel,
     safetyEnabled: config.safetyCheck,
     safetyMode: config.safetyMode,
+    userText,
+    maxEditChangedBlocks: config.maxEditChangedBlocks,
     signal,
   };
 
@@ -216,6 +246,11 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
     }
 
     if (outcome.toolUses.length === 0) {
+      // Le message destiné à l'utilisateur doit être en français (P1-4).
+      const anglicisms = findEnglishWords(outcome.text);
+      if (anglicisms.length > 0) {
+        logger.warn('chat_anglicism', { words: anglicisms.length });
+      }
       emit('done', { stop_reason: 'end_turn', usage: totalUsage });
       return { stopReason: 'end_turn', usage: totalUsage, steps: step, modelsUsed };
     }
@@ -229,7 +264,11 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
       if (signal.aborted) break;
       params.onToolCall?.(toolUse.name, toolUse.input);
       const result = await executeTool(toolUse.name, toolUse.input, toolContext);
-      if (!result.isError) setsEmitted += 1;
+      // Le contrat d'API (API-CONTRACT.md §3.3) définit `version` comme
+      // « document.version reçu + nombre de canvas_set déjà émis + 1 ».
+      // Seuls les appels d'outil qui ont réellement écrit dans le Canvas
+      // comptent : un `get_template` réussi ne change pas la version.
+      if (result.emittedCanvasSet) setsEmitted += 1;
       toolResults.push({
         role: 'tool',
         toolCallId: toolUse.id,

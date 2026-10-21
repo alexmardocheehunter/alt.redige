@@ -10,6 +10,8 @@ import { fromMarkdown } from 'mdast-util-from-markdown';
 import { gfmTable } from 'micromark-extension-gfm-table';
 import { gfmTableFromMarkdown } from 'mdast-util-gfm-table';
 import type { ContractTemplate, ValidatorCheck } from '../templates.js';
+import { missingRequiredFields } from './required-fields.js';
+import { findEnglishWords } from './lexical.js';
 
 export type IssueSeverity = 'info' | 'warning' | 'error';
 
@@ -155,6 +157,17 @@ export function validate(markdown: string, template?: ContractTemplate | null): 
         issues.push(issue('missing_article', 'warning', `Article « ${required} » absent.`));
       }
     }
+
+    // Mandatory fields left empty: one issue per field (P1-5). The field is
+    // considered empty when every placeholder associated with it in the
+    // skeleton is still present in the document.
+    for (const field of missingRequiredFields(template, text)) {
+      issues.push(issue(
+        'required_field',
+        'warning',
+        `Champ obligatoire « ${field.label} » non renseigné.`,
+      ));
+    }
   }
 
   // Unclosed placeholders.
@@ -164,6 +177,16 @@ export function validate(markdown: string, template?: ContractTemplate | null): 
       'placeholder_format',
       'info',
       `${openCount - placeholders} espace(s) réservé(s) sans crochet fermant.`,
+    ));
+  }
+
+  // Anglicismes : un acte de droit est rédigé en français.
+  const anglicisms = findEnglishWords(text);
+  if (anglicisms.length > 0) {
+    issues.push(issue(
+      'anglicism',
+      'warning',
+      `Terme(s) en anglais dans le document : ${anglicisms.join(', ')}.`,
     ));
   }
 
