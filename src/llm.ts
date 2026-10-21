@@ -87,6 +87,22 @@ export class LlmHttpError extends LlmError {
   }
 }
 
+/**
+ * Message lisible d'une erreur réseau : `fetch failed` seul ne dit rien,
+ * la cause (délai de connexion, TLS, DNS…) est dans `cause`.
+ */
+export function describeNetworkError(error: unknown): string {
+  const message = error instanceof Error ? error.message : 'Erreur réseau vers le fournisseur de modèle.';
+  const cause = (error as { cause?: unknown })?.cause;
+
+  if (cause instanceof Error) {
+    const code = (cause as { code?: string }).code;
+    const detail = cause.message;
+    return code ? `${message} (${code} : ${detail})` : `${message} (${detail})`;
+  }
+  return message;
+}
+
 /* ------------------------------------------------------------------ */
 /* Client                                                              */
 /* ------------------------------------------------------------------ */
@@ -97,6 +113,24 @@ export interface OpenRouterClientOptions {
   siteUrl?: string | null;
   appTitle?: string | null;
   fetchImpl?: typeof fetch;
+}
+
+/**
+ * Erreur de socket : la connexion a été fermée par l'autre partie (pool
+ * `keep-alive` réutilisant une connexion morte,.proxy qui coupe, etc.).
+ * Ce n'est pas une erreur du modèle : on peut réessayer sur une nouvelle
+ * connexion.
+ */
+export function isRetryableSocketError(error: unknown): boolean {
+  const cause = (error as { cause?: { code?: string; message?: string } })?.cause;
+  const code = cause?.code ?? '';
+  const message = `${cause?.message ?? ''} ${(error as Error)?.message ?? ''}`.toLowerCase();
+  return code === 'UND_ERR_SOCKET'
+    || code === 'ECONNRESET'
+    || code === 'EPIPE'
+    || code === 'ECONNREFUSED'
+    || message.includes('other side closed')
+    || message.includes('socket hang up');
 }
 
 export function createOpenRouterClient(options: OpenRouterClientOptions): LlmClient {
@@ -169,6 +203,10 @@ export interface LlmStreamOptions {
 }
 
 const RETRY_DELAY_MS = 1000;
+/** Nombre de tentatives sur une erreur de socket avant de changer de modèle. */
+const MAX_SOCKET_RETRIES = 3;
+/** Attentes avant chaque nouvelle tentative (backoff). */
+const SOCKET_RETRY_DELAYS = [500, 1500, 3000];
 
 function sleep(ms: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -230,12 +268,53 @@ interface StreamedToolCall {
   started: boolean;
 }
 
-/** Appelle un modèle et lit son flux SSE. */
+/**
+ * Appelle un modèle et lit son flux SSE.
+ *
+ * Les erreurs de socket (connexion morte, « other side closed », timeout de
+ * connexion) sont transitoires : on retente sur une nouvelle connexion avec un
+ * backoff, tant que rien n'a été envoyé au client. Au-delà, on laisse la
+ * bascule de modèle prendre le relais.
+ */
 async function streamOnce(
   client: LlmClient,
   model: string,
   options: LlmStreamOptions,
   includeUsage = true,
+): Promise<LlmOutcome> {
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt <= MAX_SOCKET_RETRIES; attempt += 1) {
+    try {
+      return await attemptStream(client, model, options, includeUsage);
+    } catch (error) {
+      lastError = error;
+      if (isAbortError(error)) throw error;
+      if (!isRetryableSocketError(error)) throw error;
+      if (attempt === MAX_SOCKET_RETRIES) break;
+      // On ne retente que si rien n'a été produit : sinon le texte serait
+      // dupliqué dans la bulle de chat.
+      if (!(options.canRetry?.() ?? true)) break;
+      options.logger?.warn('llm_socket_retry', {
+        model,
+        attempt: attempt + 1,
+        error: describeNetworkError(error),
+      });
+      await sleep(SOCKET_RETRY_DELAYS[attempt] ?? SOCKET_RETRY_DELAYS.at(-1)!, options.signal);
+    }
+  }
+
+  throw lastError instanceof Error
+    ? new LlmError(describeNetworkError(lastError), lastError)
+    : new LlmError('Erreur réseau vers le fournisseur de modèle.');
+}
+
+/** Une tentative : requête + lecture du flux. */
+async function attemptStream(
+  client: LlmClient,
+  model: string,
+  options: LlmStreamOptions,
+  includeUsage: boolean,
 ): Promise<LlmOutcome> {
   const { signal } = options;
 
@@ -260,7 +339,7 @@ async function streamOnce(
   } catch (error) {
     if (isAbortError(error)) throw error;
     throw new LlmError(
-      error instanceof Error ? error.message : 'Erreur réseau vers le fournisseur de modèle.',
+      describeNetworkError(error),
       error,
     );
   }
@@ -375,7 +454,7 @@ async function streamOnce(
   } catch (error) {
     if (isAbortError(error)) throw error;
     throw new LlmError(
-      error instanceof Error ? error.message : 'Flux interrompu par le fournisseur de modèle.',
+      describeNetworkError(error),
       error,
     );
   }

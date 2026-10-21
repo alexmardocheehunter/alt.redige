@@ -36,7 +36,7 @@ const schema = z.object({
   PORT: z.coerce.number().int().min(0).max(65535).default(3000),
   ACCESS_CODE: z.string().min(1).optional(),
   MAX_STEPS: positiveInt(6, 20),
-  MAX_OUTPUT_TOKENS: positiveInt(8000, 64000),
+  MAX_OUTPUT_TOKENS: positiveInt(16000, 64000),
   REQUEST_TIMEOUT_MS: positiveInt(120000, 600000),
   RATE_CHAT_PER_HOUR: positiveInt(30, 100000),
   RATE_EXPORT_PER_MIN: positiveInt(10, 100000),

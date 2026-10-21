@@ -37,6 +37,16 @@ export const SAFETY_SYSTEM_PROMPT = [
 
 const DEFAULT_MAX_INPUT_LENGTH = 12_000;
 
+/**
+ * Budget de jetons du classement.
+ *
+ * Le modèle de sécurité est un modèle à raisonnement : il produit d'abord un
+ * raisonnement, puis son verdict. Avec un budget trop faible, le verdict n'est
+ * jamais écrit (`content` vide) et le texte est classé « illisible » — donc
+ * ignoré. 512 jetons suffisent largement pour un verdict.
+ */
+const SAFETY_MAX_TOKENS = 512;
+
 export interface SafetyOptions {
   client: LlmClient;
   model: string;
@@ -67,7 +77,7 @@ export async function checkTextSafety(options: SafetyOptions): Promise<SafetyVer
           { role: 'system', content: SAFETY_SYSTEM_PROMPT },
           { role: 'user', content: `<texte>\n${truncated}\n</texte>` },
         ],
-        max_tokens: options.maxTokens ?? 16,
+        max_tokens: options.maxTokens ?? SAFETY_MAX_TOKENS,
         stream: false,
       }),
       signal,
@@ -109,13 +119,27 @@ export async function checkTextSafety(options: SafetyOptions): Promise<SafetyVer
 }
 
 /**
- * Lit le verdict : `SAFE` / `UNSAFE` en début de réponse.
- * Renvoie `null` si la réponse est illisible (on laisse alors passer).
+ * Lit le verdict.
+ *
+ * Le modèle de sécurité répond au format Nemotron :
+ *   `User Safety: safe` / `User Safety: unsafe`
+ * (et éventuellement une ligne `Response Safety:` pour la réponse de l'assistant).
+ * On ne lit que la ligne **User Safety** : c'est le classement de l'entrée.
+ * Un format simple (`SAFE` / `UNSAFE` en début de réponse) est aussi accepté.
+ *
+ * Renvoie `null` si la réponse est illisible : on laisse alors passer.
  */
 export function parseVerdict(answer: string): 'safe' | 'unsafe' | null {
-  const normalized = answer.trim().toLowerCase().replace(/^[^a-z]*/, '');
-  if (!normalized) return null;
-  if (normalized.startsWith('unsafe') || normalized.startsWith('not safe')) return 'unsafe';
-  if (normalized.startsWith('safe')) return 'safe';
+  const normalized = answer.toLowerCase();
+
+  const userLine = /user\s+safety\s*[:\-]?\s*(not\s+safe|unsafe|safe)/.exec(normalized);
+  if (userLine) {
+    const label = userLine[1]!.replace(/\s+/g, ' ');
+    return label === 'safe' ? 'safe' : 'unsafe';
+  }
+
+  const stripped = normalized.trim().replace(/^[^a-z]*/, '');
+  if (stripped.startsWith('not safe') || stripped.startsWith('unsafe')) return 'unsafe';
+  if (stripped.startsWith('safe')) return 'safe';
   return null;
 }
