@@ -13,6 +13,7 @@
  * bloque tout le service quand il tombe est un garde-fou qui casse l'application.
  */
 import type { LlmClient } from './llm.js';
+import { dumpOutgoingRequest } from './llm-debug.js';
 import type { Logger } from './logger.js';
 
 export interface SafetyVerdict {
@@ -145,18 +146,23 @@ export async function checkTextSafety(options: SafetyOptions): Promise<SafetyVer
     : content;
 
   try {
+    const body = {
+      model,
+      messages: [
+        { role: 'system', content: SAFETY_SYSTEM_PROMPT },
+        { role: 'user', content: `<texte>\n${truncated}\n</texte>` },
+      ],
+      max_tokens: options.maxTokens ?? SAFETY_MAX_TOKENS,
+      stream: false,
+    };
+
+    // Capture du contexte réellement envoyé (LLM_DEBUG_DIR).
+    dumpOutgoingRequest(body, { model, kind: 'safety' });
+
     const response = await client.fetchImpl(`${client.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: client.headers,
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: 'system', content: SAFETY_SYSTEM_PROMPT },
-          { role: 'user', content: `<texte>\n${truncated}\n</texte>` },
-        ],
-        max_tokens: options.maxTokens ?? SAFETY_MAX_TOKENS,
-        stream: false,
-      }),
+      body: JSON.stringify(body),
       signal,
     });
 

@@ -11,6 +11,7 @@
  * demi-document).
  */
 import type { Logger } from './logger.js';
+import { dumpOutgoingRequest } from './llm-debug.js';
 
 /* ------------------------------------------------------------------ */
 /* Types neutres (independants du fournisseur)                          */
@@ -339,6 +340,9 @@ async function attemptStream(
   };
   // OpenRouter renvoie les jetons en fin de flux sur demande.
   if (includeUsage) body.usage = { include: true };
+
+  // Capture du contexte réellement envoyé (LLM_DEBUG_DIR).
+  dumpOutgoingRequest(body, { model, kind: 'chat' });
 
   let response: Response;
   try {
