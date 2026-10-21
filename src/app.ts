@@ -8,21 +8,26 @@ import { Hono } from 'hono';
 import { secureHeaders } from 'hono/secure-headers';
 import { cors } from 'hono/cors';
 import { bodyLimit } from 'hono/body-limit';
+import type Anthropic from '@anthropic-ai/sdk';
 import type { AppConfig } from './config.js';
 import { AppError, errorBody, isAppError } from './errors.js';
 import { createLogger, type Logger } from './logger.js';
+import { createAnthropicClient } from './llm.js';
 import { requestId } from './middleware/requestId.js';
 import { auth } from './middleware/auth.js';
 import { rateLimit } from './middleware/rateLimit.js';
 import type { AppEnv } from './types.js';
 import { TemplateStore } from './templates.js';
 import { metaRoutes } from './routes/meta.js';
+import { chatRoutes } from './routes/chat.js';
 
 export interface AppDeps {
   config: AppConfig;
   logger: Logger;
   /** Injected by the tests; loaded from data/templates otherwise. */
   templates?: TemplateStore;
+  /** Injected by the tests; built from the API key otherwise. */
+  client?: Anthropic;
 }
 
 const PUBLIC_INDEX = resolve(process.cwd(), 'public', 'index.html');
@@ -46,7 +51,7 @@ export function readIndexHtml(): Buffer | null {
   }
 }
 
-export function createApp({ config, logger, templates }: AppDeps): Hono<AppEnv> {
+export function createApp({ config, logger, templates, client }: AppDeps): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
 
   let templateStore = templates;
@@ -121,6 +126,13 @@ export function createApp({ config, logger, templates }: AppDeps): Hono<AppEnv> 
     limit: config.rateChatPerHour,
     windowMs: 60 * 60 * 1000,
     trustProxy: config.trustProxy,
+  }));
+
+  app.route('/', chatRoutes({
+    config,
+    logger,
+    templates: templateStore,
+    client: client ?? createAnthropicClient(config.apiKey),
   }));
 
   app.get('/', (c) => {

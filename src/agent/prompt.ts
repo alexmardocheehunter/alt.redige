@@ -48,22 +48,28 @@ export interface UserContextInput {
 }
 
 /**
- * Builds the last user message: the current document, then the request.
+ * Builds the text blocks of the last user message: the current document, then
+ * the type chosen by the user, then the request.
  * The document is data, never an instruction.
  */
-export function buildUserContext({ document, contractType, userText }: UserContextInput): string {
-  const parts: string[] = [];
+export function buildUserContextBlocks({ document, contractType, userText }: UserContextInput): string[] {
+  const blocks: string[] = [];
 
   if (document && typeof document.markdown === 'string' && document.markdown.trim().length > 0) {
-    parts.push(`<document_courant version="${document.version}">\n${document.markdown}\n</document_courant>`);
+    blocks.push(`<document_courant version="${document.version}">\n${document.markdown}\n</document_courant>`);
   } else {
-    parts.push('<document_courant>(aucun document)</document_courant>');
+    blocks.push('<document_courant>(aucun document)</document_courant>');
   }
 
   if (contractType) {
-    parts.push(`Type choisi par l'utilisateur : ${contractType}`);
+    blocks.push(`Type choisi par l'utilisateur : ${contractType}`);
   }
 
-  parts.push(userText);
-  return parts.join('\n\n');
+  blocks.push(userText);
+  return blocks;
+}
+
+/** Same content, as a single string. */
+export function buildUserContext(input: UserContextInput): string {
+  return buildUserContextBlocks(input).join('\n\n');
 }

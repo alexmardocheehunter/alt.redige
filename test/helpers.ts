@@ -1,3 +1,4 @@
+import type Anthropic from '@anthropic-ai/sdk';
 import { loadConfig, type AppConfig } from '../src/config.js';
 import { createLogger } from '../src/logger.js';
 import { createApp } from '../src/app.js';
@@ -9,13 +10,26 @@ export function testConfig(overrides: Partial<AppConfig> = {}): AppConfig {
   return { ...base, ...overrides };
 }
 
-export function testApp(overrides: Partial<AppConfig> = {}): Hono<AppEnv> {
+export interface TestAppOptions {
+  /** Fake Anthropic client, injected in place of the real one. */
+  client?: Anthropic;
+}
+
+export function testApp(
+  overrides: Partial<AppConfig> = {},
+  options: TestAppOptions = {},
+): Hono<AppEnv> {
   const config = testConfig(overrides);
   const logger = createLogger('error');
-  return createApp({ config, logger });
+  return createApp({ config, logger, client: options.client });
 }
 
 /** Reads a JSON response body without the `unknown` noise. */
 export async function readJson<T = any>(res: Response): Promise<T> {
   return (await res.json()) as T;
+}
+
+/** Waits for a while (used by the asynchronous tests). */
+export function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
