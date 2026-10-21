@@ -4,6 +4,7 @@ import {
   isInLegalDomain,
   looksLikeContract,
   parseVerdict,
+  SAFETY_MAX_TOKENS,
   shouldBlock,
 } from '../src/safety.js';
 import { FakeOpenRouter, fakeClient } from './fake-llm.js';
@@ -112,6 +113,11 @@ describe('checkTextSafety', () => {
     });
     const bodies = fake.safetyCalls;
     expect(bodies).toHaveLength(1);
+    // Le modèle de sécurité est un modèle à raisonnement : avec un budget
+    // trop petit, le verdict n'est jamais écrit et le texte est classé
+    // « illisible » — donc ignoré. Le budget doit être vérifié.
+    expect(bodies[0]!.maxTokens).toBe(SAFETY_MAX_TOKENS);
+    expect(bodies[0]!.maxTokens!).toBeGreaterThanOrEqual(512);
   });
 
   it('laisse passer quand le gardien est indisponible', async () => {

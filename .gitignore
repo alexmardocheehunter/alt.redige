@@ -6,3 +6,6 @@ dist/
 .DS_Store
 coverage/
 tmp/
+# Scripts de travail : jamais versionnés.
+tmp-*
+!reference/

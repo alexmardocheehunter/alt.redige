@@ -122,7 +122,7 @@ export function looksLikeContract(markdown: string): boolean {
  * jamais écrit (`content` vide) et le texte est classé « illisible » — donc
  * ignoré. 512 jetons suffisent largement pour un verdict.
  */
-const SAFETY_MAX_TOKENS = 512;
+export const SAFETY_MAX_TOKENS = 512;
 
 export interface SafetyOptions {
   client: LlmClient;

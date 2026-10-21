@@ -149,7 +149,7 @@ export function fakeClient(fake: FakeOpenRouter): LlmClient {
 
 export class FakeOpenRouter {
   readonly calls: RecordedCall[] = [];
-  readonly safetyCalls: Array<{ model: string; content: string }> = [];
+  readonly safetyCalls: Array<{ model: string; content: string; maxTokens?: number }> = [];
   /** `true` quand un appel a été interrompu par une annulation. */
   aborted = false;
   private index = 0;
@@ -172,6 +172,7 @@ export class FakeOpenRouter {
       this.safetyCalls.push({
         model: body.model,
         content: messages.map((message) => message.content).join('\n'),
+        maxTokens: body.max_tokens,
       });
       const verdict = this.options.safetyVerdict ?? 'SAFE';
       return new Response(
