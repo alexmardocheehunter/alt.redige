@@ -1,36 +1,38 @@
 /**
- * Fake Anthropic client used by the tests.
- * It reproduces the part of the SDK used by src/llm.ts: `client.messages.stream()`.
+ * Faux client OpenRouter utilisé par les tests.
+ *
+ * Il reproduit la partie de l'API utilisée par src/llm.ts :
+ * `POST /chat/completions` avec un flux SSE au format OpenAI.
  */
-import { APIUserAbortError } from '@anthropic-ai/sdk/error';
+import type { LlmClient } from '../src/llm.js';
 
 export interface FakeToolUse {
   id: string;
   name: string;
   input: unknown;
-  /** Partial JSON streamed to the client (to exercise the canvas_delta path). */
+  /** JSON partiel diffusé au client (pour exercer le chemin canvas_delta). */
   partialJson?: string;
 }
 
 export interface FakeTurn {
   text?: string;
   toolUses?: FakeToolUse[];
-  stopReason?: 'end_turn' | 'tool_use' | 'max_tokens' | 'stop_sequence';
+  finishReason?: 'stop' | 'tool_calls' | 'length' | 'content_filter';
   inputTokens?: number;
   outputTokens?: number;
-  /** Never resolves until the request is aborted (used by the cancellation test). */
+  /** Ne répond jamais avant l'annulation (test d'annulation). */
   hang?: boolean;
+  /** Le fournisseur répond en erreur HTTP. */
+  httpError?: { status: number; body?: string };
 }
 
 export interface RecordedCall {
   model: string;
-  system: unknown;
   messages: unknown;
   tools: unknown;
   max_tokens: number;
+  stream: boolean;
 }
-
-type Listener = (...args: any[]) => void;
 
 const CHUNK_SIZE = 24;
 
@@ -42,119 +44,172 @@ function chunk(text: string): string[] {
   return parts;
 }
 
-function createFakeStream(turn: FakeTurn, options: { signal?: AbortSignal } | undefined) {
-  const listeners = new Map<string, Listener[]>();
-
-  const api = {
-    on(event: string, listener: Listener) {
-      const list = listeners.get(event) ?? [];
-      list.push(listener);
-      listeners.set(event, list);
-      return api;
-    },
-    finalMessage(): Promise<any> {
-      const signal = options?.signal;
-      return new Promise((resolve, reject) => {
-        const onAbort = () => {
-          reject(new APIUserAbortError({ message: 'Request aborted.' }));
-        };
-        if (signal?.aborted) {
-          onAbort();
-          return;
-        }
-        signal?.addEventListener('abort', onAbort, { once: true });
-
-        const deliver = async () => {
-          try {
-            if (turn.hang) {
-              await new Promise<void>((_, rej) => {
-                signal?.addEventListener('abort', () => rej(new APIUserAbortError({ message: 'Request aborted.' })), { once: true });
-              });
-            }
-
-            if (turn.text) {
-              for (const listener of listeners.get('text') ?? []) listener(turn.text, turn.text);
-            }
-
-            const content: any[] = [];
-            if (turn.text) content.push({ type: 'text', text: turn.text });
-
-            for (const [index, tool] of (turn.toolUses ?? []).entries()) {
-              for (const listener of listeners.get('streamEvent') ?? []) {
-                listener({
-                  type: 'content_block_start',
-                  index,
-                  content_block: { type: 'tool_use', id: tool.id, name: tool.name, input: {} },
-                }, {} as any);
-              }
-              if (tool.partialJson) {
-                for (const part of chunk(tool.partialJson)) {
-                  for (const listener of listeners.get('inputJson') ?? []) listener(part, {});
-                  await new Promise((resolve) => setTimeout(resolve, 0));
-                }
-              }
-              content.push({ type: 'tool_use', id: tool.id, name: tool.name, input: tool.input });
-            }
-
-            resolve({
-              id: 'msg_fake',
-              role: 'assistant',
-              stop_reason: turn.stopReason ?? (turn.toolUses?.length ? 'tool_use' : 'end_turn'),
-              usage: {
-                input_tokens: turn.inputTokens ?? 100,
-                output_tokens: turn.outputTokens ?? 50,
-              },
-              content,
-            });
-          } catch (error) {
-            reject(error);
-          } finally {
-            signal?.removeEventListener('abort', onAbort);
-          }
-        };
-
-        void deliver();
-      });
-    },
-  };
-
-  return api;
+function sseEvent(payload: unknown): string {
+  return `data: ${JSON.stringify(payload)}\n\n`;
 }
 
-export class FakeAnthropic {
-  readonly calls: RecordedCall[] = [];
-  readonly turns: FakeTurn[] = [];
-  private index = 0;
-  /** Set to true when a call was interrupted by an abort. */
-  aborted = false;
+/** Builds the SSE body of a fake OpenRouter answer. */
+export function buildSseBody(turn: FakeTurn, signal?: AbortSignal): ReadableStream<Uint8Array> {
+  const encoder = new TextEncoder();
 
-  constructor(turns: FakeTurn[] = []) {
-    this.turns.push(...turns);
-  }
+  return new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const push = (value: string) => controller.enqueue(encoder.encode(value));
 
-  push(turn: FakeTurn): void {
-    this.turns.push(turn);
-  }
+      if (turn.httpError) {
+        controller.error(new Error(`HTTP ${turn.httpError.status}`));
+        return;
+      }
 
-  readonly messages = {
-    stream: (params: any, options?: { signal?: AbortSignal }) => {
-      this.calls.push({
-        model: params.model,
-        system: params.system,
-        messages: params.messages,
-        tools: params.tools,
-        max_tokens: params.max_tokens,
-      });
-      const signal = options?.signal;
-      const turn = this.turns[this.index] ?? { stopReason: 'end_turn' as const };
-      this.index += 1;
-      const stream = createFakeStream(turn, options);
-      signal?.addEventListener('abort', () => {
-        this.aborted = true;
-      }, { once: true });
-      return stream;
+      if (turn.hang) {
+        await new Promise<void>((resolve) => {
+          if (signal?.aborted) {
+            resolve();
+            return;
+          }
+          signal?.addEventListener('abort', () => resolve(), { once: true });
+        });
+        controller.error(new DOMException('Aborted', 'AbortError'));
+        return;
+      }
+
+      if (turn.text) {
+        push(sseEvent({
+          id: 'chatcmpl-fake',
+          choices: [{ index: 0, delta: { role: 'assistant', content: turn.text }, finish_reason: null }],
+        }));
+      }
+
+      for (const [index, tool] of (turn.toolUses ?? []).entries()) {
+        push(sseEvent({
+          id: 'chatcmpl-fake',
+          choices: [{
+            index: 0,
+            delta: {
+              tool_calls: [{
+                index,
+                id: tool.id,
+                type: 'function',
+                function: { name: tool.name, arguments: '' },
+              }],
+            },
+            finish_reason: null,
+          }],
+        }));
+
+        // Without an explicit streaming, the whole arguments are sent at once.
+        const payload = tool.partialJson ?? JSON.stringify(tool.input ?? {});
+        for (const part of chunk(payload)) {
+          push(sseEvent({
+            id: 'chatcmpl-fake',
+            choices: [{
+              index: 0,
+              delta: { tool_calls: [{ index, function: { arguments: part } }] },
+              finish_reason: null,
+            }],
+          }));
+        }
+      }
+
+      push(sseEvent({
+        id: 'chatcmpl-fake',
+        choices: [{
+          index: 0,
+          delta: {},
+          finish_reason: turn.finishReason ?? (turn.toolUses?.length ? 'tool_calls' : 'stop'),
+        }],
+        usage: {
+          prompt_tokens: turn.inputTokens ?? 100,
+          completion_tokens: turn.outputTokens ?? 50,
+          total_tokens: (turn.inputTokens ?? 100) + (turn.outputTokens ?? 50),
+        },
+      }));
+
+      push('data: [DONE]\n\n');
+      controller.close();
     },
+  });
+}
+
+export interface FakeOptions {
+  turns: FakeTurn[];
+  /** Réponse du modèle de sécurité. */
+  safetyVerdict?: string;
+}
+
+/** Builds an LlmClient backed by the fake. */
+export function fakeClient(fake: FakeOpenRouter): LlmClient {
+  return {
+    baseUrl: 'https://openrouter.ai/api/v1',
+    apiKey: 'test-key',
+    headers: { 'Content-Type': 'application/json' },
+    fetchImpl: fake.fetchImpl,
   };
+}
+
+export class FakeOpenRouter {
+  readonly calls: RecordedCall[] = [];
+  readonly safetyCalls: Array<{ model: string; content: string }> = [];
+  /** `true` quand un appel a été interrompu par une annulation. */
+  aborted = false;
+  private index = 0;
+
+  constructor(private readonly options: FakeOptions) {}
+
+  get turns(): FakeTurn[] {
+    return this.options.turns;
+  }
+
+  /** Client injecté à la place du vrai client OpenRouter. */
+  readonly fetchImpl: typeof fetch = (async (input: any, init: any) => {
+    const url = String(input);
+    const body = init?.body ? JSON.parse(String(init.body)) : {};
+    const signal = init?.signal as AbortSignal | undefined;
+
+    if (url.endsWith('/chat/completions') && body.stream === false) {
+      // Appel du modèle de sécurité.
+      const messages = (body.messages ?? []) as Array<{ role: string; content: string }>;
+      this.safetyCalls.push({
+        model: body.model,
+        content: messages.map((message) => message.content).join('\n'),
+      });
+      const verdict = this.options.safetyVerdict ?? 'SAFE';
+      return new Response(
+        JSON.stringify({
+          id: 'chatcmpl-fake',
+          choices: [{ index: 0, message: { role: 'assistant', content: verdict }, finish_reason: 'stop' }],
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+
+    this.calls.push({
+      model: body.model,
+      messages: body.messages,
+      tools: body.tools,
+      max_tokens: body.max_tokens,
+      stream: body.stream,
+    });
+
+    const turn = this.options.turns[this.index] ?? { finishReason: 'stop' as const };
+    this.index += 1;
+
+    signal?.addEventListener('abort', () => {
+      this.aborted = true;
+    }, { once: true });
+
+    if (turn.httpError) {
+      return new Response(turn.httpError.body ?? JSON.stringify({ error: { message: 'erreur' } }), {
+        status: turn.httpError.status,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    return new Response(buildSseBody(turn, signal), {
+      status: 200,
+      headers: { 'Content-Type': 'text/event-stream' },
+    });
+  }) as typeof fetch;
 }
 
 /** Parses an SSE payload into a list of `{ event, data }`. */

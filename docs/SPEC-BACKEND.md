@@ -9,7 +9,8 @@ Public : l'agent de code qui construit le backend. Lire d'abord `README.md`, pui
 | Runtime | Node.js ≥ 20, TypeScript strict, ESM | `export-docx.mjs` est en ESM Node, réutilisé tel quel |
 | Serveur HTTP | **Hono** + `@hono/node-server` (helper `streamSSE`) | Léger, SSE natif. Express accepté seulement si Hono bloque, à signaler |
 | Front | Un seul `public/index.html` servi par le serveur | Le front n'est pas React : pas de Next.js, pas de Vercel AI SDK `useChat` |
-| LLM | SDK officiel `@anthropic-ai/sdk`, modèle dans `LLM_MODEL` (défaut `claude-sonnet-5-5`) | Contrôle total du streaming et des outils |
+| LLM | **OpenRouter** via son API compatible OpenAI, en `fetch` natif (aucun SDK). Modèles dans `LLM_MODELS` (ordre de bascule) | Choix d'Alex : trois modèles OpenRouter, le premier qui répond l'emporte. L'API OpenAI-compatible évite une dépendance supplémentaire ; `src/llm.ts` isole le fournisseur |
+| Modèles | Rédaction : `minimax/minimax-m3.1-flash:free` puis `nvidia/nemotron-3.5-super-vl:free`. Sécurité : `nvidia/nemotron-3.5-content-safety:free`, **hors bascule** | Le modèle de sécurité est un classifieur : il ne supporte pas les appels d'outils, il ne peut donc pas rédiger. Il filtre les entrées utilisateur et le contrat produit |
 | État | **Aucun état serveur** : le client renvoie historique + document | Déploiement trivial, pas de base de données pour la V1 |
 | Persistance | `localStorage` côté front uniquement | Suffisant pour le challenge |
 | PDF | Côté navigateur (`window.print()`) | Pas d'endpoint PDF en V1.0 |
@@ -61,17 +62,24 @@ Copie `reference/export-docx.mjs` vers `src/export/export-docx.mjs` (ou importe-
 
 | Variable | Défaut | Rôle |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | (obligatoire) | Clé du fournisseur |
-| `LLM_MODEL` | `claude-sonnet-5-5` | Modèle utilisé |
+| `OPENROUTER_API_KEY` | (obligatoire) | Clé OpenRouter |
+| `OPENROUTER_BASE_URL` | `https://openrouter.ai/api/v1` | URL de l'API |
+| `OPENROUTER_SITE_URL` | (vide) | URL du site, envoyée en `HTTP-Referer` (attribution OpenRouter) |
+| `OPENROUTER_APP_TITLE` | `LexCanvas` | Nom de l'application, envoyé en `X-Title` |
+| `LLM_MODELS` | `minimax/minimax-m3.1-flash:free,nvidia/nemotron-3.5-super-vl:free` | Chaîne de bascule, dans l'ordre d'essai |
+| `LLM_MODEL` | (vide) | Alias : force le modèle principal en tête de la chaîne |
+| `LLM_SAFETY_MODEL` | `nvidia/nemotron-3.5-content-safety:free` | Gardien de sécurité, hors bascule |
+| `SAFETY_CHECK` | `1` | `0` désactive le filtre de sécurité |
 | `PORT` | `3000` | Port d'écoute |
 | `ACCESS_CODE` | (vide) | Si défini, exigé en en-tête `X-Access-Code` |
 | `MAX_STEPS` | `6` | Itérations maximales de la boucle agentique |
 | `MAX_OUTPUT_TOKENS` | `8000` | Plafond de jetons par appel au modèle |
 | `REQUEST_TIMEOUT_MS` | `120000` | Durée maximale d'un flux |
 | `RATE_CHAT_PER_HOUR` / `RATE_EXPORT_PER_MIN` | `30` / `10` | Limites par IP |
+| `MAX_BODY_BYTES` | `1048576` | Corps de requête maximum |
 | `LOG_LEVEL` | `info` | Niveau de logs |
 
-Valide-les au démarrage avec `zod` ; échoue vite avec un message clair si `ANTHROPIC_API_KEY` manque.
+Valide-les au démarrage avec `zod` ; échoue vite avec un message clair si `OPENROUTER_API_KEY` manque.
 
 ## 4. La boucle agentique (`agent/loop.ts`)
 
@@ -92,15 +100,21 @@ fin de boucle sans end_turn -> emit("done", {stop_reason:"max_steps"})
 ```
 
 Contexte envoyé au modèle :
-- **Système** : `prompts/system.fr.md` avec `{{CATALOGUE}}` remplacé par la liste `id — label — description` des modèles `ready`. Marque ce bloc, et la liste des outils, avec `cache_control` (mise en cache du prompt) si le SDK installé le supporte.
+- **Système** : `prompts/system.fr.md` avec `{{CATALOGUE}}` remplacé par la liste `id — label — description` des modèles `ready`, envoyé comme message `system` (premier message de `messages`).
 - **Historique** : les `messages` du client tels quels (texte seul).
-- **Dernier message utilisateur** : deux blocs de texte. D'abord `<document_courant version="N">…markdown…</document_courant>` (ou `<document_courant>(aucun document)</document_courant>`), puis le texte de l'utilisateur. Si `contract_type` est fourni, ajoute une ligne `Type choisi par l'utilisateur : <id>`.
+- **Dernier message utilisateur** : un message `user` contenant, dans l'ordre, `<document_courant version="N">…markdown…</document_courant>` (ou `<document_courant>(aucun document)</document_courant>`), puis la ligne `Type choisi par l'utilisateur : <id>` si `contract_type` est fourni, puis le texte de l'utilisateur. Les blocs sont séparés par une ligne vide.
 
-**Streaming de `create_canvas`.** Utilise l'événement du SDK qui expose l'instantané du JSON partiel des arguments (dans le SDK TypeScript : l'événement `inputJson`, qui fournit un `snapshot`). À chaque événement, lis `snapshot.markdown` ; si la nouvelle valeur **commence par** la valeur déjà émise, émets uniquement le suffixe ; sinon n'émets rien (le `canvas_set` final corrigera). **Vérifie le nom exact de l'événement dans la version installée du SDK** avant de coder. Si l'événement n'existe pas, solution de repli : accumule `partial_json` et extrais la valeur de `"markdown"` avec un petit extracteur de chaîne JSON tolérant.
+**Streaming de `create_canvas`.** OpenRouter diffuse les arguments d'appel d'outil par morceaux (`delta.tool_calls[].function.arguments`). On accumule ces morceaux par appel d'outil et on en extrait la valeur de `"markdown"` avec un petit extracteur de chaîne JSON tolérant (`src/agent/json-partial.ts`). À chaque morceau, si la nouvelle valeur **commence par** la valeur déjà émise, on n'émet que le suffixe ; sinon on n'émet rien (le `canvas_set` final corrigera).
 
-**Annulation.** Passe `AbortSignal` (lié à la fermeture de la connexion client) au SDK. À l'annulation : aucune écriture supplémentaire, journalise `aborted`.
+**Annulation.** Passe `AbortSignal` (lié à la fermeture de la connexion client) à la requête `fetch`. À l'annulation : aucune écriture supplémentaire, journalise `aborted`.
 
-**Erreurs fournisseur.** Une seule nouvelle tentative (attente 1 s) sur 429 / 5xx / surcharge, uniquement **avant** que le moindre événement `canvas_*` ait été émis. Après, pas de nouvelle tentative : `error` avec `retryable: true`.
+**Erreurs fournisseur et bascule.** Les échecs qui concernent le modèle (429, 5xx, 404 « modèle inconnu », erreur réseau) font basculer sur le modèle suivant de `LLM_MODELS`, après 1 s d'attente, **uniquement avant que le moindre événement `canvas_*` ait été émis** : après, pas de nouvelle tentative (`error` avec `retryable: true`), pour ne jamais laisser un demi-document. Les erreurs globales (401, 403) ne sont pas rejouées.
+
+**Garde-fou de sécurité.** Le modèle `LLM_SAFETY_MODEL` est appelé hors de la boucle, en une requête non streamée :
+1. sur le dernier message de l'utilisateur, **avant** l'ouverture du flux (réponse `400` `bad_request` si le contenu est bloqué) ;
+2. sur le contrat produit, **avant** l'écriture dans le Canvas (si bloqué, aucun `canvas_set` : l'outil renvoie une erreur au modèle, qui explique la situation dans le chat).
+
+Un gardien indisponible (réseau, quota, réponse illisible) **laisse passer** : un garde-fou qui bloque tout le service quand il tombe casse l'application.
 
 ## 5. Les trois outils (`agent/tools.ts`)
 

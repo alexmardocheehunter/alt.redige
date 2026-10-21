@@ -1,4 +1,4 @@
-import type Anthropic from '@anthropic-ai/sdk';
+import type { LlmClient } from '../src/llm.js';
 import { loadConfig, type AppConfig } from '../src/config.js';
 import { createLogger } from '../src/logger.js';
 import { createApp } from '../src/app.js';
@@ -6,13 +6,13 @@ import type { Hono } from 'hono';
 import type { AppEnv } from '../src/types.js';
 
 export function testConfig(overrides: Partial<AppConfig> = {}): AppConfig {
-  const base = loadConfig({ ANTHROPIC_API_KEY: 'test-key' });
+  const base = loadConfig({ OPENROUTER_API_KEY: 'test-key' });
   return { ...base, ...overrides };
 }
 
 export interface TestAppOptions {
-  /** Fake Anthropic client, injected in place of the real one. */
-  client?: Anthropic;
+  /** Faux client OpenRouter, injecté à la place du vrai client. */
+  client?: LlmClient;
 }
 
 export function testApp(

@@ -44,9 +44,9 @@ et notes du modèle, puis fournir le contenu de `legal_notes` et `validators`.
 
 ## Environnement de développement
 
-### Clé `ANTHROPIC_API_KEY` absente de la machine de développement
+### Clé `OPENROUTER_API_KEY` absente de la machine de développement
 Sans clé, le serveur démarre (la validation de la configuration échoue
-volontairement : `ANTHROPIC_API_KEY` est obligatoire, cf. `SPEC-BACKEND.md` §3),
+volontairement : `OPENROUTER_API_KEY` est obligatoire, cf. `SPEC-BACKEND.md` §3),
 mais aucun appel au modèle ne peut aboutir. Conséquence : les scénarios
 d'évaluation (`npm run eval`) et le flux `/api/chat` ne peuvent pas être exécutés
 en local tant que la clé n'est pas fournie.
@@ -54,8 +54,33 @@ en local tant que la clé n'est pas fournie.
 Une clé de test peut être posée dans `.env` (jamais commité) :
 
 ```
-ANTHROPIC_API_KEY=sk-ant-...
+OPENROUTER_API_KEY=sk-or-...
 ```
+
+### Le changement de fournisseur (Anthropic → OpenRouter) n'a pas été validé en conditions réelles
+La bascule du fournisseur a été faite sur instruction d'Alex. Le format des
+requêtes (API OpenAI-compatible d'OpenRouter), le streaming des appels d'outils
+et la bascule entre modèles sont couverts par les tests (faux client qui parle
+exactement le format SSE d'OpenRouter), et les trois identifiants de modèles ont
+été vérifiés sur `https://openrouter.ai/api/v1/models` (présents, et les deux
+modèles de rédaction annoncent bien la prise en charge des appels d'outils).
+
+**Reste à faire** : une campagne réelle avec une clé valide (`npm run eval`),
+pour valider le comportement de `minimax/minimax-m3.1-flash:free` sur la
+rédaction longue et sur les appels d'outils en flux. Tant que ce n'est pas fait,
+le provider OpenRouter reste « vérifié statiquement, pas en production ».
+
+### Le filtre de sécurité n'a pas été calibré sur le modèle réel
+Le gardien `nvidia/nemotron-3.5-content-safety:free` est appelé avec une
+instruction qui impose une réponse `SAFE` ou `UNSAFE`. Le verdict est lu de
+façon prudente : seul un `UNSAFE` explicite en début de réponse bloque ; une
+réponse illisible ou une erreur du gardien laisse passer (fail-open).
+
+**À faire** : vérifier le comportement réel du modèle sur des cas d'école
+(document de bail légitime, demande hors sujet) avant de considérer le filtre
+comme fiable. Un faux positif bloquerait des demandes légitimes ; un faux
+négatif laisserait passer un contenu undesirable. Le réglage s'ajuste avec
+`SAFETY_CHECK=0` et le prompt `SAFETY_SYSTEM_PROMPT` (`src/safety.ts`).
 
 ---
 
@@ -101,10 +126,8 @@ externes sont signalées comme « ignorées » dans la sortie de `npm run eval`.
 ## Choix techniques assumés
 
 ### Le nom du modèle par défaut (`claude-sonnet-5-5`) n'est pas vérifié
-`SPEC-BACKEND.md` §1 impose `LLM_MODEL` par défaut à `claude-sonnet-5-5`. Cette
-valeur est reprise telle quelle. Si l'identifiant n'existe pas chez le
-fournisseur, l'appel échoue avec une erreur `llm_error` et il suffit de
-surcharger `LLM_MODEL` dans `.env`.
+*Obsolète : le fournisseur est désormais OpenRouter. Voir « Les trois modèles »
+dans `docs/EXPLOITATION.md`.*
 
 ### Comparaison du code d'accès
 La comparaison utilise `timingSafeEqual` ; lorsque les longueurs diffèrent, une

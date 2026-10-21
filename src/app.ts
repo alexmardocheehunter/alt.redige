@@ -8,11 +8,10 @@ import { Hono } from 'hono';
 import { secureHeaders } from 'hono/secure-headers';
 import { cors } from 'hono/cors';
 import { bodyLimit } from 'hono/body-limit';
-import type Anthropic from '@anthropic-ai/sdk';
 import type { AppConfig } from './config.js';
 import { AppError, errorBody, isAppError } from './errors.js';
 import { createLogger, type Logger } from './logger.js';
-import { createAnthropicClient } from './llm.js';
+import { createOpenRouterClient, type LlmClient } from './llm.js';
 import { requestId } from './middleware/requestId.js';
 import { requestLogger } from './middleware/requestLogger.js';
 import { auth } from './middleware/auth.js';
@@ -29,7 +28,7 @@ export interface AppDeps {
   /** Injected by the tests; loaded from data/templates otherwise. */
   templates?: TemplateStore;
   /** Injected by the tests; built from the API key otherwise. */
-  client?: Anthropic;
+  client?: LlmClient;
   /** Test hook: observes the tool calls (used by the evaluations). */
   onToolCall?: (name: string, input: unknown) => void;
 }
@@ -137,7 +136,12 @@ export function createApp({ config, logger, templates, client, onToolCall }: App
     config,
     logger,
     templates: templateStore,
-    client: client ?? createAnthropicClient(config.apiKey),
+    client: client ?? createOpenRouterClient({
+      baseUrl: config.baseUrl,
+      apiKey: config.apiKey,
+      siteUrl: config.siteUrl,
+      appTitle: config.appTitle,
+    }),
     onToolCall,
   }));
 

@@ -28,7 +28,12 @@ function main(): void {
     port: config.port,
     hostname: '0.0.0.0',
   }, (info) => {
-    logger.info('server_started', { port: info.port, model: config.model });
+    logger.info('server_started', {
+      port: info.port,
+      models: config.models.join(','),
+      safety_model: config.safetyModel,
+      safety_check: config.safetyCheck,
+    });
   });
 
   let shuttingDown = false;

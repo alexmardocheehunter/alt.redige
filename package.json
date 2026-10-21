@@ -17,7 +17,6 @@
     "eval": "tsx evals/run.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.137.0",
     "@hono/node-server": "^2.1.5",
     "docx": "^9.13.0",
     "hono": "^4.13.13",

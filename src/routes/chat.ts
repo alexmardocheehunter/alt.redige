@@ -3,15 +3,15 @@
  *
  * The format of the events is normative: docs/API-CONTRACT.md §3.3.
  */
-import type Anthropic from '@anthropic-ai/sdk';
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import { SSEStreamingApi } from 'hono/streaming';
 import type { AppConfig } from '../config.js';
 import { AppError } from '../errors.js';
-import { isAbortError, isRetryableProviderError } from '../llm.js';
+import { isAbortError, isModelFailure, type LlmClient } from '../llm.js';
 import type { Logger } from '../logger.js';
 import { runtimeState } from '../runtime-state.js';
+import { checkTextSafety } from '../safety.js';
 import type { TemplateStore } from '../templates.js';
 import type { AppEnv } from '../types.js';
 import { runAgent, type ChatMessage } from '../agent/loop.js';
@@ -26,7 +26,7 @@ export interface ChatDeps {
   config: AppConfig;
   logger: Logger;
   templates: TemplateStore;
-  client: Anthropic;
+  client: LlmClient;
   /** Test hook: observes the tool calls (used by the evaluations). */
   onToolCall?: (name: string, input: unknown) => void;
 }
@@ -155,6 +155,26 @@ export function chatRoutes(deps: ChatDeps): Hono<AppEnv> {
     const requestId = c.get('requestId') ?? '-';
     const logger = deps.logger.child({ request_id: requestId });
 
+    // Garde-fou : le message de l'utilisateur passe par le modèle de sécurité
+    // avant l'ouverture du flux. Un garde-fou indisponible laisse passer.
+    if (config.safetyCheck) {
+      const lastUserMessage = parsed.messages[parsed.messages.length - 1]!.content;
+      const verdict = await checkTextSafety({
+        client,
+        model: config.safetyModel,
+        text: lastUserMessage,
+        signal: c.req.raw.signal ?? new AbortController().signal,
+        logger,
+      });
+      if (!verdict.safe) {
+        logger.warn('safety_blocked_request', { label: verdict.label });
+        throw new AppError(
+          'bad_request',
+          'Votre demande a été bloquée par le filtre de sécurité. Reformulez votre demande.',
+        );
+      }
+    }
+
     return sseResponse(c, async (stream) => {
       const abortController = new AbortController();
       let clientGone = false;
@@ -202,6 +222,7 @@ export function chatRoutes(deps: ChatDeps): Hono<AppEnv> {
       let outcome: 'end_turn' | 'max_steps' | 'error' = 'error';
       let usage = { input_tokens: 0, output_tokens: 0 };
       let steps = 0;
+      let modelsUsed: string[] = [];
 
       try {
         const result = await runAgent({
@@ -219,6 +240,7 @@ export function chatRoutes(deps: ChatDeps): Hono<AppEnv> {
         outcome = result.stopReason;
         usage = result.usage;
         steps = result.steps;
+        modelsUsed = result.modelsUsed;
 
         if (timedOut) {
           emit('error', {
@@ -240,7 +262,7 @@ export function chatRoutes(deps: ChatDeps): Hono<AppEnv> {
         } else if (isAbortError(error)) {
           logger.info('request_aborted', { duration_ms: Date.now() - startedAt });
         } else {
-          const providerError = isRetryableProviderError(error);
+          const providerError = isModelFailure(error);
           logger.error('agent_failed', {
             duration_ms: Date.now() - startedAt,
             error: error instanceof Error ? error.message : String(error),
@@ -264,9 +286,9 @@ export function chatRoutes(deps: ChatDeps): Hono<AppEnv> {
         duration_ms: Date.now() - startedAt,
         outcome,
         steps,
+        models: modelsUsed.join(','),
         input_tokens: usage.input_tokens,
         output_tokens: usage.output_tokens,
-        model: config.model,
       });
     });
   });

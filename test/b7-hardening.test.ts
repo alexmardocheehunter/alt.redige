@@ -2,7 +2,14 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { readJson, testApp } from './helpers.js';
 import { resetRateLimits } from '../src/middleware/rateLimit.js';
 import { runtimeState } from '../src/runtime-state.js';
+import { FakeOpenRouter, fakeClient } from './fake-llm.js';
 import { SAMPLE_BAIL } from './fixtures.js';
+
+/** Application with a scripted model: no network call. */
+function appWithFake(overrides = {}) {
+  const client = new FakeOpenRouter({ turns: [{ text: 'Bonjour.' }] });
+  return testApp(overrides, { client: fakeClient(client) });
+}
 
 afterEach(() => {
   resetRateLimits();
@@ -11,7 +18,7 @@ afterEach(() => {
 
 describe('B7 — limitation de débit', () => {
   it('refuse les requêtes au-delà de la limite et renvoie Retry-After', async () => {
-    const app = testApp({ rateChatPerHour: 2 });
+    const app = appWithFake({ rateChatPerHour: 2 });
     const body = JSON.stringify({ messages: [{ role: 'user', content: 'Bonjour' }] });
 
     for (let index = 0; index < 2; index += 1) {
@@ -57,7 +64,7 @@ describe('B7 — limitation de débit', () => {
   });
 
   it('ne confond pas les quotas du chat et de l’export', async () => {
-    const app = testApp({ rateChatPerHour: 1, rateExportPerMin: 1 });
+    const app = appWithFake({ rateChatPerHour: 1, rateExportPerMin: 1 });
     const exportRes = await app.request('/api/export/docx', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -77,7 +84,7 @@ describe('B7 — limitation de débit', () => {
 
 describe('B7 — arrêt propre', () => {
   it('refuse les nouveaux flux pendant l’arrêt', async () => {
-    const app = testApp();
+    const app = appWithFake();
     runtimeState.shuttingDown = true;
 
     const res = await app.request('/api/chat', {
@@ -91,7 +98,7 @@ describe('B7 — arrêt propre', () => {
   });
 
   it('laisse passer la vérification de santé', async () => {
-    const app = testApp();
+    const app = appWithFake();
     runtimeState.shuttingDown = true;
     const res = await app.request('/api/health');
     expect(res.status).toBe(200);
@@ -100,7 +107,7 @@ describe('B7 — arrêt propre', () => {
 
 describe('B7 — messages d’erreur en français', () => {
   it('n’expose aucun détail technique', async () => {
-    const app = testApp();
+    const app = appWithFake();
     const res = await app.request('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

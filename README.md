@@ -160,7 +160,7 @@ journalisation, arrêt propre, tests et évaluations.
 
 ```bash
 npm install
-cp .env.example .env      # renseigner ANTHROPIC_API_KEY
+cp .env.example .env      # renseigner OPENROUTER_API_KEY
 npm start                 # compile puis lance le serveur
 ```
 

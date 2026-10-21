@@ -2,7 +2,7 @@
  * Evaluation runner — `npm run eval`.
  *
  * Calls the real endpoint with the real model (costly: never run in CI by
- * default). Without `--dry-run`, ANTHROPIC_API_KEY must be set.
+ * default). Without `--dry-run`, OPENROUTER_API_KEY must be set.
  *
  * Usage:
  *   npm run eval                 # real model
@@ -382,7 +382,8 @@ export async function runScenario(
   try {
     config = loadConfig();
   } catch {
-    config = loadConfig({ ANTHROPIC_API_KEY: 'dry-run' });
+    // No key: the run is a dry run, the client is scripted.
+    config = loadConfig({ ...process.env, OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY ?? 'dry-run' });
   }
 
   const templates = TemplateStore.load();
@@ -393,8 +394,13 @@ export async function runScenario(
     const { createDryRunClient } = await import('./dry-run.js');
     client = createDryRunClient(scenario);
   } else {
-    const { createAnthropicClient } = await import('../src/llm.js');
-    client = createAnthropicClient(config.apiKey);
+    const { createOpenRouterClient } = await import('../src/llm.js');
+    client = createOpenRouterClient({
+      baseUrl: config.baseUrl,
+      apiKey: config.apiKey,
+      siteUrl: config.siteUrl,
+      appTitle: config.appTitle,
+    });
   }
 
   const app = createApp({
@@ -493,9 +499,9 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  if (!dryRun && !process.env.ANTHROPIC_API_KEY) {
+  if (!dryRun && !process.env.OPENROUTER_API_KEY) {
     console.error(
-      'ANTHROPIC_API_KEY est absente : les scénarios ne peuvent pas être exécutés contre le vrai modèle.\n' +
+      'OPENROUTER_API_KEY est absente : les scénarios ne peuvent pas être exécutés contre le vrai modèle.\n' +
       'Renseignez la clé dans .env, ou utilisez « npm run eval -- --dry-run » pour vérifier le harnais sans modèle.',
     );
     process.exit(2);

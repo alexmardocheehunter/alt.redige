@@ -10,12 +10,29 @@ loadEnvFile();
 const positiveInt = (fallback: number, max: number) =>
   z.coerce.number().int().min(1).max(max).default(fallback);
 
+const DEFAULT_MODELS = ['minimax/minimax-m3.1-flash:free', 'nvidia/nemotron-3.5-super-vl:free'];
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  ANTHROPIC_API_KEY: z
+
+  // Fournisseur de modèle : OpenRouter.
+  OPENROUTER_API_KEY: z
     .string()
-    .min(1, 'La variable ANTHROPIC_API_KEY est obligatoire (clé du fournisseur de modèle).'),
-  LLM_MODEL: z.string().min(1).default('claude-sonnet-5-5'),
+    .min(1, 'La variable OPENROUTER_API_KEY est obligatoire (clé OpenRouter).'),
+  OPENROUTER_BASE_URL: z.string().min(1).default('https://openrouter.ai/api/v1'),
+  OPENROUTER_SITE_URL: z.string().min(1).optional(),
+  OPENROUTER_APP_TITLE: z.string().min(1).default('LexCanvas'),
+
+  // Modèles : chaîne de bascule ordonnée pour la rédaction.
+  LLM_MODEL: z.string().min(1).optional(),
+  LLM_MODELS: z
+    .string()
+    .min(1)
+    .default('minimax/minimax-m3.1-flash:free,nvidia/nemotron-3.5-super-vl:free'),
+
+  // Gardien de sécurité : hors bascule, appelé séparément.
+  LLM_SAFETY_MODEL: z.string().min(1).default('nvidia/nemotron-3.5-content-safety:free'),
+  SAFETY_CHECK: z.enum(['0', '1']).default('1'),
+
   PORT: z.coerce.number().int().min(0).max(65535).default(3000),
   ACCESS_CODE: z.string().min(1).optional(),
   MAX_STEPS: positiveInt(6, 20),
@@ -35,7 +52,15 @@ export type RawConfig = z.infer<typeof schema>;
 export interface AppConfig {
   nodeEnv: 'development' | 'production' | 'test';
   apiKey: string;
+  baseUrl: string;
+  siteUrl: string | null;
+  appTitle: string;
+  /** Chaîne de bascule de la rédaction, dans l'ordre d'essai. */
+  models: string[];
+  /** Modèle principal (premier de la chaîne). */
   model: string;
+  safetyModel: string;
+  safetyCheck: boolean;
   port: number;
   accessCode: string | null;
   maxSteps: number;
@@ -58,10 +83,27 @@ export class ConfigError extends Error {
 }
 
 function toAppConfig(raw: RawConfig): AppConfig {
+  // `LLM_MODEL` (alias historique) passe en tête de la chaîne de bascule.
+  const list = raw.LLM_MODELS
+    .split(',')
+    .map((model) => model.trim())
+    .filter((model) => model.length > 0);
+  if (list.length === 0) list.push(...DEFAULT_MODELS);
+
+  const ordered = raw.LLM_MODEL
+    ? [raw.LLM_MODEL, ...list.filter((model) => model !== raw.LLM_MODEL)]
+    : list;
+
   return {
     nodeEnv: raw.NODE_ENV,
-    apiKey: raw.ANTHROPIC_API_KEY,
-    model: raw.LLM_MODEL,
+    apiKey: raw.OPENROUTER_API_KEY,
+    baseUrl: raw.OPENROUTER_BASE_URL,
+    siteUrl: raw.OPENROUTER_SITE_URL ?? null,
+    appTitle: raw.OPENROUTER_APP_TITLE,
+    models: ordered,
+    model: ordered[0]!,
+    safetyModel: raw.LLM_SAFETY_MODEL,
+    safetyCheck: raw.SAFETY_CHECK === '1',
     port: raw.PORT,
     accessCode: raw.ACCESS_CODE ?? null,
     maxSteps: raw.MAX_STEPS,

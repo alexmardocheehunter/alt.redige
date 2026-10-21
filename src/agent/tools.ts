@@ -3,10 +3,11 @@
  * execution (server side). Everything a tool writes to the Canvas goes through
  * the `emit` callback, so the SSE contract stays in one place.
  */
-import type { Tool } from '@anthropic-ai/sdk/resources/messages';
 import { applyEdits, type Edit } from '../doc/edit.js';
 import { validate } from '../doc/validate.js';
+import type { LlmClient, LlmToolDefinition } from '../llm.js';
 import type { Logger } from '../logger.js';
+import { checkTextSafety } from '../safety.js';
 import type { ContractTemplate, TemplateStore } from '../templates.js';
 import type { AgentEmit } from './events.js';
 
@@ -24,6 +25,10 @@ export interface ToolContext {
   /** Version to use for the next `canvas_set`. */
   nextVersion: () => number;
   logger: Logger;
+  client: LlmClient;
+  safetyModel: string;
+  safetyEnabled: boolean;
+  signal: AbortSignal;
 }
 
 export interface ToolResult {
@@ -32,16 +37,16 @@ export interface ToolResult {
   isError: boolean;
 }
 
-/** Tool definitions sent to the model. */
-export function toolDefinitions(templates: TemplateStore): Tool[] {
+/** Tool definitions sent to the model (format OpenAI / OpenRouter). */
+export function toolDefinitions(templates: TemplateStore): LlmToolDefinition[] {
   const enumIds = templates.ready().map((template) => template.id);
 
-  const tools: Tool[] = [
+  return [
     {
       name: TOOL_GET_TEMPLATE,
       description:
         'Charge le modèle de référence d’un type de contrat : squelette Markdown, champs attendus et notes juridiques vérifiées. À appeler avant de rédiger.',
-      input_schema: {
+      parameters: {
         type: 'object',
         properties: {
           contract_type: { type: 'string', enum: enumIds },
@@ -53,7 +58,7 @@ export function toolDefinitions(templates: TemplateStore): Tool[] {
       name: TOOL_CREATE_CANVAS,
       description:
         'Écrit le contrat complet dans le Canvas. Première version, ou recommencer de zéro avec replace=true.',
-      input_schema: {
+      parameters: {
         type: 'object',
         properties: {
           title: { type: 'string' },
@@ -68,7 +73,7 @@ export function toolDefinitions(templates: TemplateStore): Tool[] {
       name: TOOL_EDIT_CANVAS,
       description:
         'Modifie le document existant par remplacements ciblés. old_str doit être copié exactement du document courant et n’apparaître qu’une fois.',
-      input_schema: {
+      parameters: {
         type: 'object',
         properties: {
           edits: {
@@ -89,14 +94,6 @@ export function toolDefinitions(templates: TemplateStore): Tool[] {
       },
     },
   ];
-
-  // The tool list is stable across the turns: it can be cached by the provider.
-  const last = tools[tools.length - 1];
-  if (last) {
-    (last as { cache_control?: { type: 'ephemeral' } }).cache_control = { type: 'ephemeral' };
-  }
-
-  return tools;
 }
 
 function ok(payload: unknown): ToolResult {
@@ -120,10 +117,35 @@ export function templatePayload(template: ContractTemplate): Record<string, unkn
 }
 
 /**
+ * Checks a document against the safety model.
+ * The guardian failing (network, quota) never blocks: the contract is kept.
+ */
+async function documentIsSafe(
+  context: ToolContext,
+  markdown: string,
+): Promise<{ safe: boolean; available: boolean }> {
+  if (!context.safetyEnabled) return { safe: true, available: false };
+
+  const verdict = await checkTextSafety({
+    client: context.client,
+    model: context.safetyModel,
+    text: markdown,
+    signal: context.signal,
+    logger: context.logger,
+  });
+
+  return { safe: verdict.safe, available: verdict.available };
+}
+
+/**
  * Executes a tool.
  * Returns the payload sent back to the model.
  */
-export function executeTool(name: string, input: unknown, context: ToolContext): ToolResult {
+export async function executeTool(
+  name: string,
+  input: unknown,
+  context: ToolContext,
+): Promise<ToolResult> {
   const args = (input ?? {}) as Record<string, unknown>;
 
   switch (name) {
@@ -155,7 +177,7 @@ function getTemplate(args: Record<string, unknown>, context: ToolContext): ToolR
   return ok(templatePayload(template));
 }
 
-function createCanvas(args: Record<string, unknown>, context: ToolContext): ToolResult {
+async function createCanvas(args: Record<string, unknown>, context: ToolContext): Promise<ToolResult> {
   const title = typeof args.title === 'string' ? args.title.trim() : '';
   const contractType = typeof args.contract_type === 'string' ? args.contract_type.trim() : '';
   const markdown = typeof args.markdown === 'string' ? args.markdown : '';
@@ -168,6 +190,14 @@ function createCanvas(args: Record<string, unknown>, context: ToolContext): Tool
   if (context.workingDoc !== null && !replace) {
     return fail(
       'Un document existe déjà dans le Canvas. Utilise edit_canvas pour le modifier, ou create_canvas avec replace=true pour tout recommencer.',
+    );
+  }
+
+  const safety = await documentIsSafe(context, markdown);
+  if (!safety.safe) {
+    context.logger.warn('safety_blocked_document', { contract_type: contractType });
+    return fail(
+      'Le contenu rédigé a été bloqué par le filtre de sécurité. Ne le réécris pas tel quel : explique à l’utilisateur que sa demande ne peut pas être traitée.',
     );
   }
 
@@ -190,6 +220,7 @@ function createCanvas(args: Record<string, unknown>, context: ToolContext): Tool
     contract_type: contractType,
     placeholders: validation.placeholders,
     issues: validation.issues.length,
+    safety: safety.available ? 'checked' : 'skipped',
   });
 
   return ok({
@@ -201,7 +232,7 @@ function createCanvas(args: Record<string, unknown>, context: ToolContext): Tool
   });
 }
 
-function editCanvas(args: Record<string, unknown>, context: ToolContext): ToolResult {
+async function editCanvas(args: Record<string, unknown>, context: ToolContext): Promise<ToolResult> {
   const rawEdits = Array.isArray(args.edits) ? args.edits : [];
   const edits: Edit[] = [];
 
@@ -221,6 +252,14 @@ function editCanvas(args: Record<string, unknown>, context: ToolContext): ToolRe
     return fail(result.message, { code: result.code, edit_index: result.index });
   }
 
+  const safety = await documentIsSafe(context, result.markdown);
+  if (!safety.safe) {
+    context.logger.warn('safety_blocked_document', { mode: 'edit' });
+    return fail(
+      'La modification a été bloquée par le filtre de sécurité. Ne la réécris pas tel quelle : explique à l’utilisateur que sa demande ne peut pas être traitée.',
+    );
+  }
+
   const template = context.workingDocType ? context.templates.get(context.workingDocType) ?? null : null;
   const validation = validate(result.markdown, template);
 
@@ -238,6 +277,7 @@ function editCanvas(args: Record<string, unknown>, context: ToolContext): ToolRe
   context.logger.info('tool_edit_canvas', {
     edits_applied: result.editsApplied,
     placeholders: validation.placeholders,
+    safety: safety.available ? 'checked' : 'skipped',
   });
 
   return ok({

@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { testApp, readJson, delay } from './helpers.js';
-import { FakeAnthropic, parseSse } from './fake-llm.js';
+import { FakeOpenRouter, fakeClient, parseSse, type FakeTurn } from './fake-llm.js';
 import { SAMPLE_BAIL } from './fixtures.js';
 
 const CONTRACT_MARKDOWN = '# Contrat de bail à usage d\'habitation\n\n## Article 1 – Objet du contrat\n\nTexte.\n';
 
-function appWith(client: FakeAnthropic, overrides = {}) {
-  return testApp(overrides, { client: client as never });
+function appWith(client: FakeOpenRouter, overrides = {}) {
+  return testApp(overrides, { client: fakeClient(client) });
 }
 
 async function postChat(app: ReturnType<typeof testApp>, body: unknown, init: RequestInit = {}) {
@@ -20,7 +20,7 @@ async function postChat(app: ReturnType<typeof testApp>, body: unknown, init: Re
 
 describe('B4 — en-têtes SSE', () => {
   it('renvoie les en-têtes imposés par le contrat', async () => {
-    const client = new FakeAnthropic([{ text: 'Bonjour.' }]);
+    const client = new FakeOpenRouter({ turns: [{ text: 'Bonjour.' }] });
     const app = appWith(client);
     const res = await postChat(app, { messages: [{ role: 'user', content: 'Bonjour' }] });
     expect(res.status).toBe(200);
@@ -33,23 +33,25 @@ describe('B4 — en-têtes SSE', () => {
 
 describe('B4 — flux de création', () => {
   it('reproduit le flux du contrat', async () => {
-    const client = new FakeAnthropic([
-      {
-        text: 'Je prépare votre contrat. ',
-        toolUses: [{
-          id: 'tool_1',
-          name: 'create_canvas',
-          input: { title: 'Contrat de bail', contract_type: 'bail-habitation', markdown: CONTRACT_MARKDOWN },
-          partialJson: JSON.stringify({
-            title: 'Contrat de bail',
-            contract_type: 'bail-habitation',
-            markdown: CONTRACT_MARKDOWN,
-          }),
-        }],
-        stopReason: 'tool_use',
-      },
-      { text: 'V1 prête.' },
-    ]);
+    const client = new FakeOpenRouter({
+      turns: [
+        {
+          text: 'Je prépare votre contrat. ',
+          toolUses: [{
+            id: 'tool_1',
+            name: 'create_canvas',
+            input: { title: 'Contrat de bail', contract_type: 'bail-habitation', markdown: CONTRACT_MARKDOWN },
+            partialJson: JSON.stringify({
+              title: 'Contrat de bail',
+              contract_type: 'bail-habitation',
+              markdown: CONTRACT_MARKDOWN,
+            }),
+          }],
+          finishReason: 'tool_calls',
+        },
+        { text: 'V1 prête.' },
+      ],
+    });
     const app = appWith(client);
     const res = await postChat(app, { messages: [{ role: 'user', content: 'Je veux un bail' }] });
     const events = parseSse(await res.text());
@@ -80,22 +82,24 @@ describe('B4 — flux de création', () => {
   });
 
   it('reconstruit le document à partir des canvas_delta', async () => {
-    const client = new FakeAnthropic([
-      {
-        toolUses: [{
-          id: 'tool_1',
-          name: 'create_canvas',
-          input: { title: 'T', contract_type: 'bail-habitation', markdown: CONTRACT_MARKDOWN },
-          partialJson: JSON.stringify({
-            title: 'T',
-            contract_type: 'bail-habitation',
-            markdown: CONTRACT_MARKDOWN,
-          }),
-        }],
-        stopReason: 'tool_use',
-      },
-      { text: 'Terminé.' },
-    ]);
+    const client = new FakeOpenRouter({
+      turns: [
+        {
+          toolUses: [{
+            id: 'tool_1',
+            name: 'create_canvas',
+            input: { title: 'T', contract_type: 'bail-habitation', markdown: CONTRACT_MARKDOWN },
+            partialJson: JSON.stringify({
+              title: 'T',
+              contract_type: 'bail-habitation',
+              markdown: CONTRACT_MARKDOWN,
+            }),
+          }],
+          finishReason: 'tool_calls',
+        },
+        { text: 'Terminé.' },
+      ],
+    });
     const app = appWith(client);
     const res = await postChat(app, { messages: [{ role: 'user', content: 'Bail' }] });
     const events = parseSse(await res.text());
@@ -107,17 +111,19 @@ describe('B4 — flux de création', () => {
   });
 
   it('incrémente la version à chaque canvas_set', async () => {
-    const client = new FakeAnthropic([
-      {
-        toolUses: [{
-          id: 'tool_1',
-          name: 'create_canvas',
-          input: { title: 'T', contract_type: 'bail-habitation', markdown: CONTRACT_MARKDOWN, replace: true },
-        }],
-        stopReason: 'tool_use',
-      },
-      { text: 'OK' },
-    ]);
+    const client = new FakeOpenRouter({
+      turns: [
+        {
+          toolUses: [{
+            id: 'tool_1',
+            name: 'create_canvas',
+            input: { title: 'T', contract_type: 'bail-habitation', markdown: CONTRACT_MARKDOWN, replace: true },
+          }],
+          finishReason: 'tool_calls',
+        },
+        { text: 'OK' },
+      ],
+    });
     const app = appWith(client);
     const res = await postChat(app, {
       messages: [{ role: 'user', content: 'Bail' }],
@@ -129,17 +135,19 @@ describe('B4 — flux de création', () => {
   });
 
   it('refuse de remplacer un document existant sans replace=true', async () => {
-    const client = new FakeAnthropic([
-      {
-        toolUses: [{
-          id: 'tool_1',
-          name: 'create_canvas',
-          input: { title: 'T', contract_type: 'bail-habitation', markdown: CONTRACT_MARKDOWN },
-        }],
-        stopReason: 'tool_use',
-      },
-      { text: 'Je dois utiliser edit_canvas.' },
-    ]);
+    const client = new FakeOpenRouter({
+      turns: [
+        {
+          toolUses: [{
+            id: 'tool_1',
+            name: 'create_canvas',
+            input: { title: 'T', contract_type: 'bail-habitation', markdown: CONTRACT_MARKDOWN },
+          }],
+          finishReason: 'tool_calls',
+        },
+        { text: 'Je dois utiliser edit_canvas.' },
+      ],
+    });
     const app = appWith(client);
     const res = await postChat(app, {
       messages: [{ role: 'user', content: 'Bail' }],
@@ -152,19 +160,21 @@ describe('B4 — flux de création', () => {
 
 describe('B4 — flux d’édition', () => {
   it('émet canvas_start puis canvas_set en mode edit', async () => {
-    const client = new FakeAnthropic([
-      {
-        toolUses: [{
-          id: 'tool_2',
-          name: 'edit_canvas',
-          input: {
-            edits: [{ old_str: '[À COMPLÉTER : durée du préavis]', new_str: 'trois (3) mois' }],
-          },
-        }],
-        stopReason: 'tool_use',
-      },
-      { text: 'Préavis mis à jour.' },
-    ]);
+    const client = new FakeOpenRouter({
+      turns: [
+        {
+          toolUses: [{
+            id: 'tool_2',
+            name: 'edit_canvas',
+            input: {
+              edits: [{ old_str: '[À COMPLÉTER : durée du préavis]', new_str: 'trois (3) mois' }],
+            },
+          }],
+          finishReason: 'tool_calls',
+        },
+        { text: 'Préavis mis à jour.' },
+      ],
+    });
     const app = appWith(client);
     const res = await postChat(app, {
       messages: [{ role: 'user', content: 'Change le préavis en 3 mois' }],
@@ -182,17 +192,19 @@ describe('B4 — flux d’édition', () => {
   });
 
   it('ne modifie rien quand old_str est introuvable', async () => {
-    const client = new FakeAnthropic([
-      {
-        toolUses: [{
-          id: 'tool_2',
-          name: 'edit_canvas',
-          input: { edits: [{ old_str: 'texte absent', new_str: 'x' }] },
-        }],
-        stopReason: 'tool_use',
-      },
-      { text: 'Je ne trouve pas cette phrase.' },
-    ]);
+    const client = new FakeOpenRouter({
+      turns: [
+        {
+          toolUses: [{
+            id: 'tool_2',
+            name: 'edit_canvas',
+            input: { edits: [{ old_str: 'texte absent', new_str: 'x' }] },
+          }],
+          finishReason: 'tool_calls',
+        },
+        { text: 'Je ne trouve pas cette phrase.' },
+      ],
+    });
     const app = appWith(client);
     const res = await postChat(app, {
       messages: [{ role: 'user', content: 'Change quelque chose' }],
@@ -206,7 +218,7 @@ describe('B4 — flux d’édition', () => {
 
 describe('B4 — erreurs', () => {
   it('refuse des rôles non alternés', async () => {
-    const client = new FakeAnthropic();
+    const client = new FakeOpenRouter({ turns: [] });
     const app = appWith(client);
     const res = await postChat(app, {
       messages: [
@@ -220,14 +232,14 @@ describe('B4 — erreurs', () => {
   });
 
   it('refuse un dernier message assistant', async () => {
-    const client = new FakeAnthropic();
+    const client = new FakeOpenRouter({ turns: [] });
     const app = appWith(client);
     const res = await postChat(app, { messages: [{ role: 'assistant', content: 'a' }] });
     expect(res.status).toBe(400);
   });
 
   it('refuse un document trop long', async () => {
-    const client = new FakeAnthropic();
+    const client = new FakeOpenRouter({ turns: [] });
     const app = appWith(client);
     const res = await postChat(app, {
       messages: [{ role: 'user', content: 'a' }],
@@ -239,7 +251,7 @@ describe('B4 — erreurs', () => {
   });
 
   it('refuse un message trop long', async () => {
-    const client = new FakeAnthropic();
+    const client = new FakeOpenRouter({ turns: [] });
     const app = appWith(client);
     const res = await postChat(app, {
       messages: [{ role: 'user', content: 'x'.repeat(8001) }],
@@ -248,7 +260,7 @@ describe('B4 — erreurs', () => {
   });
 
   it('refuse un corps JSON invalide', async () => {
-    const client = new FakeAnthropic();
+    const client = new FakeOpenRouter({ turns: [] });
     const app = appWith(client);
     const res = await app.request('/api/chat', {
       method: 'POST',
@@ -259,17 +271,17 @@ describe('B4 — erreurs', () => {
   });
 
   it('émet un événement error quand le contrat est tronqué', async () => {
-    const client = new FakeAnthropic([
-      {
+    const client = new FakeOpenRouter({
+      turns: [{
         text: 'Je commence',
         toolUses: [{
           id: 'tool_1',
           name: 'create_canvas',
           input: { title: 'T', contract_type: 'bail-habitation', markdown: '# Titre' },
         }],
-        stopReason: 'max_tokens',
-      },
-    ]);
+        finishReason: 'length',
+      }],
+    });
     const app = appWith(client);
     const res = await postChat(app, { messages: [{ role: 'user', content: 'Bail' }] });
     const events = parseSse(await res.text());
@@ -282,7 +294,7 @@ describe('B4 — erreurs', () => {
 
 describe('B4 — annulation', () => {
   it('interrompt l’appel au modèle quand la connexion est coupée', async () => {
-    const client = new FakeAnthropic([{ hang: true }]);
+    const client = new FakeOpenRouter({ turns: [{ hang: true }] });
     const app = appWith(client);
 
     const controller = new AbortController();
@@ -303,5 +315,55 @@ describe('B4 — annulation', () => {
 
     // The model call has been interrupted.
     expect(client.aborted).toBe(true);
+  });
+});
+
+describe('B4 — bascule entre modèles', () => {
+  it('bascule sur le modèle suivant quand le premier échoue', async () => {
+    const turns: FakeTurn[] = [
+      { httpError: { status: 429, body: JSON.stringify({ error: { message: 'No endpoints available' } }) } },
+      { text: 'Je vous réponds depuis le second modèle.' },
+    ];
+    const client = new FakeOpenRouter({ turns });
+    const app = appWith(client, {
+      models: ['minimax/minimax-m3.1-flash:free', 'nvidia/nemotron-3.5-super-vl:free'],
+    });
+
+    const res = await postChat(app, { messages: [{ role: 'user', content: 'Bonjour' }] });
+    const events = parseSse(await res.text());
+    expect(events[events.length - 1]!.event).toBe('done');
+    expect(client.calls.map((call) => call.model)).toEqual([
+      'minimax/minimax-m3.1-flash:free',
+      'nvidia/nemotron-3.5-super-vl:free',
+    ]);
+  });
+
+  it('ne rebascule pas une fois le contrat commencé', async () => {
+    const turns: FakeTurn[] = [
+      {
+        toolUses: [{
+          id: 'tool_1',
+          name: 'create_canvas',
+          input: { title: 'T', contract_type: 'bail-habitation', markdown: CONTRACT_MARKDOWN },
+          partialJson: JSON.stringify({
+            title: 'T',
+            contract_type: 'bail-habitation',
+            markdown: CONTRACT_MARKDOWN,
+          }),
+        }],
+        finishReason: 'tool_calls',
+      },
+      { httpError: { status: 500 } },
+    ];
+    const client = new FakeOpenRouter({ turns });
+    const app = appWith(client, {
+      models: ['minimax/minimax-m3.1-flash:free', 'nvidia/nemotron-3.5-super-vl:free'],
+    });
+
+    const res = await postChat(app, { messages: [{ role: 'user', content: 'Bail' }] });
+    const events = parseSse(await res.text());
+    // Le second modèle n'a pas été tenté : le Canvas avait déjà commencé.
+    expect(client.calls).toHaveLength(2);
+    expect(events.filter((event) => event.event === 'canvas_set')).toHaveLength(1);
   });
 });

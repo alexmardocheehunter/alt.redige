@@ -3,6 +3,7 @@ import { executeTool, toolDefinitions, templatePayload } from '../src/agent/tool
 import type { AgentEmit, AgentEventName, AgentEventPayloads } from '../src/agent/events.js';
 import { TemplateStore } from '../src/templates.js';
 import { createLogger } from '../src/logger.js';
+import { FakeOpenRouter, fakeClient } from './fake-llm.js';
 import { SAMPLE_BAIL } from './fixtures.js';
 
 function collector() {
@@ -15,6 +16,7 @@ function collector() {
 
 function context(overrides: Partial<Parameters<typeof executeTool>[2]> = {}) {
   const { events, emit } = collector();
+  const fake = new FakeOpenRouter({ turns: [] });
   const base = {
     workingDoc: null as string | null,
     workingDocType: null as string | null,
@@ -22,6 +24,10 @@ function context(overrides: Partial<Parameters<typeof executeTool>[2]> = {}) {
     emit,
     nextVersion: () => 1,
     logger: createLogger('error'),
+    client: fakeClient(fake),
+    safetyModel: 'nvidia/nemotron-3.5-content-safety:free',
+    safetyEnabled: false,
+    signal: new AbortController().signal,
   };
   return { events, context: { ...base, ...overrides } };
 }
@@ -35,20 +41,22 @@ describe('outils — définitions', () => {
   it('restreint get_template aux modèles disponibles', () => {
     const tools = toolDefinitions(TemplateStore.load());
     const getTemplate = tools.find((tool) => tool.name === 'get_template')!;
-    expect(JSON.stringify(getTemplate.input_schema)).toContain('bail-habitation');
+    expect(JSON.stringify(getTemplate.parameters)).toContain('bail-habitation');
   });
 
-  it('marque la liste d’outils pour la mise en cache du prompt', () => {
+  it('décrit les schémas au format JSON Schema', () => {
     const tools = toolDefinitions(TemplateStore.load());
-    const last = tools[tools.length - 1] as { cache_control?: { type: string } };
-    expect(last.cache_control).toEqual({ type: 'ephemeral' });
+    for (const tool of tools) {
+      expect(tool.parameters.type).toBe('object');
+      expect(Array.isArray(tool.parameters.required)).toBe(true);
+    }
   });
 });
 
 describe('outil get_template', () => {
-  it('renvoie le squelette et les champs', () => {
+  it('renvoie le squelette et les champs', async () => {
     const { events, context: ctx } = context();
-    const result = executeTool('get_template', { contract_type: 'bail-habitation' }, ctx);
+    const result = await executeTool('get_template', { contract_type: 'bail-habitation' }, ctx);
     expect(result.isError).toBe(false);
     const payload = JSON.parse(result.content);
     expect(payload.label).toBe("Bail d'habitation");
@@ -57,9 +65,9 @@ describe('outil get_template', () => {
     expect(events.map((event) => event.event)).toContain('status');
   });
 
-  it('refuse un type inconnu et liste les types valides', () => {
+  it('refuse un type inconnu et liste les types valides', async () => {
     const { context: ctx } = context();
-    const result = executeTool('get_template', { contract_type: 'promesse' }, ctx);
+    const result = await executeTool('get_template', { contract_type: 'promesse' }, ctx);
     expect(result.isError).toBe(true);
     const payload = JSON.parse(result.content);
     expect(payload.error).toContain('inconnu');
@@ -68,9 +76,9 @@ describe('outil get_template', () => {
 });
 
 describe('outil create_canvas', () => {
-  it('écrit le document et émet canvas_set', () => {
+  it('écrit le document et émet canvas_set', async () => {
     const { events, context: ctx } = context();
-    const result = executeTool('create_canvas', {
+    const result = await executeTool('create_canvas', {
       title: 'Contrat de bail',
       contract_type: 'bail-habitation',
       markdown: SAMPLE_BAIL,
@@ -82,9 +90,9 @@ describe('outil create_canvas', () => {
     expect((set.data as any).validation.placeholders).toBe(8);
   });
 
-  it('refuse d’écraser un document sans replace', () => {
+  it('refuse d’écraser un document sans replace', async () => {
     const { context: ctx } = context({ workingDoc: '# Ancien' });
-    const result = executeTool('create_canvas', {
+    const result = await executeTool('create_canvas', {
       title: 'T',
       contract_type: 'bail-habitation',
       markdown: SAMPLE_BAIL,
@@ -93,9 +101,9 @@ describe('outil create_canvas', () => {
     expect(ctx.workingDoc).toBe('# Ancien');
   });
 
-  it('écrase avec replace=true', () => {
+  it('écrase avec replace=true', async () => {
     const { context: ctx } = context({ workingDoc: '# Ancien' });
-    const result = executeTool('create_canvas', {
+    const result = await executeTool('create_canvas', {
       title: 'T',
       contract_type: 'bail-habitation',
       markdown: SAMPLE_BAIL,
@@ -105,17 +113,17 @@ describe('outil create_canvas', () => {
     expect(ctx.workingDoc).toBe(SAMPLE_BAIL);
   });
 
-  it('refuse un contrat vide', () => {
+  it('refuse un contrat vide', async () => {
     const { context: ctx } = context();
-    const result = executeTool('create_canvas', { title: 'T', contract_type: 'bail-habitation', markdown: '  ' }, ctx);
+    const result = await executeTool('create_canvas', { title: 'T', contract_type: 'bail-habitation', markdown: '  ' }, ctx);
     expect(result.isError).toBe(true);
   });
 });
 
 describe('outil edit_canvas', () => {
-  it('applique une modification et émet canvas_start puis canvas_set', () => {
+  it('applique une modification et émet canvas_start puis canvas_set', async () => {
     const { events, context: ctx } = context({ workingDoc: SAMPLE_BAIL, workingDocType: 'bail-habitation' });
-    const result = executeTool('edit_canvas', {
+    const result = await executeTool('edit_canvas', {
       edits: [{ old_str: '[À COMPLÉTER : durée du préavis]', new_str: 'trois (3) mois' }],
     }, ctx);
     expect(result.isError).toBe(false);
@@ -126,26 +134,26 @@ describe('outil edit_canvas', () => {
     expect(set.markdown).toContain('trois (3) mois');
   });
 
-  it('ne change rien quand l’édition échoue', () => {
+  it('ne change rien quand l’édition échoue', async () => {
     const { events, context: ctx } = context({ workingDoc: SAMPLE_BAIL });
-    const result = executeTool('edit_canvas', { edits: [{ old_str: 'absent', new_str: 'x' }] }, ctx);
+    const result = await executeTool('edit_canvas', { edits: [{ old_str: 'absent', new_str: 'x' }] }, ctx);
     expect(result.isError).toBe(true);
     expect(ctx.workingDoc).toBe(SAMPLE_BAIL);
     expect(events).toHaveLength(0);
   });
 
-  it('refuse quand il n’y a pas de document', () => {
+  it('refuse quand il n’y a pas de document', async () => {
     const { context: ctx } = context({ workingDoc: null });
-    const result = executeTool('edit_canvas', { edits: [{ old_str: 'x', new_str: 'y' }] }, ctx);
+    const result = await executeTool('edit_canvas', { edits: [{ old_str: 'x', new_str: 'y' }] }, ctx);
     expect(result.isError).toBe(true);
     expect(JSON.parse(result.content).code).toBe('no_document');
   });
 });
 
 describe('outil inconnu', () => {
-  it('renvoie une erreur', () => {
+  it('renvoie une erreur', async () => {
     const { context: ctx } = context();
-    const result = executeTool('mystere', {}, ctx);
+    const result = await executeTool('mystere', {}, ctx);
     expect(result.isError).toBe(true);
   });
 });
