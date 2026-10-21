@@ -20,9 +20,9 @@ mise en conformité du backend avec `AGENT-PROTOCOL.md` et
 | `sources`, `suggestions` | **fait** |
 | `retry` | **fait** |
 | `thinking_*` | **non implémenté** (décision assumée, §5) |
-| Le front appelle réellement `/api/chat` | **non** — le fichier livré est le prototype (voir §3) |
-| Export Word / PDF depuis le front | **cassé** — le front charge encore jszip/jspdf d'un CDN, bloqué par la CSP (voir §4) |
-| Boutons de démarrage depuis `/api/templates` | **non** — listes codées en dur dans le front |
+| Le front appelle réellement `/api/chat` | **fait** — branchement ajouté (voir §3) |
+| Export Word / PDF depuis le front | **fait** — Word par l'API, PDF par `window.print()` |
+| Boutons de démarrage depuis `/api/templates` | **fait** — les 9 modèles publiés alimentent les boutons |
 
 Le backend est prêt et conforme au protocole. **Le frontend livré n'est pas
 encore le front v2** : c'est le prototype décrit par `SPEC-FRONTEND.md` §17,

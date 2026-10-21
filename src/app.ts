@@ -164,6 +164,8 @@ export function createApp({ config, logger, templates, client, onToolCall }: App
 
   app.route('/', exportRoutes({ config, logger }));
 
+  app.get('/favicon.ico', (c) => c.body(null, 204));
+
   app.get('/', (c) => {
     const body = readIndexHtml();
     if (!body) {
