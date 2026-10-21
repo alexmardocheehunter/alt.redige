@@ -8,8 +8,9 @@
   },
   "scripts": {
     "dev": "tsx watch src/server.ts",
+    "prestart": "npm run build",
     "start": "node dist/server.js",
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.build.json && node scripts/build.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",

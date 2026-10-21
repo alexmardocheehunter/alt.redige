@@ -5,6 +5,7 @@ import { serve } from '@hono/node-server';
 import { createApp } from './app.js';
 import { ConfigError, loadConfig } from './config.js';
 import { createLogger } from './logger.js';
+import { beginShutdown } from './runtime-state.js';
 
 function main(): void {
   let config;
@@ -34,8 +35,9 @@ function main(): void {
   const shutdown = (signal: string) => {
     if (shuttingDown) return;
     shuttingDown = true;
+    // Refuse the new streams, let the running ones finish (30 s max).
+    beginShutdown();
     logger.info('shutdown_started', { signal });
-    // Refuse new streams, let the in-flight ones finish (30 s max).
     server.close((err) => {
       if (err) logger.error('shutdown_error', { error: err.message });
       logger.info('shutdown_complete', { signal });

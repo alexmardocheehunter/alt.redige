@@ -151,3 +151,18 @@ Ne le construis pas, même si c'est tentant : audit d'un contrat importé (uploa
 - La checklist du §9 est cochée, `docs/INTEGRATION-REPORT.md` écrit.
 - Un nouveau venu peut lancer l'application avec `npm install`, un `.env` copié de `.env.example`, et `npm start`.
 - `docs/KNOWN-ISSUES.md` liste honnêtement ce qui ne marche pas encore.
+
+## 13. Guide d'exploitation
+
+Le backend construit (phase A, jalons B1 à B7) est documenté dans
+`docs/EXPLOITATION.md` : variables d'environnement, lancement, déploiement,
+journalisation, arrêt propre, tests et évaluations.
+
+```bash
+npm install
+cp .env.example .env      # renseigner ANTHROPIC_API_KEY
+npm start                 # compile puis lance le serveur
+```
+
+Points d'entrée : `GET /`, `GET /api/health`, `GET /api/templates`,
+`POST /api/chat` (SSE), `POST /api/export/docx`.

@@ -14,6 +14,7 @@ import { AppError, errorBody, isAppError } from './errors.js';
 import { createLogger, type Logger } from './logger.js';
 import { createAnthropicClient } from './llm.js';
 import { requestId } from './middleware/requestId.js';
+import { requestLogger } from './middleware/requestLogger.js';
 import { auth } from './middleware/auth.js';
 import { rateLimit } from './middleware/rateLimit.js';
 import type { AppEnv } from './types.js';
@@ -70,6 +71,7 @@ export function createApp({ config, logger, templates, client, onToolCall }: App
   }
 
   app.use('*', requestId());
+  app.use('*', requestLogger(logger));
   app.use('*', secureHeaders({
     xContentTypeOptions: 'nosniff',
     referrerPolicy: 'no-referrer',

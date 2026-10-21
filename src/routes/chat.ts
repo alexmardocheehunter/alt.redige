@@ -11,6 +11,7 @@ import type { AppConfig } from '../config.js';
 import { AppError } from '../errors.js';
 import { isAbortError, isRetryableProviderError } from '../llm.js';
 import type { Logger } from '../logger.js';
+import { runtimeState } from '../runtime-state.js';
 import type { TemplateStore } from '../templates.js';
 import type { AppEnv } from '../types.js';
 import { runAgent, type ChatMessage } from '../agent/loop.js';
@@ -139,6 +140,10 @@ export function chatRoutes(deps: ChatDeps): Hono<AppEnv> {
   const { config, logger, templates, client } = deps;
 
   app.post('/api/chat', async (c) => {
+    if (runtimeState.shuttingDown) {
+      throw new AppError('llm_unavailable', 'Le service s’arrête, réessayez dans un instant.');
+    }
+
     let raw: unknown;
     try {
       raw = await c.req.json();
@@ -195,6 +200,8 @@ export function chatRoutes(deps: ChatDeps): Hono<AppEnv> {
 
       const startedAt = Date.now();
       let outcome: 'end_turn' | 'max_steps' | 'error' = 'error';
+      let usage = { input_tokens: 0, output_tokens: 0 };
+      let steps = 0;
 
       try {
         const result = await runAgent({
@@ -210,6 +217,8 @@ export function chatRoutes(deps: ChatDeps): Hono<AppEnv> {
           onToolCall: deps.onToolCall,
         });
         outcome = result.stopReason;
+        usage = result.usage;
+        steps = result.steps;
 
         if (timedOut) {
           emit('error', {
@@ -251,8 +260,12 @@ export function chatRoutes(deps: ChatDeps): Hono<AppEnv> {
 
       await writeChain;
       logger.info('chat_done', {
+        request_id: requestId,
         duration_ms: Date.now() - startedAt,
         outcome,
+        steps,
+        input_tokens: usage.input_tokens,
+        output_tokens: usage.output_tokens,
         model: config.model,
       });
     });
