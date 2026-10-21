@@ -101,6 +101,32 @@ const SENTENCE_STARTERS = new Set([
 ]);
 
 /**
+ * Zone où un nom propre peut apparaître : l'identité des parties (avant le
+ * premier article) et les lignes qui portent un titre de civilité ou une
+ * forme de société. Le reste du document est du vocabulaire juridique : un
+ * mot capitalisé qui y figure (« Préambule », « Réparations », « Contestations »)
+ * n'est pas une invention.
+ */
+const IDENTITY_TITLES = [
+  'monsieur', 'madame', 'm.', 'mme', 'mlle', 'maitre', 'societe', 'sarl', 's.a.',
+  'sa ', 'sasu', 'sprl', 'gbie', 'entreprise', 'groupe', 'agent',
+];
+
+function identityScope(document: string): string {
+  const lines = document.split(/\r?\n/);
+  const firstArticle = lines.findIndex((line) => /^##\s/.test(line));
+  const inHead = firstArticle === -1 ? lines.length : firstArticle;
+
+  const kept: string[] = [];
+  for (const [index, line] of lines.entries()) {
+    const normalized = normalize(line);
+    const hasTitle = IDENTITY_TITLES.some((title) => normalized.includes(title));
+    if (index < inHead || hasTitle) kept.push(line);
+  }
+  return kept.join('\n');
+}
+
+/**
  * Checks that every proper noun, amount or date of the contract comes either
  * from the user messages or from a `[À COMPLÉTER …]` placeholder.
  *
@@ -146,17 +172,20 @@ export function checkNoInventedFacts(
     }
   }
 
-  // Proper nouns: capitalized words that are not common contract words.
+  // Proper nouns : dans la zone d'identité des parties uniquement.
+  const scope = identityScope(withoutPlaceholders);
   const properNouns = new Set<string>();
-  for (const line of withoutPlaceholders.split(/\r?\n/)) {
+  for (const line of scope.split(/\r?\n/)) {
     const cleaned = line.replace(/^\s*[-*\d.)\s]+/, '');
     const words = cleaned.split(/\s+/);
     let atSentenceStart = true;
 
     for (const word of words) {
       const bare = word.replace(/[^\p{L}'’-]/gu, '');
-      const key = normalize(bare);
-      const capitalized = bare.length >= 4 && /^\p{Lu}/u.test(bare);
+      // « bailleurs'acquittent » : on ne garde que la partie après l'apostrophe.
+      const tail = bare.includes("'") ? bare.slice(bare.lastIndexOf("'") + 1) : bare;
+      const key = normalize(tail);
+      const capitalized = tail.length >= 3 && /^\p{Lu}/u.test(tail);
 
       if (atSentenceStart) {
         // Premier mot de la phrase : presque toujours un mot courant.
