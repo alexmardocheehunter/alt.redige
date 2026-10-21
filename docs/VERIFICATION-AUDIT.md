@@ -16,7 +16,7 @@ faire.
 | Tests (référence) | `npm test` → **170/170**, 17 fichiers |
 | Tests (fin de correction) | `npm test` → **195/195**, 18 fichiers |
 | Évaluation simulée | `npm run eval -- --smoke` → 10/10 **non concluant** (cf. §2) |
-| Évaluation réelle | `npm run eval` → **1/10** avant correction ; réseau dégradé ensuite (cf. §7) |
+| Évaluation réelle | `npm run eval` → **1/10** avant correction ; **non conclue après correction** — filtre réseau par taille de corps (> ~1 Ko), cf. §7 |
 
 > **Note de concurrence.** Pendant toute la durée de ces travaux, un autre
 > agent a travaillé **sur la même branche** et a committé des travaux en cours
@@ -578,24 +578,46 @@ concluants**, ni à charge ni à décharge.
 
 ### Après correction
 
-La campagne réelle a été relancée. **Le réseau sortant s'est dégradé pendant
-toute la fenêtre de correction** : coupures de socket
-(`UND_ERR_SOCKET : other side closed`) et `429` du fournisseur, y compris sur
-des requêtes élémentaires. Diagnostic, reproductible :
+La campagne réelle a été relancée **trois fois**. **Aucune n'a pu être
+conclue**, pour une cause désormais précisément identifiée.
+
+**Cause racine : un filtre réseau sur le chemin de sortie, par taille de
+corps de requête.** Mesure directe contre `https://openrouter.ai`, avec la
+clé de production, en TLS 1.2 :
 
 ```
-curl https://openrouter.ai/api/v1/models                    → http=200 en 1,09 s
-node (TLS 1.3 par défaut)                                   → UND_ERR_CONNECT_TIMEOUT
-NODE_OPTIONS=--tls-max-v1.2 node …                          → 200 en 643 ms
+  corps ~   150 o  -> 200        2 009 ms
+  corps ~   406 o  -> 200        2 109 ms
+  corps ~   662 o  -> 200        2 072 ms
+  corps ~   918 o  -> 200        1 021 ms
+  corps ~ 1 174 o  -> ECHEC  ECONNRESET
+  corps ~ 1 686 o  -> ECHEC  UND_ERR_SOCKET
+  corps ~ 2 198 o  -> ECHEC  UND_ERR_SOCKET
+  corps ~ 4 246 o  -> ECHEC  UND_ERR_SOCKET
+  corps ~ 8 342 o  -> ECHEC  UND_ERR_SOCKET
+  corps ~16 534 o  -> ECHEC  UND_ERR_SOCKET
 ```
 
-**Conséquence : l'évaluation réelle n'a pas pu être conclue.** Trois
-exécutions ont été tentées ; toutes se sont heurtées à l'indisponibilité du
-fournisseur. Le harnais relance automatiquement un scénario dont le flux a
-échoué pour cause de transport (`scenario_retry`) — c'est le comportement
-correct, mais il ne remplace pas un modèle disponible.
+Le seuil est **d'environ 1 Ko de corps de requête** : au-delà, la connexion
+est réinitialisée par l'équipement intermédiaire. Ce n'est **pas** lié au
+flux (le mode `stream: true` passe à 150 o), ni à la clé, ni au modèle.
 
-**Ce qui reste à faire, sur une machine avec un réseau sain :**
+**Conséquence directe : l'application ne peut pas fonctionner depuis ce
+poste.** Le corps d'une requête réelle est de 10 à 40 Ko (prompt système
+4,3 Ko + schémas des outils + squelette du modèle + document) : il est
+toujours au-dessus du seuil. **Aucun réglage de configuration ne peut
+contourner ce filtre** ; seul un autre réseau le peut.
+
+Le diagnostic du développeur (commit `4e0d149`, « seuil de coupure réseau
+mesuré (1 Ko) ») est donc **confirmé et quantifié**.
+
+Ce que le harness fait, correctement, face à cela : trois tentatives avec
+backoff, bascule de modèle, puis `error` `llm_unavailable` propre et un
+reconduit de scénario (`scenario_retry`). **Aucun demi-document n'est
+émis.** C'est le comportement attendu.
+
+**Ce qui reste à faire — sur une machine dont le réseau n'a pas ce
+filtre :**
 
 ```
 NODE_OPTIONS=--tls-max-v1.2 npm run eval    # 3 exécutions consécutives
@@ -632,7 +654,7 @@ du modèle (§2).
 
 | # | Risque | État |
 |---|---|---|
-| R1 | L'évaluation réelle n'a pas pu être conclue (réseau) | **À refaire** sur un réseau sain, 3 exécutions. |
+| R1 | L'évaluation réelle n'a pas pu être conclue : **filtre réseau par taille de corps (> ~1 Ko)**, pas un défaut de l'application (§7). | **À refaire** depuis un réseau sans ce filtre, 3 exécutions. |
 | R2 | La résistance à l'injection repose sur une défense d'application | Aucune défense serveur absolue n'est possible ; le scénario 10 reste le test. |
 | R3 | Le contrôle d'invention est un avertissement, pas un refus | Un montant approché reste dans le document, signalé. |
 | R4 | `ACCESS_CODE` ne donne aucune identité | Quotas par IP, pas par utilisateur, tant que le jeton d'identité n'est pas en place. |
