@@ -50,6 +50,20 @@ faire.
   proposées en §6, à valider par Alex ;
 - aucun fichier `tmp-*` n'a été commité ; `.gitignore` les exclut désormais.
 
+### Rectifications apportées à l'audit initial
+
+L'audit initial (rapport en conversation, à chargers comme `AUDIT.md`)
+comportait deux altérations de rédaction, signalées par la consigne. Elles
+sont corrigées ici et n'affectent aucun constat technique :
+
+| Endroit | Texto altéré | Texte correct |
+|---|---|---|
+| §4 « Risques de génération juridique » | « Clauses**一键** inventées » | « Clauses inventées » |
+| §4, même paragraphe | « un document featuring « ce délai pausing » n'est pas opposable …, et **Riddick** » | « … n'est pas opposable en l'état d'un point de vue rédactionnel » |
+
+L'audit initial signalait aussi des gravités incohérentes (P2 marquées 🟠) :
+elles sont réévaluées dans le tableau du §3, avec justification.
+
 ---
 
 ## 2. Le mode « smoke » : ce qu'il ne prouve pas
