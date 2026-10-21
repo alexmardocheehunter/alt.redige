@@ -1,0 +1,51 @@
+{
+  "id": "apprentissage",
+  "label": "Contrat d'apprentissage",
+  "description": "Contrat d'apprentissage entre un employeur, un maître d'apprentissage et un apprenti",
+  "status": "ready",
+  "legal_review": { "status": "fourni", "reviewer": "Référentiel juridique joint (TOUTES LES INFOS LEGALES.txt)", "date": "2026-10-21" },
+  "required_fields": [
+    { "key": "employeur", "label": "Employeur", "question_hint": "Raison sociale et adresse de l'employeur ?" },
+    { "key": "maitre_apprentissage", "label": "Maître d'apprentissage", "question_hint": "Nom et âge du maître d'apprentissage ?" },
+    { "key": "apprenti", "label": "Apprenti", "question_hint": "Nom, prénom, date et lieu de naissance de l'apprenti ?" },
+    { "key": "metier", "label": "Métier enseigné et cours professionnels", "question_hint": "Métier enseigné et cours professionnels suivis ?" },
+    { "key": "duree", "label": "Durée du contrat", "question_hint": "Durée du contrat d'apprentissage ?" }
+  ],
+  "optional_fields": [
+    { "key": "preremuneration", "label": "Pré-rémunération (obligatoire dès le 13e mois)" },
+    { "key": "assurance", "label": "Couverture accidents du travail" },
+    { "key": "examen", "label": "Modalités de l'examen" }
+  ],
+  "required_articles": [
+    "Textes de référence", "Nature", "Métier et formation", "Durée", "Obligations des parties", "Rémunération", "Assurance", "Confidentialité", "Signatures"
+  ],
+  "legal_notes": [
+    "L'apprentissage est réservé aux jeunes de 16 à 25 ans [S01, art. 13.1].",
+    "Nul ne peut recevoir des apprentis mineurs s'il n'est âgé de dix-huit ans au moins [S01, art. 13.3].",
+    "Le contrat doit être rédigé en langue française [S01, art. 13.1 ; S05, Décret 96-286 art. 12].",
+    "L'employeur doit couvrir l'apprenti contre les accidents du travail [S05, Décret 96-286 art. 17].",
+    "La pré-rémunération de l'apprenti ne peut être inférieure à 30 % du SMIG [S05, Décret 96-286 art. 15]."
+  ],
+  "validators": [
+    {
+      "id": "apprentissage_age_maitre",
+      "severity": "error",
+      "description": "Âge minimum du maître d'apprentissage : 18 ans [S01, art. 13.3, 2021].",
+      "check": { "type": "min_age_years", "value": 18 }
+    },
+    {
+      "id": "apprentissage_preremuneration",
+      "severity": "error",
+      "description": "Pré-rémunération minimale dès le 13e mois : 30 % du SMIG [S05, Décret 96-286 art. 15, 1996].",
+      "check": { "type": "min_percentage", "value": 30 }
+    },
+    {
+      "id": "apprentissage_cours_professionnels",
+      "severity": "error",
+      "description": "Le contrat doit mentionner le métier enseigné et les cours professionnels [S05, Décret 96-286 art. 12].",
+      "check": { "type": "required_phrases", "phrases": ["cours professionnels"] }
+    }
+  ],
+  "skeleton_markdown": "# Contrat d'apprentissage\n\nEntre les soussignés :\n\n**[À COMPLÉTER : raison sociale de l'employeur]**, dont le siège est situé à [À COMPLÉTER : adresse de l'employeur], représenté par [À COMPLÉTER : nom et qualité du représentant],\n\nci-après dénommé « l'**Employeur** »,\n\n**Monsieur/Madame [À COMPLÉTER : nom du maître d'apprentissage]**, né(e) le [À COMPLÉTER : date de naissance] à [À COMPLÉTER : lieu de naissance], demeurant à [À COMPLÉTER : adresse], exerçant les fonctions de [À COMPLÉTER : fonction dans l'entreprise],\n\nci-après dénommé(e) « le **Maître d'apprentissage** »,\n\net\n\n**Monsieur/Madame [À COMPLÉTER : nom et prénom de l'apprenti]**, né(e) le [À COMPLÉTER : date de naissance] à [À COMPLÉTER : lieu de naissance], de nationalité [À COMPLÉTER : nationalité], demeurant à [À COMPLÉTER : adresse de l'apprenti],\n\nci-après dénommé(e) « l'**Apprenti** »,\n\nil a été convenu et arrêté ce qui suit :\n\n## Article 1 – Textes de référence\n\nLe présent contrat est régi par les articles 13.1 à 13.10 du Code du travail, par le Décret n° 96-286 du 3 avril 1996 relatif à l'apprentissage, et par [À COMPLÉTER : autres textes].\n\n## Article 2 – Nature du contrat\n\nLe présent contrat constate l'apprentissage d'un métier par l'Apprenti, en vue de l'obtention d'une qualification professionnelle.\n\n## Article 3 – Métier enseigné et cours professionnels\n\nMétier enseigné : [À COMPLÉTER : métier enseigné].\n\nCours professionnels suivis : [À COMPLÉTER : cours professionnels et organisme de formation].\n\n## Article 4 – Durée\n\nLe contrat est conclu pour une durée de [À COMPLÉTER : durée du contrat], du [À COMPLÉTER : date de début] au [À COMPLÉTER : date de fin].\n\n## Article 5 – Obligations des parties\n\nL'Employeur et le Maître d'apprentissage s'engagent à [À COMPLÉTER : obligations de l'employeur].\n\nL'Apprenti s'engage à [À COMPLÉTER : obligations de l'apprenti].\n\n## Article 6 – Rémunération\n\nL'Apprenti perçoit une rémunération de [À COMPLÉTER : montant de la rémunération] FCFA par mois.\n\nÀ compter du treizième mois, l'apprenti perçoit une pré-rémunération au moins égale à 30 % du SMIG.\n\n## Article 7 – Assurance\n\nL'Apprenti est couvert contre les accidents du travail par [À COMPLÉTER : assureur et numéro de police].\n\n## Article 8 – Confidentialité\n\nL'Apprenti s'engage à [À COMPLÉTER : obligation de confidentialité].\n\n## Article 9 – Règlement des différends\n\nLes parties s'engagent à rechercher une solution amiable à toute différend [À COMPLÉTER : durée].\n\n## Article 10 – Signatures\n\nFait à [À COMPLÉTER : lieu], le [À COMPLÉTER : date], en trois exemplaires originaux.\n\n| L'Employeur | Le Maître d'apprentissage | L'Apprenti |\n|---|---|---|\n| Lu et approuvé | Lu et approuvé | Lu et approuvé |\n|  |  |  |\n",
+  "_comment_legal": "legal_notes et validators sont issus du référentiel juridique joint (reference/TOUTES LES INFOS LEGALES.txt, fiche 5 apprentissage)."
+}

@@ -1,0 +1,51 @@
+{
+  "id": "stage-qualification",
+  "label": "Stage de qualification",
+  "description": "Contrat de stage de qualification ou d'expérience professionnelle",
+  "status": "ready",
+  "legal_review": { "status": "fourni", "reviewer": "Référentiel juridique joint (TOUTES LES INFOS LEGALES.txt)", "date": "2026-10-21" },
+  "required_fields": [
+    { "key": "entreprise", "label": "Entreprise d'accueil", "question_hint": "Raison sociale et adresse de l'entreprise d'accueil ?" },
+    { "key": "stagiaire", "label": "Stagiaire", "question_hint": "Nom, prénom, date et lieu de naissance du stagiaire ?" },
+    { "key": "formation", "label": "Formation qualifiante", "question_hint": "Quelle formation qualifiante est visée ?" },
+    { "key": "duree", "label": "Durée du stage", "question_hint": "Durée totale du stage de qualification ?" },
+    { "key": "indemnite", "label": "Indemnité forfaitaire mensuelle", "question_hint": "Indemnité forfaitaire mensuelle du stage (montant) ?" }
+  ],
+  "optional_fields": [
+    { "key": "priorite_embauche", "label": "Priorité d'embauche en cas de vacance" },
+    { "key": "tuteur", "label": "Tuteur et encadrement" },
+    { "key": "assurance", "label": "Assurance responsabilité civile" }
+  ],
+  "required_articles": [
+    "Textes de référence", "Nature", "Durée", "Missions", "Obligations du stagiaire", "Horaires de travail", "Indemnités forfaitaires", "Protection sociale", "Confidentialité", "Signatures"
+  ],
+  "legal_notes": [
+    "Le stage de qualification doit être constaté par écrit [S01, art. 13.15].",
+    "Il doit porter sur un engagement de formation qualifiante [S01, art. 13.14].",
+    "Une indemnité forfaitaire mensuelle est obligatoire [S01, art. 13.17].",
+    "En cas de vacance d'emploi, le stagiaire bénéficie d'une priorité d'embauche de six mois [S01, art. 13.18].",
+    "La durée totale du stage de qualification, renouvellements compris, ne peut excéder douze mois [S01, art. 13.14]."
+  ],
+  "validators": [
+    {
+      "id": "stage_qualification_duree_max",
+      "severity": "error",
+      "description": "Durée maximale totale du stage de qualification : 12 mois, renouvellements compris [S01, art. 13.14, 2015].",
+      "check": { "type": "max_duration_months", "value": 12 }
+    },
+    {
+      "id": "stage_qualification_indemnite_obligatoire",
+      "severity": "error",
+      "description": "Indemnité forfaitaire mensuelle obligatoire [S01, art. 13.17, 2015].",
+      "check": { "type": "required_phrases", "phrases": ["indemnité forfaitaire"] }
+    },
+    {
+      "id": "stage_qualification_priorite_embauche",
+      "severity": "info",
+      "description": "Priorité d'embauche après le stage : 6 mois [S01, art. 13.18, 2015].",
+      "check": { "type": "info_only" }
+    }
+  ],
+  "skeleton_markdown": "# Contrat de stage de qualification\n\nEntre les soussignés :\n\n**[À COMPLÉTER : raison sociale de l'entreprise d'accueil]**, dont le siège est situé à [À COMPLÉTER : adresse de l'entreprise], représentée par [À COMPLÉTER : nom et qualité du représentant],\n\nci-après dénommée « l'**Entreprise** »,\n\net\n\n**Monsieur/Madame [À COMPLÉTER : nom et prénom du stagiaire]**, né(e) le [À COMPLÉTER : date de naissance] à [À COMPLÉTER : lieu de naissance], de nationalité [À COMPLÉTER : nationalité], demeurant à [À COMPLÉTER : adresse du stagiaire],\n\nci-après dénommé(e) « le **Stagiaire** »,\n\nil a été convenu et arrêté ce qui suit :\n\n## Article 1 – Textes de référence\n\nLe présent contrat est régi par les articles 13.14 à 13.18 du Code du travail et par [À COMPLÉTER : autres textes].\n\n## Article 2 – Nature du contrat\n\nLe présent contrat constate un stage de qualification, effectué par le Stagiaire en vue d'une formation qualifiante.\n\n## Article 3 – Durée\n\nLe stage se déroule du [À COMPLÉTER : date de début] au [À COMPLÉTER : date de fin], pour une durée totale de [À COMPLÉTER : durée totale du stage, renouvellements compris].\n\n## Article 4 – Missions\n\nLe Stagiaire est affecté aux missions suivantes :\n\n- [À COMPLÉTER : mission principale] ;\n- [À COMPLÉTER : missions complémentaires].\n\n## Article 5 – Obligations du stagiaire\n\nLe Stagiaire s'engage à [À COMPLÉTER : obligations du stagiaire].\n\n## Article 6 – Horaires de travail\n\nLe Stagiaire est présent [À COMPLÉTER : horaires de présence].\n\n## Article 7 – Indemnités forfaitaires\n\nLe Stagiaire perçoit une indemnité forfaitaire mensuelle de [À COMPLÉTER : montant de l'indemnité forfaitaire] FCFA.\n\n## Article 8 – Protection sociale\n\nLe Stagiaire est affilié [À COMPLÉTER : régime de protection sociale / couverture maladie].\n\n## Article 9 – Confidentialité\n\nLe Stagiaire s'engage à [À COMPLÉTER : obligation de confidentialité].\n\n## Article 10 – Priorité d'embauche\n\nEn cas de vacance d'emploi correspondant aux qualifications du Stagiaire, l'Entreprise lui donne priorité pour une durée de six mois à compter de la fin du stage.\n\n## Article 11 – Règlement des différends\n\nLes parties s'engagent à rechercher une solution amiable à toute différend [À COMPLÉTER : durée].\n\n## Article 12 – Signatures\n\nFait à [À COMPLÉTER : lieu], le [À COMPLÉTER : date], en deux exemplaires originaux.\n\n| L'Entreprise | Le Stagiaire |\n|---|---|\n| Lu et approuvé | Lu et approuvé |\n|  |  |\n",
+  "_comment_legal": "legal_notes et validators sont issus du référentiel juridique joint (reference/TOUTES LES INFOS LEGALES.txt, fiche 4 stage-qualification)."
+}

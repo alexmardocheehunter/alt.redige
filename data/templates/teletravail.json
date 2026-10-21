@@ -1,0 +1,44 @@
+{
+  "id": "teletravail",
+  "label": "Accord de télétravail",
+  "description": "Accord ou avenant de télétravail entre l'employeur et le télétravailleur",
+  "status": "ready",
+  "legal_review": { "status": "fourni", "reviewer": "Référentiel juridique joint (TOUTES LES INFOS LEGALES.txt)", "date": "2026-10-21" },
+  "required_fields": [
+    { "key": "employeur", "label": "Employeur", "question_hint": "Raison sociale et adresse de l'employeur ?" },
+    { "key": "teletravailleur", "label": "Télétravailleur", "question_hint": "Nom, prénom, date et lieu de naissance, adresse du télétravailleur ?" },
+    { "key": "lieu_teletravail", "label": "Lieu de télétravail", "question_hint": "Adresse du lieu de télétravail ?" },
+    { "key": "duree", "label": "Durée de l'accord", "question_hint": "Entrée en vigueur et durée de l'accord ?" }
+  ],
+  "optional_fields": [
+    { "key": "equipement", "label": "Équipement mis à disposition" },
+    { "key": "teletravail_exceptionnel", "label": "Télétravail exceptionnel (force majeure)" },
+    { "key": "horaires", "label": "Modalités de suivi des horaires" }
+  ],
+  "required_articles": [
+    "Textes de référence", "Objet", "Mentions obligatoires", "Durée", "Obligations des parties", "Équipement et frais", "Confidentialité", "Résiliation", "Signatures"
+  ],
+  "legal_notes": [
+    "Le télétravail est organisé dans un accord collectif ou individuel, devant comporter les mentions obligatoires [S05, Décret 2022-31 art. 5].",
+    "L'accord doit être établi par écrit [S05, Décret 2022-31 art. 4].",
+    "Le télétravailleur doit bénéficier d'une égalité de droits avec les salariés présents sur site [S05, Décret 2022-31 art. 6].",
+    "L'employeur ne peut mettre en place des moyens de surveillance qui portent atteinte à la vie privée du télétravailleur [S05, Décret 2022-31 art. 7].",
+    "En cas de force majeure, l'accord prévoit la notification écrite préalable [S05, Décret 2022-31 art. 4]."
+  ],
+  "validators": [
+    {
+      "id": "teletravail_egalite_droits",
+      "severity": "warning",
+      "description": "Égalité de droits avec les salariés présents sur site : 100 % [S05, Décret 2022-31 art. 6, 2022].",
+      "check": { "type": "required_phrases", "phrases": ["égalité de droits"] }
+    },
+    {
+      "id": "teletravail_vie_privee",
+      "severity": "warning",
+      "description": "Aucun dispositif de surveillance portant atteinte à la vie privée du télétravailleur [S05, Décret 2022-31 art. 7, 2022].",
+      "check": { "type": "info_only" }
+    }
+  ],
+  "skeleton_markdown": "# Accord de télétravail\n\nEntre les soussignés :\n\n**[À COMPLÉTER : raison sociale de l'employeur]**, dont le siège est situé à [À COMPLÉTER : adresse de l'employeur], représenté par [À COMPLÉTER : nom et qualité du représentant],\n\nci-après dénommé « l'**Employeur** »,\n\net\n\n**Monsieur/Madame [À COMPLÉTER : nom et prénom du télétravailleur]**, né(e) le [À COMPLÉTER : date de naissance] à [À COMPLÉTER : lieu de naissance], demeurant à [À COMPLÉTER : adresse du télétravailleur], employé en qualité de [À COMPLÉTER : emploi occupé],\n\nci-après dénommé(e) « le **Télétravailleur** »,\n\nil a été convenu et arrêté ce qui suit :\n\n## Article 1 – Textes de référence\n\nLe présent accord est régi par le Décret n° 2022-31 du 12 janvier 2022 fixant les modalités du télétravail, et par [À COMPLÉTER : autres textes].\n\n## Article 2 – Objet\n\nLe présent accord organise le télétravail du Télétravailleur, exercé depuis son domicile situé [À COMPLÉTER : adresse du lieu de télétravail].\n\n## Article 3 – Mentions obligatoires\n\nLe présent accord précise :\n\n- les modalités d'exécution de la activité à distance ;\n- [À COMPLÉTER : modalités de suivi de l'activité] ;\n- [À COMPLÉTER : modalités relatives aux équipements] ;\n- [À COMPLÉTER : modalités d'entretien et de remplacement des équipements] ;\n- les modalités de formation [À COMPLÉTER : modalités de formation] ;\n- [À COMPLÉTER : modalités d'exercice du droit à la déconnexion] ;\n- [À COMPLÉTER : modalités de prise en charge des frais] .\n\n## Article 4 – Durée\n\nLe présent accord prend effet le [À COMPLÉTER : date d'entrée en vigueur] et est conclu pour une durée de [À COMPLÉTER : durée de l'accord].\n\n## Article 5 – Obligations des parties\n\nLe Télétravailleur s'engage à [À COMPLÉTER : obligations du télétravailleur].\n\nL'Employeur s'engage à garantir au Télétravailleur une égalité de droits avec les salariés présents sur site.\n\n## Article 6 – Équipement et frais\n\nL'Employeur met à disposition du Télétravailleur [À COMPLÉTER : équipements].\n\nLes frais [À COMPLÉTER : frais pris en charge] sont pris en charge par l'Employeur.\n\n## Article 7 – Confidentialité\n\nLe Télétravailleur est tenu de [À COMPLÉTER : obligation de confidentialité].\n\n## Article 8 – Résiliation\n\nLe présent accord prend fin [À COMPLÉTER : modalités de résiliation].\n\nEn cas de force majeure, sa suspension est notifiée par écrit à l'autre partie avant [À COMPLÉTER : délai de notification].\n\n## Article 9 – Signatures\n\nFait à [À COMPLÉTER : lieu], le [À COMPLÉTER : date], en deux exemplaires originaux.\n\n| L'Employeur | Le Télétravailleur |\n|---|---|\n| Lu et approuvé | Lu et approuvé |\n|  |  |\n",
+  "_comment_legal": "legal_notes et validators sont issus du référentiel juridique joint (reference/TOUTES LES INFOS LEGALES.txt, fiche 6 teletravail)."
+}

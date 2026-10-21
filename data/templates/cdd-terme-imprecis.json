@@ -1,0 +1,53 @@
+{
+  "id": "cdd-terme-imprecis",
+  "label": "Contrat de travail à durée déterminée (terme imprécis)",
+  "description": "CDD pour l'exécution d'une tâche précise, sans terme fixe",
+  "status": "ready",
+  "legal_review": { "status": "fourni", "reviewer": "Référentiel juridique joint (TOUTES LES INFOS LEGALES.txt)", "date": "2026-10-21" },
+  "required_fields": [
+    { "key": "employeur", "label": "Identité de l'employeur", "question_hint": "Raison sociale, adresse et représentant de l'employeur ?" },
+    { "key": "employe", "label": "Identité de l'employé", "question_hint": "Nom, prénom, date et lieu de naissance, nationalité, adresse de l'employé ?" },
+    { "key": "poste", "label": "Emploi et missions", "question_hint": "Poste occupé et missions confiées ?" },
+    { "key": "motif_tache", "label": "Motif précis du recrutement", "question_hint": "Pourquoi ce recrutement ? (objet spécifique du recrutement, art. 15.6)" },
+    { "key": "remuneration", "label": "Salaire de base", "question_hint": "Salaire de base mensuel en FCFA ?" },
+    { "key": "duree", "label": "Durée du contrat", "question_hint": "Durée du CDD (terme imprécis) ?" }
+  ],
+  "optional_fields": [
+    { "key": "periode_essai", "label": "Période d'essai (clause écrite obligatoire)" },
+    { "key": "visa_emploi", "label": "Numéro de visa de l'Emploi (salarié étranger)" },
+    { "key": "avantage", "label": "Avantages divers" }
+  ],
+  "required_articles": [
+    "Textes de référence", "Nature", "Emploi et missions", "Obligations des parties", "Rémunération", "Horaires de travail", "Confidentialité", "Rupture du contrat", "Signatures"
+  ],
+  "legal_notes": [
+    "Un CDD à terme imprécis ne peut être conclu que pour l'exécution d'une tâche précise [S01, art. 15.6] : le motif du recrutement doit être écrit dans le contrat.",
+    "La durée d'un CDD à terme imprécis ne peut dépasser deux ans [S01, art. 15.4].",
+    "Les CDD ne peuvent excéder un tiers de l'effectif total de l'entreprise [S01, art. 15.1].",
+    "Une prime de fin de contrat de précarité de 3 % des salaires bruts est due [S01, art. 15.8].",
+    "Interdiction de toute clause de concurrence post-contractuelle [S01, art. 16.5].",
+    "Le contrat doit être rédigé en langue française [S01, art. 13.1 ; S05, Décret 96-287 art. 4] et revêtu de la signature des deux parties [S05, Décret 96-287 art. 4]."
+  ],
+  "validators": [
+    {
+      "id": "cdd_imprecis_duree_max",
+      "severity": "error",
+      "description": "Durée maximale du CDD à terme imprécis : 2 ans [S01, art. 15.4, 2015].",
+      "check": { "type": "max_duration_months", "value": 24 }
+    },
+    {
+      "id": "cdd_imprecis_motif_precis",
+      "severity": "error",
+      "description": "Le CDD à terme imprécis doit mentionner l'objet spécifique du recrutement [S01, art. 15.6, 2015].",
+      "check": { "type": "required_phrases", "phrases": ["objet spécifique du recrutement", "motif précis", "tâche précise"] }
+    },
+    {
+      "id": "cdd_concurrence_interdite",
+      "severity": "error",
+      "description": "Interdiction de concurrence post-contractuelle [S01, art. 16.5] : la clause est nulle de plein droit.",
+      "check": { "type": "forbidden_phrases", "phrases": ["interdiction de concurrencer", "clause de non-concurrence"] }
+    }
+  ],
+  "skeleton_markdown": "# Contrat de travail à durée déterminée (terme imprécis)\n\nEntre les soussignés :\n\n**Monsieur [À COMPLÉTER : nom et prénom du représentant de l'employeur]**, agissant en qualité de [À COMPLÉTER : qualité du représentant] pour le compte de **[À COMPLÉTER : raison sociale de l'employeur]**, dont le siège est situé à [À COMPLÉTER : adresse du siège],\n\nci-après dénommé « l'**Employeur** »,\n\net\n\n**Monsieur/Madame [À COMPLÉTER : nom et prénom de l'employé]**, né(e) le [À COMPLÉTER : date de naissance] à [À COMPLÉTER : lieu de naissance], de nationalité [À COMPLÉTER : nationalité], demeurant à [À COMPLÉTER : adresse de l'employé],\n\nci-après dénommé(e) « l'**Employé(e)** »,\n\nil a été convenu et arrêté ce qui suit :\n\n## Article 1 – Textes de référence\n\nLe présent contrat est régi par :\n\n- la Loi n° 2015-532 du 20 juillet 2015 portant Code du travail en Côte d'Ivoire ;\n- le Décret n° 96-287 du 3 avril 1996 relatif au contrat de travail ;\n- [À COMPLÉTER : autres textes particuliers].\n\n## Article 2 – Nature du contrat\n\nLe présent contrat est un contrat de travail à durée déterminée à terme imprécis, conclu en application de l'article 15.6 du Code du travail pour l'exécution d'une tâche précise.\n\n## Article 3 – Emploi et missions\n\nL'Employé est engagé en qualité de [À COMPLÉTER : emploi occupé].\n\nObjet spécifique du recrutement : [À COMPLÉTER : objet précis du recrutement, rattaché à un besoin déterminé].\n\nL'Employé a pour mission :\n\n- [À COMPLÉTER : mission principale] ;\n- [À COMPLÉTER : missions complémentaires].\n\n## Article 4 – Obligations des parties\n\nL'Employé s'engage à [À COMPLÉTER : obligations de l'employé].\n\nL'Employeur s'engage à [À COMPLÉTER : obligations de l'employeur].\n\n## Article 5 – Évaluation de performance\n\nL'Employé est évalué selon [À COMPLÉTER : dispositif d'évaluation].\n\n## Article 6 – Horaires de travail\n\nL'horaire de travail est de [À COMPLÉTER : horaire de travail].\n\n## Article 7 – Imputation budgétaire et rémunération\n\nL'Employé est imputé au budget [À COMPLÉTER : imputation budgétaire].\n\nLe salaire de base est fixé à [À COMPLÉTER : montant du salaire de base] FCFA par mois.\n\n## Article 8 – Devoir de réserve et confidentialité\n\nL'Employé est tenu du devoir de réserve et de confidentialité [À COMPLÉTER : étendue].\n\n## Article 9 – Rupture du contrat\n\nLe contrat prend fin à l'achèvement de la tâche pour laquelle il a été conclu.\n\nToute rupture anticipée à l'initiative de l'Employeur ouvre droit à l'indemnité de préavis prévue par la réglementation.\n\n## Article 10 – Règlement des différends\n\nLes parties s'engagent à rechercher une solution amiable à toute différend [À COMPLÉTER : durée].\n\n## Article 11 – Signatures\n\nFait à [À COMPLÉTER : lieu], le [À COMPLÉTER : date], en trois exemplaires originaux.\n\n| L'Employeur | L'Employé(e) |\n|---|---|\n| Lu et approuvé | Lu et approuvé |\n|  |  |\n",
+  "_comment_legal": "legal_notes et validators sont issus du référentiel juridique joint (reference/TOUTES LES INFOS LEGALES.txt, fiche 1 cdd)."
+}

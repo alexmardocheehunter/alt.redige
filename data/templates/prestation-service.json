@@ -1,0 +1,53 @@
+{
+  "id": "prestation-service",
+  "label": "Contrat de prestation de services",
+  "description": "Prestation de services, sous-traitance ou fourniture de biens (consultance, maintenance, entretien, formation, acquisitions)",
+  "status": "ready",
+  "legal_review": { "status": "fourni", "reviewer": "Référentiel juridique joint (TOUTES LES INFOS LEGALES.txt)", "date": "2026-10-21" },
+  "required_fields": [
+    { "key": "autorite", "label": "Autorité contractante", "question_hint": "Raison sociale et adresse de l'autorité contractante ?" },
+    { "key": "prestataire", "label": "Prestataire", "question_hint": "Raison sociale et adresse du prestataire ?" },
+    { "key": "objet", "label": "Objet et description du service", "question_hint": "Quel service (ou quels biens) est presté ?" },
+    { "key": "prix", "label": "Prix forfaitaire convenu", "question_hint": "Prix forfaitaire du service, en FCFA, hors taxes ?" },
+    { "key": "duree", "label": "Durée du contrat", "question_hint": "Durée du contrat et date d'entrée en vigueur ?" }
+  ],
+  "optional_fields": [
+    { "key": "modalites_paiement", "label": "Modalités de paiement" },
+    { "key": "penalites", "label": "Pénalités de retard" },
+    { "key": "assurance", "label": "Assurance responsabilité civile" },
+    { "key": "ordre_mission", "label": "Ordre de mission / bon de commande" }
+  ],
+  "required_articles": [
+    "Textes de référence", "Objet", "Durée", "Obligations des parties", "Rémunération", "Confidentialité", "Résiliation", "Règlement des différends", "Signatures"
+  ],
+  "legal_notes": [
+    "Le contrat doit définir le service et le prix forfaitaire convenu [S01, art. 11.6].",
+    "Le contrat doit constater l'indépendance du prestataire et la direction effective de sa main-d'œuvre [S01, art. 11.6].",
+    "Le prêt de main-d'œuvre à but lucratif hors travail temporaire est prohibé [S01, art. 11.5].",
+    "Si la prestation est exécutée dans les locaux de l'entrepreneur, la substitution de garantie de salaire s'applique [S01, art. 11.7].",
+    "Fiscalité : retenue BNC de 7,5 % pour un prestataire immatriculé et de 20 % pour un prestataire non immatriculé [S02, art. 58, 93, 108] ; TVA au taux commun de 18 % [S02, art. 339, 345, 358].",
+    "Le droit d'enregistrement et le timbre doivent être mentionnés : le contrat doit indiquer qui les supporte [voir les spécimens de référence]."
+  ],
+  "validators": [
+    {
+      "id": "prestation_retenue_bnc",
+      "severity": "warning",
+      "description": "Taux de retenue BNC du prestataire non immatriculé : 20 % [S02, art. 93, 108, 2026].",
+      "check": { "type": "info_only" }
+    },
+    {
+      "id": "prestation_independance",
+      "severity": "error",
+      "description": "Indépendance du prestataire et direction effective de sa main-d'œuvre [S01, art. 11.6, 2015].",
+      "check": { "type": "required_phrases", "phrases": ["indépendant", "indépendance"] }
+    },
+    {
+      "id": "prestation_pret_main_oeuvre",
+      "severity": "error",
+      "description": "Le prêt de main-d'œuvre à but lucratif hors travail temporaire est prohibé [S01, art. 11.5, 2015].",
+      "check": { "type": "forbidden_phrases", "phrases": ["prêt de main-d'œuvre", "prêt de main d'oeuvre", "mise à disposition de main-d'œuvre"] }
+    }
+  ],
+  "skeleton_markdown": "# Contrat de prestation de services\n\nEntre les soussignés :\n\n**[À COMPLÉTER : raison sociale de l'autorité contractante]**, dont le siège est situé à [À COMPLÉTER : adresse de l'autorité contractante], représentée par [À COMPLÉTER : nom et qualité du représentant],\n\nci-après dénommée « l'**Autorité contractante** »,\n\net\n\n**[À COMPLÉTER : raison sociale du prestataire]**, dont le siège est situé à [À COMPLÉTER : adresse du prestataire], représentée par [À COMPLÉTER : nom et qualité du représentant],\n\nci-après dénommé « le **Prestataire** »,\n\nil a été convenu et arrêté ce qui suit :\n\n## Article 1 – Textes de référence\n\nLe présent contrat est régi par [À COMPLÉTER : textes de référence] et par les dispositions du Code du travail relatives à l'indépendance du prestataire, notamment l'article 11.6.\n\n## Article 2 – Objet\n\nLe Prestataire s'engage à fournir à l'Autorité contractante les prestations suivantes :\n\n- [À COMPLÉTER : description de la prestation principale] ;\n- [À COMPLÉTER : prestations complémentaires].\n\nLes modalités d'exécution sont précisées dans [À COMPLÉTER : ordre de mission ou cahier des charges].\n\n## Article 3 – Durée\n\nLe présent contrat entre en vigueur le [À COMPLÉTER : date d'entrée en vigueur] pour une durée de [À COMPLÉTER : durée du contrat].\n\n## Article 4 – Obligations des parties\n\nLe Prestataire s'engage à :\n\n- exécuter la prestation conformément aux spécifications convenues ;\n- respecter la sécurité et les règles applicables dans les locaux de l'Autorité contractante ;\n- [À COMPLÉTER : autres obligations du prestataire].\n\nL'Autorité contractante s'engage à [À COMPLÉTER : obligations de l'autorité contractante].\n\nLe Prestataire demeure un fournisseur indépendant : il assume la direction effective de sa main-d'œuvre et la responsabilité de ses personnels.\n\n## Article 5 – Rémunération\n\nEn contrepartie, le prix forfaitaire de la prestation est fixé à [À COMPLÉTER : montant du prix forfaitaire] FCFA, hors taxes.\n\nIl est payable [À COMPLÉTER : modalités de paiement] sous déduction [À COMPLÉTER : retenues applicables, dont la retenue BNC].\n\n## Article 6 – Confidentialité\n\nChaque partie s'engage à [À COMPLÉTER : obligation de confidentialité] pendant [À COMPLÉTER : durée de l'obligation].\n\n## Article 7 – Cession ou transfert\n\nLe Prestataire ne peut [À COMPLÉTER : cession ou transfert] sans l'accord écrit de l'Autorité contractante.\n\n## Article 8 – Responsabilité\n\nLe Prestataire assume la responsabilité [À COMPLÉTER : périmètre de la responsabilité] et déclare être assuré [À COMPLÉTER : assurance et numéro de police].\n\n## Article 9 – Résiliation\n\nLe présent contrat peut être résilié [À COMPLÉTER : modalités de résiliation], moyennant un préavis de [À COMPLÉTER : durée du préavis].\n\nEn cas de retard, des pénalités de [À COMPLÉTER : taux ou montant des pénalités de retard] sont applicables.\n\n## Article 10 – Règlement des différends\n\nLes parties s'engagent à rechercher une solution amiable à toute différend [À COMPLÉTER : durée].\n\n## Article 11 – Frais d'enregistrement et timbre\n\nLes frais d'enregistrement et de timbre sont [À COMPLÉTER : pris en charge par / supportés par].\n\n## Article 12 – Entrée en vigueur\n\nLe présent contrat prend effet le [À COMPLÉTER : date d'entrée en vigueur].\n\n## Article 13 – Signatures\n\nFait à [À COMPLÉTER : lieu], le [À COMPLÉTER : date], en deux exemplaires originaux.\n\n| L'Autorité contractante | Le Prestataire |\n|---|---|\n| Lu et approuvé | Lu et approuvé |\n|  |  |\n",
+  "_comment_legal": "legal_notes et validators sont issus du référentiel juridique joint (reference/TOUTES LES INFOS LEGALES.txt, fiche 8 prestation-service). Le squelette suit la structure des spécimens de référence (consultance, maintenance, entretien, formation, acquisitions)."
+}

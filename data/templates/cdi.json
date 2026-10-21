@@ -1,0 +1,52 @@
+{
+  "id": "cdi",
+  "label": "Contrat de travail à durée indéterminée",
+  "description": "CDI entre un employeur et un salarié, à durée indéterminée",
+  "status": "ready",
+  "legal_review": { "status": "fourni", "reviewer": "Référentiel juridique joint (TOUTES LES INFOS LEGALES.txt)", "date": "2026-10-21" },
+  "required_fields": [
+    { "key": "employeur", "label": "Identité de l'employeur", "question_hint": "Raison sociale, adresse et représentant de l'employeur ?" },
+    { "key": "employe", "label": "Identité et domicile de l'employé", "question_hint": "Nom, prénom, date et lieu de naissance, nationalité, domicile de l'employé ?" },
+    { "key": "poste", "label": "Emploi, catégorie et salaire", "question_hint": "Poste occupé, catégorie et salaire convenu ?" },
+    { "key": "convention_collective", "label": "Convention collective applicable", "question_hint": "Quelle convention collective s'applique ?" },
+    { "key": "date_debut", "label": "Date de prise d'effet", "question_hint": "Date de début du contrat ?" }
+  ],
+  "optional_fields": [
+    { "key": "periode_essai", "label": "Période d'essai (clause écrite obligatoire)" },
+    { "key": "avantage", "label": "Avantages divers" },
+    { "key": "horaire", "label": "Horaire de travail" }
+  ],
+  "required_articles": [
+    "Textes de référence", "Nature", "Emploi et missions", "Obligations des parties", "Rémunération", "Horaires de travail", "Congés", "Fin et rupture de contrat", "Signatures"
+  ],
+  "legal_notes": [
+    "Interdiction de toute clause de forfaitisation des heures supplémentaires pour les non-cadres [S05, Décret 96-203 art. 27] : elle est nulle et de nul effet.",
+    "La modification unilatérale d'un élément substantiel du contrat sans accord de l'employé est irrégulière [S01, art. 16.6].",
+    "Le contrat doit être rédigé en langue française [S01, art. 13.1 ; S05, Décret 96-287 art. 4] et revêtu de la signature des deux parties [S05, Décret 96-287 art. 4].",
+    "La convention collective applicable doit être précisée [S05, Décret 96-287 art. 2].",
+    "En cas d'inobservation du préavis, l'employeur doit verser une indemnité dont le montant correspond à la rémunération de la période [S01, art. 18.7].",
+    "La rupture abusive ouvre droit à des dommages-intérêts de 1 à 20 mois de salaire brut selon l'ancienneté [S01, art. 18.15]."
+  ],
+  "validators": [
+    {
+      "id": "cdi_essai_max",
+      "severity": "error",
+      "description": "Durée maximale de la période d'essai : 1 mois (ouvriers et employés mensuels), 2 mois (agents de maîtrise), 3 mois (cadres), renouvelable une fois [S05, Décret 96-195 art. 2, 1996].",
+      "check": { "type": "max_duration_months", "value": 3 }
+    },
+    {
+      "id": "cdi_smig",
+      "severity": "error",
+      "description": "SMIG mensuel légal minimal : 60 000 FCFA [S05, Décret n° 2013-791, 2013].",
+      "check": { "type": "min_amount_fcfa", "value": 60000, "scope": ["salaire de base", "traitement de base"] }
+    },
+    {
+      "id": "cdi_forfaitisation_interdite",
+      "severity": "error",
+      "description": "Forfaitisation des heures supplémentaires nulle pour les non-cadres [S05, Décret 96-203 art. 27].",
+      "check": { "type": "forbidden_phrases", "phrases": ["forfaitaire", "forfaitisation des heures supplémentaires"] }
+    }
+  ],
+  "skeleton_markdown": "# Contrat de travail à durée indéterminée\n\nEntre les soussignés :\n\n**Monsieur [À COMPLÉTER : nom et prénom du représentant de l'employeur]**, agissant en qualité de [À COMPLÉTER : qualité du représentant] pour le compte de **[À COMPLÉTER : raison sociale de l'employeur]**, dont le siège est situé à [À COMPLÉTER : adresse du siège],\n\nci-après dénommé « l'**Employeur** »,\n\net\n\n**Monsieur/Madame [À COMPLÉTER : nom et prénom de l'employé]**, né(e) le [À COMPLÉTER : date de naissance] à [À COMPLÉTER : lieu de naissance], de nationalité [À COMPLÉTER : nationalité], demeurant à [À COMPLÉTER : domicile de l'employé],\n\nci-après dénommé(e) « l'**Employé(e)** »,\n\nil a été convenu et arrêté ce qui suit :\n\n## Article 1 – Textes de référence\n\nLe présent contrat est régi par :\n\n- la Loi n° 2015-532 du 20 juillet 2015 portant Code du travail en Côte d'Ivoire ;\n- le Décret n° 96-287 du 3 avril 1996 relatif au contrat de travail ;\n- la Convention Collective Interprofessionnelle de Côte d'Ivoire du 20 juillet 1977 ;\n- [À COMPLÉTER : autres textes particuliers].\n\n## Article 2 – Nature du contrat\n\nLe présent contrat est un contrat de travail à durée indéterminée, conclu conformément à l'article 14 du Code du travail.\n\nLa convention collective applicable est [À COMPLÉTER : convention collective applicable].\n\n## Article 3 – Emploi et missions\n\nL'Employé est engagé en qualité de [À COMPLÉTER : emploi occupé], dans la catégorie [À COMPLÉTER : catégorie du salarié], à compter du [À COMPLÉTER : date de prise d'effet].\n\nL'Employé a pour mission :\n\n- [À COMPLÉTER : mission principale] ;\n- [À COMPLÉTER : missions complémentaires].\n\n## Article 4 – Obligations des parties\n\nL'Employé s'engage à [À COMPLÉTER : obligations de l'employé].\n\nL'Employeur s'engage à [À COMPLÉTER : obligations de l'employeur].\n\n## Article 5 – Rémunération\n\nLe salaire de base est fixé à [À COMPLÉTER : montant du salaire de base] FCFA par mois.\n\nLes accessoires éventuels sont les suivants : [À COMPLÉTER : accessoires du salaire].\n\n## Article 6 – Horaires de travail\n\nL'horaire de travail est de [À COMPLÉTER : horaire de travail].\n\nLes heures supplémentaires sont rémunérées conformément à la réglementation en vigueur.\n\n## Article 7 – Congés\n\nL'Employé bénéficie de congés payés [À COMPLÉTER : durée des congés].\n\n## Article 8 – Fin et rupture de contrat\n\nEn cas de licenciement, l'employeur respecte la durée de préavis [À COMPLÉTER : durée du préavis] et verse l'indemnité correspondante.\n\n## Article 9 – Règlement des différends\n\nLes parties s'engagent à rechercher une solution amiable à toute différend [À COMPLÉTER : durée].\n\n## Article 10 – Signatures\n\nFait à [À COMPLÉTER : lieu], le [À COMPLÉTER : date], en deux exemplaires originaux.\n\n| L'Employeur | L'Employé(e) |\n|---|---|\n| Lu et approuvé | Lu et approuvé |\n|  |  |\n",
+  "_comment_legal": "legal_notes et validators sont issus du référentiel juridique joint (reference/TOUTES LES INFOS LEGALES.txt, fiche 2 cdi)."
+}

@@ -110,6 +110,7 @@ export function templatePayload(template: ContractTemplate): Record<string, unkn
   return {
     id: template.id,
     label: template.label,
+    required_articles: template.required_articles,
     required_fields: template.required_fields,
     optional_fields: template.optional_fields,
     legal_notes: template.legal_notes,

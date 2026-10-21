@@ -3,24 +3,45 @@
   "label": "Bail d'habitation",
   "description": "Location d'un logement à usage d'habitation",
   "status": "ready",
-  "legal_review": { "status": "pending", "reviewer": null, "date": null },
+  "legal_review": { "status": "fourni", "reviewer": "Référentiel juridique joint (TOUTES LES INFOS LEGALES.txt)", "date": "2026-10-21" },
   "required_fields": [
-    { "key": "bailleur", "label": "Identité du bailleur", "question_hint": "Nom complet du bailleur ?" },
-    { "key": "locataire", "label": "Identité du locataire", "question_hint": "Nom complet du locataire ?" },
-    { "key": "logement", "label": "Désignation du logement", "question_hint": "Type de logement et adresse ?" },
-    { "key": "loyer", "label": "Loyer mensuel en FCFA", "question_hint": "Montant du loyer mensuel ?" },
+    { "key": "bailleur", "label": "Identité complète du bailleur", "question_hint": "Identité et adresse complète du bailleur ?" },
+    { "key": "locataire", "label": "Identité complète du locataire", "question_hint": "Identité et adresse complète du locataire ?" },
+    { "key": "logement", "label": "Description du bien", "question_hint": "Description et adresse du logement ?" },
+    { "key": "loyer", "label": "Loyer mensuel", "question_hint": "Loyer mensuel en FCFA ?" },
     { "key": "duree", "label": "Durée du bail", "question_hint": "Durée du bail ?" }
   ],
   "optional_fields": [
     { "key": "depot_garantie", "label": "Dépôt de garantie" },
-    { "key": "preavis", "label": "Durée du préavis" },
-    { "key": "date_effet", "label": "Date de prise d'effet" }
+    { "key": "caution", "label": "Caution bancaire" },
+    { "key": "charges", "label": "Charges locatives" },
+    { "key": "attestation_fiscale", "label": "Attestation d'immatriculation fiscale du bailleur" },
+    { "key": "preavis", "label": "Durée du préavis" }
   ],
   "required_articles": [
-    "Objet", "Durée", "Loyer", "Obligations du locataire", "Résiliation", "Signatures"
+    "Objet", "Désignation", "Durée", "Loyer", "Caution", "Charges", "Obligations des parties", "Résiliation", "Signatures"
   ],
-  "legal_notes": [],
-  "validators": [],
-  "_comment_legal": "legal_notes et validators restent VIDES tant qu'Alex n'a pas fourni du contenu validé par un juriste. Ne rien inventer ici. Format prévu pour legal_notes : tableau de chaînes courtes, ex. « Le dépôt de garantie ne peut pas excéder N mois de loyer (source : ..., validé par : ...) ». Format prévu pour validators : { id, severity, description, check } où check sera défini avec le juriste.",
-  "skeleton_markdown": "# Contrat de bail à usage d'habitation\n\nEntre les soussignés :\n\n**[À COMPLÉTER : nom complet du bailleur]**, demeurant à [À COMPLÉTER : adresse du bailleur], ci-après désigné « le **Bailleur** »,\n\net\n\n**[À COMPLÉTER : nom complet du locataire]**, demeurant à [À COMPLÉTER : adresse du locataire], ci-après désigné « le **Locataire** »,\n\nil a été convenu et arrêté ce qui suit :\n\n## Article 1 – Objet du contrat\n\nLe Bailleur donne à bail au Locataire, qui l'accepte, [À COMPLÉTER : désignation du logement] situé à [À COMPLÉTER : adresse du logement], à usage exclusif d'habitation.\n\n## Article 2 – Durée et loyer\n\n1. Le bail est consenti pour une durée de [À COMPLÉTER : durée du bail].\n2. Le loyer mensuel est fixé à [À COMPLÉTER : montant du loyer] FCFA, payable d'avance au plus tard le [À COMPLÉTER : jour du mois] de chaque mois.\n3. Le dépôt de garantie s'élève à [À COMPLÉTER : montant du dépôt de garantie].\n\n## Article 3 – Obligations du Locataire\n\nLe Locataire s'engage à :\n\n- payer le loyer aux échéances convenues ;\n- user paisiblement des lieux ;\n- ne pas sous-louer sans accord écrit du Bailleur ;\n- restituer les lieux en bon état à la fin du bail.\n\n## Article 4 – Résiliation\n\n1. Chacune des parties peut résilier le bail moyennant un préavis de [À COMPLÉTER : durée du préavis].\n2. Le congé est notifié par écrit.\n\n## Article 5 – Signatures\n\nFait à [À COMPLÉTER : lieu], le [À COMPLÉTER : date], en deux exemplaires originaux.\n\n| Le Bailleur | Le Locataire |\n|---|---|\n| Lu et approuvé | Lu et approuvé |\n|  |  |\n"
+  "legal_notes": [
+    "Condition fiscale obligatoire : le paiement des loyers doit être subordonné à la production d'une attestation d'immatriculation fiscale du bailleur [S02, art. 169 bis].",
+    "Ne pas permettre le paiement du loyer sans justification de l'immatriculation fiscale du bailleur [S02, art. 169 bis].",
+    "Un bail d'habitation dont le loyer est inférieur à 500 000 FCFA par mois peut être exonéré d'enregistrement [S02, art. 530] ; le droit d'enregistrement d'une cession de droit au bail est de 10 % [S02, art. 716].",
+    "Le régime des baux commerciaux sous l'Acte Uniforme OHADA (AUDCG) n'est pas couvert par le référentiel : ne pas rédiger de bail commercial sans vérification juridique [lacune BLOQUANTE].",
+    "Le bail est un contrat d'ordre public : aucune clause ne peut déroger aux dispositions protectrices du locataire."
+  ],
+  "validators": [
+    {
+      "id": "bail_seuil_exoneration_enregistrement",
+      "severity": "info",
+      "description": "Seuil d'exonération d'enregistrement (habitation) : < 500 000 FCFA / mois [S02, CGI annexe fiscale 2016 art. 13, 2016].",
+      "check": { "type": "max_amount_fcfa", "value": 500000, "except_if_below": true }
+    },
+    {
+      "id": "bail_droit_enregistrement_cession",
+      "severity": "info",
+      "description": "Droit d'enregistrement d'une cession de droit au bail : 10 % [S02, art. 716, 1991].",
+      "check": { "type": "info_only" }
+    }
+  ],
+  "skeleton_markdown": "# Contrat de bail à usage d'habitation\n\nEntre les soussignés :\n\n**Monsieur [À COMPLÉTER : nom complet du bailleur]**, demeurant à [À COMPLÉTER : adresse du bailleur], ci-après désigné « le **Bailleur** »,\n\net\n\n**Madame [À COMPLÉTER : nom complet du locataire]**, demeurant à [À COMPLÉTER : adresse du locataire], ci-après désignée « la **Locataire** »,\n\nci-après désignées ensemble « les **Parties** »,\n\nil a été convenu et arrêté ce qui suit :\n\n## Article 1 – Objet du contrat\n\nLe Bailleur donne à bail à la Locataire, qui l'accepte, [À COMPLÉTER : désignation du logement], à usage exclusif d'habitation.\n\n## Article 2 – Désignation du bien\n\nLe bien loué est situé à [À COMPLÉTER : adresse complète du logement], comprising [À COMPLÉTER : composition du logement].\n\nLe bailleur déclare que le logement est [À COMPLÉTER : état du logement].\n\n## Article 3 – Durée\n\nLe bail est conclu pour une durée de [À COMPLÉTER : durée du bail], à compter du [À COMPLÉTER : date de prise d'effet].\n\nÀ l'issue de cette durée, [À COMPLÉTER : reconduction tacite ou fin].\n\n## Article 4 – Loyer et modalités de règlement\n\nLe loyer mensuel est fixé à [À COMPLÉTER : montant du loyer] FCFA, payable [À COMPLÉTER : modalités de paiement].\n\nLe paiement du loyer est subordonné à la production, par le Bailleur, d'une attestation d'immatriculation fiscale.\n\n## Article 5 – Dépôt de garantie et caution\n\nLe dépôt de garantie s'élève à [À COMPLÉTER : montant du dépôt de garantie] FCFA. Il est versé [À COMPLÉTER : modalités et délai de restitution].\n\n## Article 6 – Charges et frais\n\nLa Locataire prend en charge [À COMPLÉTER : charges incombant au locataire].\n\n## Article 7 – Obligations des parties\n\nLe Bailleur s'oblige à [À COMPLÉTER : obligations du bailleur].\n\nLa Locataire s'oblige à [À COMPLÉTER : obligations du locataire].\n\n## Article 8 – Résiliation\n\nChaque partie peut résilier le bail moyennant un préavis de [À COMPLÉTER : durée du préavis], notifié par écrit [À COMPLÉTER : modalités de notification].\n\n## Article 9 – Signatures\n\nFait à [À COMPLÉTER : lieu], le [À COMPLÉTER : date], en deux exemplaires originaux.\n\n| Le Bailleur | La Locataire |\n|---|---|\n| Lu et approuvé | Lu et approuvé |\n|  |  |\n",
+  "_comment_legal": "legal_notes et validators sont issus du référentiel juridique joint (reference/TOUTES LES INFOS LEGALES.txt, fiche 7 bail-immeuble). Ne rien ajouter sans source validée."
 }

@@ -17,7 +17,30 @@ export interface TemplateValidator {
   id: string;
   severity: 'info' | 'warning' | 'error';
   description: string;
-  check?: unknown;
+  /** Règle exécutable par `doc/validate.ts`. */
+  check?: ValidatorCheck;
+}
+
+/**
+ * Règle vérifiable mécaniquement.
+ *
+ * `scope` limite la recherche aux paragraphes qui contiennent l'un des mots
+ * indiqués (indispensable : un contrat mentionne plusieurs durées et plusieurs
+ * montants, seul celui qui concerne la règle doit être comparé).
+ */
+export interface ValidatorCheck {
+  type:
+    | 'max_duration_months'
+    | 'min_amount_fcfa'
+    | 'max_amount_fcfa'
+    | 'min_percentage'
+    | 'min_age_years'
+    | 'required_phrases'
+    | 'forbidden_phrases'
+    | 'info_only';
+  value?: number;
+  phrases?: string[];
+  scope?: string[];
 }
 
 export interface ContractTemplate {
@@ -54,7 +77,21 @@ const validatorSchema = z.object({
   id: z.string().min(1),
   severity: z.enum(['info', 'warning', 'error']),
   description: z.string(),
-  check: z.unknown().optional(),
+  check: z.object({
+    type: z.enum([
+      'max_duration_months',
+      'min_amount_fcfa',
+      'max_amount_fcfa',
+      'min_percentage',
+      'min_age_years',
+      'required_phrases',
+      'forbidden_phrases',
+      'info_only',
+    ]),
+    value: z.number().optional(),
+    phrases: z.array(z.string()).optional(),
+    scope: z.array(z.string()).optional(),
+  }).optional(),
 });
 
 export const templateSchema = z.object({

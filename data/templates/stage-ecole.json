@@ -1,0 +1,43 @@
+{
+  "id": "stage-ecole",
+  "label": "Convention de stage-école",
+  "description": "Convention de stage pour un élève ou un étudiant, en établissement d'enseignement",
+  "status": "ready",
+  "legal_review": { "status": "fourni", "reviewer": "Référentiel juridique joint (TOUTES LES INFOS LEGALES.txt)", "date": "2026-10-21" },
+  "required_fields": [
+    { "key": "entreprise", "label": "Entreprise d'accueil", "question_hint": "Raison sociale et adresse de l'entreprise d'accueil ?" },
+    { "key": "etablissement", "label": "Établissement d'enseignement", "question_hint": "Établissement d'enseignement et immatriculation ?" },
+    { "key": "stagiaire", "label": "Stagiaire", "question_hint": "Nom, prénom, date et lieu de naissance, nationalité de l'étudiant ?" },
+    { "key": "duree", "label": "Durée du stage", "question_hint": "Durée du stage ?" }
+  ],
+  "optional_fields": [
+    { "key": "indemnite", "label": "Indemnité de stage (montant libre)" },
+    { "key": "encadrement", "label": "Encadrement sur le lieu de stage" },
+    { "key": "assurance", "label": "Assurance responsabilité civile" }
+  ],
+  "required_articles": [
+    "Textes de référence", "Nature", "Durée", "Missions", "Obligations du stagiaire", "Horaires de travail", "Indemnités", "Confidentialité", "Assurance", "Signatures"
+  ],
+  "legal_notes": [
+    "La convention de stage doit être constatée par écrit : à défaut, elle est réputée être un contrat de travail à durée indéterminée [S01, art. 13.11].",
+    "L'indemnité de stage est facultative : son montant est libre [S01, art. 13.12].",
+    "Le stage ne peut excéder une durée maximale fixée par la réglementation [S01, art. 13.11].",
+    "La convention doit mentionner l'établissement d'enseignement et son immatriculation : leur absence expose à la requalification en CDI [S01, art. 13.11]."
+  ],
+  "validators": [
+    {
+      "id": "stage_ecole_indemnite_minimale",
+      "severity": "info",
+      "description": "Indemnité minimale légale obligatoire du stage-école : 0 FCFA (absence d'indemnité admise, sans préavis ni indemnité de fin) [S01, art. 13.12, 2015].",
+      "check": { "type": "info_only" }
+    },
+    {
+      "id": "stage_ecole_forme_ecrite",
+      "severity": "error",
+      "description": "Forme écrite obligatoire : à défaut, le stage est requalifié en CDI [S01, art. 13.11, 2015].",
+      "check": { "type": "info_only" }
+    }
+  ],
+  "skeleton_markdown": "# Convention de stage-école\n\nEntre les soussignés :\n\n**[À COMPLÉTER : raison sociale de l'entreprise d'accueil]**, dont le siège est situé à [À COMPLÉTER : adresse de l'entreprise], représentée par [À COMPLÉTER : nom et qualité du représentant],\n\nci-après dénommée « l'**Entreprise d'accueil** »,\n\net\n\n**[À COMPLÉTER : nom de l'établissement d'enseignement]**, immatriculé sous le numéro [À COMPLÉTER : numéro d'immatriculation de l'établissement], dont le siège est situé à [À COMPLÉTER : adresse de l'établissement],\n\nci-après dénommé « l'**Établissement** »,\n\net\n\n**[À COMPLÉTER : nom et prénom de l'étudiant]**, né(e) le [À COMPLÉTER : date de naissance] à [À COMPLÉTER : lieu de naissance], de nationalité [À COMPLÉTER : nationalité], demeurant à [À COMPLÉTER : adresse de l'étudiant], élève en [À COMPLÉTER : classe ou filière],\n\nci-après dénommé(e) « le **Stagiaire** »,\n\nil a été convenu et arrêté ce qui suit :\n\n## Article 1 – Textes de référence\n\nLa présente convention est régie par les dispositions du Code du travail relatives au stage-school, notamment l'article 13.11, et par [À COMPLÉTER : autres textes].\n\n## Article 2 – Nature de la convention\n\nLa présente convention constate un stage effectué par l'étudiant dans l'entreprise d'accueil, en vue de sa formation professionnelle.\n\n## Article 3 – Durée\n\nLe stage se déroule du [À COMPLÉTER : date de début] au [À COMPLÉTER : date de fin], pour une durée de [À COMPLÉTER : durée du stage].\n\n## Article 4 – Missions\n\nLe Stagiaire est affecté aux missions suivantes :\n\n- [À COMPLÉTER : mission principale] ;\n- [À COMPLÉTER : missions complémentaires].\n\n## Article 5 – Obligations du stagiaire\n\nLe Stagiaire s'engage à :\n\n- se présenter régulièrement sur le lieu de stage ;\n- respecter le règlement intérieur de l'entreprise d'accueil ;\n- [À COMPLÉTER : autres obligations].\n\n## Article 6 – Horaires de travail\n\nLe Stagiaire est présent [À COMPLÉTER : horaires de présence].\n\n## Article 7 – Indemnités\n\nLe Stagiaire perçoit une indemnité de [À COMPLÉTER : montant de l'indemnité] FCFA par mois [ou : aucune indemnité n'est versée].\n\n## Article 8 – Confidentialité\n\nLe Stagiaire s'engage à ne pas divulguer les informations professionnelles [À COMPLÉTER : étendue de l'obligation].\n\n## Article 9 – Assurance\n\nLe Stagiaire est couvert par une assurance responsabilité civile [À COMPLÉTER : assureur et numéro de police].\n\n## Article 10 – Règlement des différends\n\nLes parties s'engagent à rechercher une solution amiable à toute différend [À COMPLÉTER : durée].\n\n## Article 11 – Signatures\n\nFait à [À COMPLÉTER : lieu], le [À COMPLÉTER : date], en trois exemplaires originaux.\n\n| L'Entreprise d'accueil | L'Établissement | Le Stagiaire |\n|---|---|---|\n| Lu et approuvé | Lu et approuvé | Lu et approuvé |\n|  |  |  |\n",
+  "_comment_legal": "legal_notes et validators sont issus du référentiel juridique joint (reference/TOUTES LES INFOS LEGALES.txt, fiche 3 stage-ecole)."
+}

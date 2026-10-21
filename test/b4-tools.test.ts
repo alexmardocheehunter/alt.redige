@@ -62,7 +62,7 @@ describe('outil get_template', () => {
     const payload = JSON.parse(result.content);
     expect(payload.label).toBe("Bail d'habitation");
     expect(payload.skeleton_markdown).toContain('# Contrat de bail');
-    expect(payload.legal_notes).toEqual([]);
+    expect(payload.legal_notes.length).toBeGreaterThan(0);
     expect(events.map((event) => event.event)).toContain('status');
   });
 
@@ -72,7 +72,8 @@ describe('outil get_template', () => {
     expect(result.isError).toBe(true);
     const payload = JSON.parse(result.content);
     expect(payload.error).toContain('inconnu');
-    expect(payload.valid_contract_types).toEqual(['bail-habitation']);
+    expect(payload.valid_contract_types).toContain('bail-habitation');
+    expect(payload.valid_contract_types.length).toBeGreaterThan(1);
   });
 });
 
@@ -160,11 +161,12 @@ describe('outil inconnu', () => {
 });
 
 describe('templatePayload', () => {
-  it('n’expose pas les squelettes internes', () => {
+  it('donne au modèle la structure et les règles du modèle', () => {
     const template = TemplateStore.load().get('bail-habitation')!;
     const payload = templatePayload(template);
     expect(Object.keys(payload).sort()).toEqual([
-      'id', 'label', 'legal_notes', 'optional_fields', 'required_fields', 'skeleton_markdown',
+      'id', 'label', 'legal_notes', 'optional_fields', 'required_articles',
+      'required_fields', 'skeleton_markdown',
     ]);
   });
 });

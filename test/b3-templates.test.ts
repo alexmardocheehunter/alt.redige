@@ -6,23 +6,17 @@ import { testApp, readJson } from './helpers.js';
 describe('B3 — modèles', () => {
   it('charge le modèle bail-habitation depuis data/templates', () => {
     const templates = loadTemplates();
-    expect(templates).toHaveLength(1);
-    expect(templates[0]!.id).toBe('bail-habitation');
-    expect(templates[0]!.status).toBe('ready');
-    expect(templates[0]!.legal_notes).toEqual([]);
-    expect(templates[0]!.validators).toEqual([]);
+    const bail = templates.find((template) => template.id === 'bail-habitation');
+    expect(bail).toBeDefined();
+    expect(bail!.status).toBe('ready');
+    expect(bail!.legal_notes.length).toBeGreaterThan(0);
   });
 
   it('expose un résumé pour le frontend', () => {
     const store = TemplateStore.load();
-    expect(store.summaries()).toEqual([
-      {
-        id: 'bail-habitation',
-        label: "Bail d'habitation",
-        description: "Location d'un logement à usage d'habitation",
-        status: 'ready',
-      },
-    ]);
+    const summaries = store.summaries();
+    expect(summaries.map((summary) => summary.id)).toContain('bail-habitation');
+    expect(summaries.every((summary) => summary.status === 'ready')).toBe(true);
   });
 
   it('rejette un modèle invalide', () => {
@@ -64,8 +58,8 @@ describe('B3 — endpoint /api/templates', () => {
     const res = await app.request('/api/templates');
     expect(res.status).toBe(200);
     const body = await readJson(res);
-    expect(body.templates).toHaveLength(1);
-    expect(body.templates[0].id).toBe('bail-habitation');
+    expect(body.templates.length).toBeGreaterThanOrEqual(9);
+    expect(body.templates.map((template: any) => template.id)).toContain('bail-habitation');
     expect(body.templates[0].status).toBe('ready');
   });
 });

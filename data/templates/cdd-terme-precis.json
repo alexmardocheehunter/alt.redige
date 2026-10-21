@@ -1,0 +1,55 @@
+{
+  "id": "cdd-terme-precis",
+  "label": "Contrat de travail à durée déterminée (terme précis)",
+  "description": "CDD conclu pour une durée déterminée (poste, remplacement, accroissement temporaire d'activité)",
+  "status": "ready",
+  "legal_review": { "status": "fourni", "reviewer": "Référentiel juridique joint (TOUTES LES INFOS LEGALES.txt)", "date": "2026-10-21" },
+  "required_fields": [
+    { "key": "employeur", "label": "Identité de l'employeur", "question_hint": "Raison sociale, adresse et représenteant de l'employeur ?" },
+    { "key": "employe", "label": "Identité de l'employé", "question_hint": "Nom, prénom, date et lieu de naissance, nationalité, adresse de l'employé ?" },
+    { "key": "poste", "label": "Emploi et catégorie", "question_hint": "Poste occupé et catégorie du salarié ?" },
+    { "key": "remuneration", "label": "Salaire de base", "question_hint": "Salaire de base mensuel en FCFA ?" },
+    { "key": "duree", "label": "Durée du contrat", "question_hint": "Durée du CDD (terme précis) ?" },
+    { "key": "date_debut", "label": "Date de prise d'effet", "question_hint": "Date de début du contrat ?" }
+  ],
+  "optional_fields": [
+    { "key": "periode_essai", "label": "Période d'essai (clause écrite obligatoire)" },
+    { "key": "visa_emploi", "label": "Numéro de visa de l'Emploi (salarié étranger)" },
+    { "key": "avantage", "label": "Avantages divers" },
+    { "key": "convention_collective", "label": "Convention collective applicable" }
+  ],
+  "required_articles": [
+    "Textes de référence", "Nature", "Emploi et missions", "Durée", "Obligations des parties", "Rémunération", "Horaires de travail", "Confidentialité", "Fin et rupture de contrat", "Signatures"
+  ],
+  "legal_notes": [
+    "La durée d'un CDD à terme précis ne peut dépasser deux ans [S01, art. 15.4].",
+    "Les CDD à terme précis ne peuvent excéder un tiers de l'effectif total de l'entreprise [S01, art. 15.1].",
+    "Une prime de fin de contrat de précarité de 3 % des salaires bruts est due [S01, art. 15.8].",
+    "L'employeur doit mentionner l'affiliation CNPS et la CMU [S05, Décret 96-198].",
+    "Interdiction de toute clause de concurrence post-contractuelle [S01, art. 16.5].",
+    "Le contrat doit être rédigé en langue française [S01, art. 13.1 ; S05, Décret 96-287 art. 4].",
+    "Le contrat doit être revêtu de la signature de l'employeur et de celle du travailleur [S05, Décret 96-287 art. 4]."
+  ],
+  "validators": [
+    {
+      "id": "cdd_duree_max",
+      "severity": "error",
+      "description": "Durée maximale cumulative du CDD à terme précis : 2 ans [S01, art. 15.4, 2015].",
+      "check": { "type": "max_duration_months", "value": 24 }
+    },
+    {
+      "id": "cdd_prime_precarite",
+      "severity": "warning",
+      "description": "Prime de fin de contrat (précarité) : 3 % des salaires bruts [S01, art. 15.8, 2015].",
+      "check": { "type": "min_percentage", "value": 3 }
+    },
+    {
+      "id": "cdd_concurrence_interdite",
+      "severity": "error",
+      "description": "Interdiction de concurrence post-contractuelle [S01, art. 16.5] : la clause est nulle de plein droit.",
+      "check": { "type": "forbidden_phrases", "phrases": ["interdiction de concurrencer", "clause de non-concurrence"] }
+    }
+  ],
+  "skeleton_markdown": "# Contrat de travail à durée déterminée (terme précis)\n\nEntre les soussignés :\n\n**Monsieur [À COMPLÉTER : nom et prénom du représentant de l'employeur]**, agissant en qualité de [À COMPLÉTER : qualité du représentant] pour le compte de **[À COMPLÉTER : raison sociale de l'employeur]**, dont le siège est situé à [À COMPLÉTER : adresse du siège],\n\nci-après dénommé « l'**Employeur** »,\n\net\n\n**Monsieur/Madame [À COMPLÉTER : nom et prénom de l'employé]**, né(e) le [À COMPLÉTER : date de naissance] à [À COMPLÉTER : lieu de naissance], de nationalité [À COMPLÉTER : nationalité], demeurant à [À COMPLÉTER : adresse de l'employé],\n\nci-après dénommé(e) « l'**Employé(e)** »,\n\nil a été convenu et arrêté ce qui suit :\n\n## Article 1 – Textes de référence\n\nLe présent contrat est régi par :\n\n- la Loi n° 2015-532 du 20 juillet 2015 portant Code du travail en Côte d'Ivoire ;\n- le Décret n° 96-287 du 3 avril 1996 relatif au contrat de travail ;\n- [À COMPLÉTER : autres textes particuliers].\n\n## Article 2 – Nature du contrat\n\nLe présent contrat est un contrat de travail à durée déterminée à terme précis, conclu en application de l'article 15.3 du Code du travail.\n\n## Article 3 – Emploi et missions\n\nL'Employé est engagé en qualité de [À COMPLÉTER : emploi occupé], dans la catégorie [À COMPLÉTER : catégorie du salarié], pour une durée de [À COMPLÉTER : durée du CDD], à compter du [À COMPLÉTER : date de prise d'effet].\n\nL'Employé a pour mission :\n\n- [À COMPLÉTER : mission principale] ;\n- [À COMPLÉTER : missions complémentaires].\n\n## Article 4 – Durée\n\nLe contrat prend effet le [À COMPLÉTER : date de début] et se termine le [À COMPLÉTER : date de fin].\n\n[À COMPLÉTER : période d'essai, le cas échéant].\n\n## Article 5 – Obligations des parties\n\nL'Employé s'engage à :\n\n- fournir ses services avec loyauté et bonne foi ;\n- respecter l'organisation de l'entreprise ;\n- [À COMPLÉTER : autres obligations de l'employé].\n\nL'Employeur s'engage à :\n\n- verser la rémunération convenue ;\n- [À COMPLÉTER : autres obligations de l'employeur].\n\n## Article 6 – Imputation budgétaire et rémunération\n\nL'Employé est imputé au budget [À COMPLÉTER : imputation budgétaire].\n\nLe salaire de base est fixé à [À COMPLÉTER : montant du salaire de base] FCFA par mois.\n\n## Article 7 – Horaires de travail\n\nL'horaire de travail est de [À COMPLÉTER : horaire de travail].\n\nLes heures supplémentaires sont payées [À COMPLÉTER : modalités de rémunération des heures supplémentaires].\n\n## Article 8 – Devoir de réserve et confidentialité\n\nL'Employé est tenu au devoir de réserve et de confidentialité [À COMPLÉTER : étendue de l'obligation].\n\n## Article 9 – Fin et rupture du contrat\n\nÀ l'issue de sa terme, le contrat prend fin de plein droit le [À COMPLÉTER : date de fin].\n\nEn cas de rupture anticipée par l'Employeur, l'indemnité de préavis est due conformément à la réglementation en vigueur.\n\n## Article 10 – Règlement des différends\n\nLes parties s'engagent à rechercher une solution amiable à toute différend [À COMPLÉTER : durée de la recherche amiable].\n\n## Article 11 – Signatures\n\nFait à [À COMPLÉTER : lieu], le [À COMPLÉTER : date], en trois exemplaires originaux.\n\n| L'Employeur | L'Employé(e) |\n|---|---|\n| Lu et approuvé | Lu et approuvé |\n|  |  |\n",
+  "_comment_legal": "legal_notes et validators sont issus du référentiel juridique joint (reference/TOUTES LES INFOS LEGALES.txt, fiche 1 cdd)."
+}
