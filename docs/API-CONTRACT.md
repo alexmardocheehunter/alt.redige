@@ -146,6 +146,22 @@ Le `message` est toujours en français, lisible par l'utilisateur final, sans d�
 
 **Interdit** (le serveur le signale en `validation.issues`, le frontend l'affiche en texte brut) : HTML autre que `<!-- pagebreak -->`, images, liens, blocs de code, titres de niveau 4 et plus, notes de bas de page, listes de tâches.
 
+## 5 bis. Extension protocole agent
+
+`AGENT-PROTOCOL.md` (racine du dépôt) **étend** le présent contrat de façon
+strictement additive : il ajoute des événements (`phase`, `plan`, `step`,
+`ask_user`, `tool_start`, `tool_end`, `sources`, `suggestions`, `thinking_*`,
+`retry`, `warning`), l'enveloppe commune `seq` / `t` sur chaque `data:`, et
+deux valeurs supplémentaires de `stop_reason` (`awaiting_input`, `cancelled`).
+
+Aucun événement décrit aux §3.3 n'est modifié : le client qui ignore les
+événements inconnus continue de fonctionner. Les codes d'erreur
+`cancelled`, `conflict` et `content_filtered` s'ajoutent à ceux du §4.
+
+En cas de divergence, le présent contrat reste la référence pour les
+événements qu'il décrit ; `AGENT-PROTOCOL.md` fait foi pour les événements
+qu'il ajoute.
+
 ## 6. Exemple de flux complet
 
 ```

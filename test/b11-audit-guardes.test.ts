@@ -459,4 +459,101 @@ describe('S11 — Content-Security-Policy et Permissions-Policy', () => {
     expect(res.headers.get('content-security-policy')).toContain("script-src 'self'");
     expect(res.headers.get('permissions-policy')).toContain('geolocation=()');
   });
+
+  it('le nonce de la page est celui de l\'en-tête CSP', async () => {
+    const app = testApp();
+    const res = await app.request('/');
+    const served = await res.text();
+    const nonce = /<script nonce="([^"]+)">/.exec(served)?.[1];
+    expect(nonce).toBeTruthy();
+    // Sans cette correspondance, le script inline de la page est bloqué par
+    // le navigateur et l'interface ne démarre pas.
+    expect(res.headers.get('content-security-policy')).toContain(`'nonce-${nonce}'`);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* AGENT-PROTOCOL.md §8 — poser une question, arrêter le tour          */
+/* ------------------------------------------------------------------ */
+
+describe('AGENT-PROTOCOL — ask_user', () => {
+  it('pose une question et termine le tour sur awaiting_input', async () => {
+    const client = new FakeOpenRouter({
+      turns: [
+        {
+          text: 'Je pose une question.',
+          toolUses: [{
+            id: 'q1',
+            name: 'ask_user',
+            input: { question: 'Quelle durée pour le bail ?', kind: 'single', options: [{ id: '12', label: '12 mois' }] },
+          }],
+          finishReason: 'tool_calls',
+        },
+      ],
+    });
+
+    const app = testApp({}, { client: fakeClient(client) });
+    const res = await app.request('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: [{ role: 'user', content: 'Je veux un bail.' }] }),
+    });
+    const events = parseSse(await res.text());
+    const names = events.map((event) => event.event);
+
+    expect(names).toContain('ask_user');
+    // §15 : `ask_user` est toujours immédiatement suivi de `done`.
+    expect(names[names.length - 1]).toBe('done');
+    expect(names[names.indexOf('ask_user') + 1]).toBe('done');
+
+    const asked = events.find((event) => event.event === 'ask_user')!;
+    expect(asked.data.kind).toBe('single');
+    expect(asked.data.question).toBe('Quelle durée pour le bail ?');
+    expect(asked.data.options[0].label).toBe('12 mois');
+
+    const done = events[events.length - 1]!;
+    expect(done.data.stop_reason).toBe('awaiting_input');
+  });
+
+  it('enveloppe chaque événement d\'un numéro de séquence et d\'un horodatage', async () => {
+    const client = new FakeOpenRouter({ turns: [{ text: 'Bonjour.' }] });
+    const app = testApp({}, { client: fakeClient(client) });
+    const res = await app.request('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: [{ role: 'user', content: 'Bonjour' }] }),
+    });
+    const events = parseSse(await res.text());
+    expect(events.length).toBeGreaterThan(1);
+    events.forEach((event, index) => {
+      expect(event.data.seq).toBe(index + 1);
+      expect(typeof event.data.t).toBe('number');
+    });
+  });
+
+  it('accepte les réponses structurées (answers) sans les exiger', async () => {
+    const client = new FakeOpenRouter({ turns: [{ text: 'Bonjour.' }] });
+    const app = testApp({}, { client: fakeClient(client) });
+
+    const withAnswers = await app.request('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [{ role: 'user', content: 'Durée : 12 mois' }],
+        answers: [{ question_id: 'q_duree', values: { choice: '12' } }],
+      }),
+    });
+    expect(withAnswers.status).toBe(200);
+    await withAnswers.text();
+
+    const badAnswers = await app.request('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [{ role: 'user', content: 'x' }],
+        answers: [{ values: { choice: '12' } }],
+      }),
+    });
+    expect(badAnswers.status).toBe(400);
+  });
 });
