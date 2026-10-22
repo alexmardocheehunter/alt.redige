@@ -9,3 +9,14 @@ tmp/
 # Scripts de travail : jamais versionnés.
 tmp-*
 !reference/
+
+# Firebase : clés de compte de service et artefacts locaux.
+# Une clé de compte de service donne un accès total au projet : elle ne doit
+# jamais entrer dans le dépôt ni dans un journal.
+*-firebase-adminsdk-*.json
+serviceAccount*.json
+firebase-service-account*.json
+.firebase/
+firebase-debug.log*
+firestore-debug.log*
+

@@ -1,0 +1,14 @@
+rules_version = '2';
+
+// LexCanvas — Firestore n'est jamais lu ni écrit par le navigateur.
+//
+// Le backend y accède avec le SDK Admin (compte de service) : le SDK Admin
+// contourne ces règles. Toute tentative directe depuis un client est refusée,
+// y compris avec la configuration web publique (apiKey, projectId...).
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
