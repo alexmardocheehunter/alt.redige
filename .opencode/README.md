@@ -36,15 +36,22 @@ justifie.
 
 ## Mettre à jour
 
-Depuis la racine du dépôt :
+Les compétences sont copiées dans `.opencode/skills/` (pas de lien symbolique).
+Pour les actualiser depuis le dépôt officiel :
 
-```bash
-npx skills add firebase/agent-skills --agent=opencode --skill "*" --copy -y
+```powershell
+$tmp = Join-Path $env:TEMP 'firebase-agent-skills'
+if (Test-Path $tmp) { Remove-Item -Recurse -Force $tmp }
+git clone --depth 1 https://github.com/firebase/agent-skills.git $tmp
+Remove-Item -Recurse -Force .opencode\skills
+New-Item -ItemType Directory -Force -Path .opencode\skills | Out-Null
+Copy-Item -Path (Join-Path $tmp 'skills\*') -Destination .opencode\skills -Recurse
 ```
 
-La commande réinstalle les compétences à jour dans `.opencode/skills/`.
-Vérifier ensuite `git diff` avant de committer : les mises à jour sont des
-fichiers tiers, jamais des secrets.
+Vérifier ensuite `git diff` avant de committer, et mettre à jour le commit
+source ci-dessus. La commande `npx skills add ...` installe dans
+`.agents/skills/` sur cette version de l'outil ; on garde `.opencode/skills/`
+pour rester explicite.
 
 ## Ajouter le serveur MCP Firebase (facultatif, recommandé)
 
