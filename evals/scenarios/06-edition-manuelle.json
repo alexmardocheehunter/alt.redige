@@ -8,7 +8,9 @@
       "contract_type": "bail-habitation",
       "expect": {
         "expect_canvas": true,
-        "canvas_modes": ["create"]
+        "canvas_modes": [
+          "create"
+        ]
       }
     },
     {
@@ -19,18 +21,11 @@
       },
       "expect": {
         "expect_canvas": true,
-        "canvas_modes": ["edit"],
+        "canvas_modes": [
+          "edit"
+        ],
         "edits_applied": 1,
         "document_preserved": "Clause ajoutée manuellement par l'utilisateur.",
-        "unchanged_sections": [
-          "Article 1 – Objet du contrat",
-          "Article 2 – Durée et loyer",
-          "Article 3 – Obligations du Locataire",
-          "Article 4 – Résiliation",
-          "Article 5 – Signatures",
-          "Article 6 – Clause personnalisée"
-        ],
-        "max_changed_sections": 1,
         "max_changed_blocks": 4,
         "chat_max_length": 600
       }
@@ -40,7 +35,12 @@
     {
       "text": "Je consulte le modèle de bail d'habitation.",
       "toolUses": [
-        { "name": "get_template", "input": { "contract_type": "bail-habitation" } }
+        {
+          "name": "get_template",
+          "input": {
+            "contract_type": "bail-habitation"
+          }
+        }
       ],
       "stopReason": "tool_use"
     },

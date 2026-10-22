@@ -85,7 +85,15 @@ Format des événements : lignes `event: <nom>` puis `data: <JSON sur une seule 
     "placeholders": 8,
     "issues": [
       { "code": "missing_article", "severity": "warning", "message": "Article « Résiliation » absent" }
-    ]
+    ],
+    "fields": {
+      "required": [ { "key": "bailleur", "label": "Identité du bailleur", "filled": false } ],
+      "optional": [ { "key": "caution", "label": "Caution", "filled": true } ]
+    }
+  },
+  "legal_notice": {
+    "required": true,
+    "text": "Ce document doit être relu et validé par un professionnel du droit avant signature."
   }
 }
 ```
@@ -112,6 +120,14 @@ Format des événements : lignes `event: <nom>` puis `data: <JSON sur une seule 
 **Erreurs** : JSON `{"error": {"code": "...", "message": "..."}}` avec le statut HTTP de la section 4.
 
 L'export **PDF** se fait côté navigateur (`window.print()` + feuille de style d'impression). Il n'y a pas d'endpoint PDF dans la version 1.0.
+
+### 3.5 `POST /api/export/docx` — document hors sous-ensemble
+
+Si le Markdown contient une construction interdite (image, lien, bloc de code,
+titre de niveau 4 ou plus), la réponse est `400` avec le code
+`bad_request` et un message listant les constructions fautives. Aucun `.docx`
+n'est produit : le client doit corriger le document ou proposer une version
+conforme, jamais livrer un fichier différent du contrat affiché.
 
 ## 4. Erreurs
 
@@ -193,5 +209,5 @@ data: {"stop_reason":"end_turn","usage":{"input_tokens":5120,"output_tokens":248
 ## 7. Limites par défaut (configurables côté serveur)
 
 - Corps de requête : 1 Mo maximum.
-- Durée maximale d'un flux : 120 secondes.
+- Durée maximale d'un flux : **240 secondes**. Les modèles de la chaîne sont des modèles à raisonnement : une génération complète dépasse 120 s.
 - `/api/chat` : 30 requêtes par heure et par IP. `/api/export/docx` : 10 par minute et par IP.

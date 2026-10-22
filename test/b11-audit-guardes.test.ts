@@ -35,6 +35,7 @@ function toolContext(overrides: Partial<ToolContext> = {}): { events: any[]; con
     safetyEnabled: false,
     safetyMode: 'advisory',
     userText: 'Je veux un bail d habitation pour un studio a Cocody, loyer 150 000 FCFA par mois, duree 12 mois, bailleur Monsieur Koné, locataire Madame Aya.',
+    documentVersion: 1,
     maxEditChangedBlocks: 4,
     askUserCounter: 0,
     signal: new AbortController().signal,

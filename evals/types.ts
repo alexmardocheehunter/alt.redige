@@ -50,7 +50,9 @@ export interface Expectation {
   no_invented_facts?: boolean;
   /** No legal reference may be cited (the notes are empty in V1). */
   no_legal_citation?: boolean;
-  /** No legal reference may be cited in the chat either. */
+  /** La question posée doit mentionner ces éléments (proposition du type le plus proche). */
+  ask_user_contains?: string[];
+  /** No legal reference may be cited in the chat. */
   chat_no_legal_citation?: boolean;
   /** Text manually written by the user that must survive the turn. */
   document_preserved?: string;

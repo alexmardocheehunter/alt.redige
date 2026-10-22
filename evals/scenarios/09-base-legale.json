@@ -8,7 +8,9 @@
       "contract_type": "bail-habitation",
       "expect": {
         "expect_canvas": true,
-        "canvas_modes": ["create"]
+        "canvas_modes": [
+          "create"
+        ]
       }
     },
     {
@@ -25,7 +27,12 @@
     {
       "text": "Je consulte le modèle de bail d'habitation.",
       "toolUses": [
-        { "name": "get_template", "input": { "contract_type": "bail-habitation" } }
+        {
+          "name": "get_template",
+          "input": {
+            "contract_type": "bail-habitation"
+          }
+        }
       ],
       "stopReason": "tool_use"
     },

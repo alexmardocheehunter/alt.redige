@@ -17,6 +17,7 @@ import type { TemplateStore } from '../templates.js';
 import type { AgentEmit, AgentEventPayloads } from './events.js';
 import { extractPartialString, readPartialString } from './json-partial.js';
 import { buildSystemPrompt, buildUserContext, buildModelBlock } from './prompt.js';
+import { ChatGuard } from './chat-guard.js';
 import { buildSuggestions, Progress } from './progress.js';
 import { sourcesForTemplate } from '../legal-sources.js';
 import { findEnglishWords } from '../doc/lexical.js';
@@ -175,6 +176,7 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
     safetyEnabled: config.safetyCheck,
     safetyMode: config.safetyMode,
     userText,
+    documentVersion: baseVersion + setsEmitted,
     maxEditChangedBlocks: config.maxEditChangedBlocks,
     askUserCounter: 0,
     signal,
@@ -185,6 +187,8 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
   let step = 0;
   let askedUser = false;
   let lastPlaceholders = 0;
+  const chatGuard = new ChatGuard();
+  let contractWarned = false;
 
   // Progression visible (AGENT-PROTOCOL.md §3, §4, §6, §7, §9).
   const progress = new Progress(emit, document !== null);
@@ -224,7 +228,20 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
         });
       },
       onText: (delta) => {
-        emit('text_delta', { text: delta });
+        // Le contrat ne doit pas être écrit dans le chat : le texte est
+        // examiné avant d'être relayé.
+        const relayed = chatGuard.filter(delta);
+        if (relayed === null) {
+          if (chatGuard.tripped && !contractWarned) {
+            contractWarned = true;
+            emit('warning', {
+              code: 'contract_in_chat',
+              label: 'Le contrat a été écrit dans le document, pas dans le chat.',
+            });
+          }
+          return;
+        }
+        emit('text_delta', { text: relayed });
       },
       onToolStart: (toolCallId, name) => {
         if (name === TOOL_CREATE_CANVAS) {

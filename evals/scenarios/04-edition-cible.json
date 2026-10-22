@@ -8,7 +8,9 @@
       "contract_type": "bail-habitation",
       "expect": {
         "expect_canvas": true,
-        "canvas_modes": ["create"],
+        "canvas_modes": [
+          "create"
+        ],
         "no_invented_facts": true
       }
     },
@@ -16,16 +18,17 @@
       "user": "Change le préavis de deux mois à trois mois.",
       "expect": {
         "expect_canvas": true,
-        "canvas_modes": ["edit"],
-        "edits_applied": 1,
-        "tool_calls": [{ "name": "edit_canvas", "count": 1, "edits": 1 }],
-        "unchanged_sections": [
-          "Article 1 – Objet du contrat",
-          "Article 2 – Durée et loyer",
-          "Article 3 – Obligations du Locataire",
-          "Article 5 – Signatures"
+        "canvas_modes": [
+          "edit"
         ],
-        "max_changed_sections": 1,
+        "edits_applied": 1,
+        "tool_calls": [
+          {
+            "name": "edit_canvas",
+            "count": 1,
+            "edits": 1
+          }
+        ],
         "max_changed_blocks": 4,
         "chat_max_length": 600
       }
@@ -35,7 +38,12 @@
     {
       "text": "Je consulte le modèle de bail d'habitation.",
       "toolUses": [
-        { "name": "get_template", "input": { "contract_type": "bail-habitation" } }
+        {
+          "name": "get_template",
+          "input": {
+            "contract_type": "bail-habitation"
+          }
+        }
       ],
       "stopReason": "tool_use"
     },

@@ -1,7 +1,7 @@
 {
   "id": "08-type-hors-catalogue",
   "name": "Type hors catalogue → refus clair + proposition du plus proche",
-  "description": "L'agent ne rédige pas un type de contrat absent du catalogue.",
+  "description": "L'agent ne rédige pas un type de contrat absent du catalogue. En campagne réelle, il répond par une question (ask_user) proposant le type le plus proche ; le scénario vérifie les deux formes : le texte du chat et la charge utile de la question.",
   "turns": [
     {
       "user": "Je veux un contrat de mariage.",
@@ -9,13 +9,31 @@
         "expect_canvas": false,
         "max_questions": 1,
         "chat_max_length": 600,
-        "chat_contains": ["bail d'habitation"]
+        "ask_user_contains": [
+          "bail d'habitation"
+        ]
       }
     }
   ],
   "mock": [
     {
-      "text": "Je ne peux pas rédiger ce type de contrat : il n'est pas au catalogue. Le seul type disponible est le bail d'habitation : voulez-vous que je le rédige ?"
+      "text": "Le contrat de mariage n'est pas au catalogue.",
+      "stopReason": "tool_use",
+      "toolUses": [
+        {
+          "name": "ask_user",
+          "input": {
+            "question": "Le contrat de mariage n'est pas disponible. Voulez-vous un bail d'habitation ?",
+            "kind": "single",
+            "why": "C'est le seul type de contrat au catalogue.",
+            "allow_other": true,
+            "options": [
+              { "id": "bail-habitation", "label": "Bail d'habitation" },
+              { "id": "autre", "label": "Autre chose" }
+            ]
+          }
+        }
+      ]
     }
   ]
 }

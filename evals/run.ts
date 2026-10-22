@@ -28,6 +28,7 @@ import {
   countChangedBlocks,
   countChangedSections,
   countQuestions,
+  findLegalCitations,
   type CheckResult,
 } from './assertions.js';
 
@@ -45,6 +46,15 @@ interface TurnObservation {
   }>;
   toolCalls: Array<{ name: string; input: any }>;
   questions: number;
+  /** Charge utile de la question posée (`ask_user`), si elle a été posée. */
+  question: {
+    question_id: string;
+    kind: string;
+    question: string;
+    why?: string;
+    options?: Array<{ id: string; label: string }>;
+    fields?: Array<{ id: string; label: string }>;
+  } | null;
 }
 
 export interface ScenarioResult {
@@ -143,6 +153,7 @@ async function runTurn(
   const events = parseSse(payload);
   let chat = '';
   const canvasSets: TurnObservation['canvasSets'] = [];
+  let question: TurnObservation['question'] = null;
 
   for (const event of events) {
     if (event.event === 'text_delta') chat += event.data.text;
@@ -154,12 +165,27 @@ async function runTurn(
         edits_applied: event.data.edits_applied,
         placeholders: event.data.validation?.placeholders ?? 0,
       });
+    } else if (event.event === 'ask_user') {
+      question = {
+        question_id: event.data.question_id,
+        kind: event.data.kind,
+        question: event.data.question,
+        why: event.data.why,
+        options: event.data.options,
+        fields: event.data.fields,
+      };
     } else if (event.event === 'error') {
       throw new Error(`Flux en erreur : ${event.data.code} — ${event.data.message}`);
     }
   }
 
-  return { chat, canvasSets, toolCalls: toolCalls.slice(startIndex), questions: countQuestions(chat) };
+  return {
+    chat,
+    canvasSets,
+    toolCalls: toolCalls.slice(startIndex),
+    questions: countQuestions(chat),
+    question,
+  };
 }
 
 /* ------------------------------------------------------------------ */
@@ -285,6 +311,24 @@ async function checkTurn(
     checks.push(check);
   }
 
+  if (expectation.ask_user_contains) {
+    const question = observation.question;
+    const haystack = question
+      ? [question.question, question.why ?? '', ...(question.options ?? []).map((o) => o.label)].join(' ')
+      : '';
+    const missing = expectation.ask_user_contains.filter((needle) => !haystack.includes(needle));
+    const detail = !question
+      ? 'aucune question posée'
+      : missing.length
+        ? `absent de la question : ${missing.join(', ')}`
+        : '';
+    checks.push({
+      name: 'La question propose le type le plus proche',
+      ok: Boolean(question) && missing.length === 0,
+      ...(detail ? { detail } : {}),
+    });
+  }
+
   for (const needle of expectation.chat_contains ?? []) {
     checks.push({
       name: 'Chat contient le texte attendu',
@@ -302,7 +346,7 @@ async function checkTurn(
   }
 
   if (expectation.chat_no_legal_citation) {
-    const citations = observation.chat.match(/\barticle\s+\d+|\barticles\s+\d+|\bloi\s+n[°o]\s*\d+/gi) ?? [];
+    const citations = findLegalCitations(observation.chat);
     checks.push({
       name: 'Aucune citation juridique dans le chat',
       ok: citations.length === 0,
@@ -336,7 +380,10 @@ async function checkTurn(
     }
 
     if (expectation.no_legal_citation) {
-      const citations = lastSet.markdown.match(/\barticle\s+\d+|\barticles\s+\d+/gi) ?? [];
+      // Un renvoi interne (l'article 3 du contrat) n'est pas une citation :
+      // seules les mentions d'un texte extérieur sont contrôlées.
+      const articleCount = (lastSet.markdown.match(/^##\s+Article\s+\d+/gm) ?? []).length;
+      const citations = findLegalCitations(lastSet.markdown, articleCount);
       const legalNotes = template?.legal_notes ?? [];
       const unknown = citations.filter((citation) => !legalNotes.some((note) => note.includes(citation)));
       checks.push({

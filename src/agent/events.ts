@@ -7,6 +7,20 @@ import type { Issue } from '../doc/validate.js';
 
 export type AgentPhase = 'template' | 'drafting' | 'editing';
 
+/** Champ obligatoire d'un type de contrat, avec son état de remplissage. */
+export interface FieldStatus {
+  key: string;
+  label: string;
+  /** `true` si le champ a été renseigné dans le document produit. */
+  filled: boolean;
+}
+
+export interface LegalNotice {
+  /** Toujours `true` : la revalidation juridique est obligatoire. */
+  required: true;
+  text: string;
+}
+
 export interface CanvasSetPayload {
   mode: 'create' | 'edit';
   markdown: string;
@@ -17,7 +31,14 @@ export interface CanvasSetPayload {
   validation: {
     placeholders: number;
     issues: Issue[];
+    /** Champs obligatoires et facultatifs, avec leur état de remplissage. */
+    fields?: {
+      required: FieldStatus[];
+      optional: FieldStatus[];
+    };
   };
+  /** Avertissement structuré de revalidation par un professionnel du droit. */
+  legal_notice?: LegalNotice;
 }
 
 /* ------------------------------------------------------------------ */
@@ -87,6 +108,20 @@ export interface SourceItem {
   url?: string | null;
 }
 
+/** Explication pédagogique d'une clause (SPEC-EXPLICATION-CLAUSES.md §3.3). */
+export interface ClauseExplainedPayload {
+  article: string;
+  /** Extrait littéral du document. */
+  quote: string;
+  explanation: string;
+  obligations: Array<{ party: string; duty: string }>;
+  risks: string[];
+  /** Éléments du contrat dont la valeur change la portée. */
+  depends_on: string[];
+  limits: string;
+  document_version: number;
+}
+
 export interface SuggestionItem {
   label: string;
   message: string;
@@ -133,6 +168,7 @@ export interface AgentEventPayloads {
   plan: { steps: PlanStep[] };
   step: StepPayload;
   ask_user: AskUserPayload;
+  clause_explained: ClauseExplainedPayload;
   sources: { items: SourceItem[] };
   suggestions: { items: SuggestionItem[] };
   retry: { attempt: number; max: number; label: string; delay_ms: number };

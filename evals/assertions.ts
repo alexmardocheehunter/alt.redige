@@ -127,11 +127,59 @@ function identityScope(document: string): string {
 }
 
 /**
+ * Mentions d'un texte juridique dans un texte.
+ *
+ * Distingue :
+ *  - une **citation** : « l'article 169 bis du CGI », « la loi n° 77-995 » ;
+ *  - un **renvoi interne** : « l'article 3 » du contrat lui-même, qui ne
+ *    cite aucun texte et ne peut donc pas être une invention.
+ *
+ * Le test porte sur les citations seules : sans cette distinction, tout
+ * contrat numéroté — donc tout contrat — échouerait.
+ */
+export function findLegalCitations(text: string, articleCount = 0): string[] {
+  const out: string[] = [];
+  const push = (value: string) => {
+    const trimmed = value.trim();
+    if (trimmed && !out.includes(trimmed)) out.push(trimmed);
+  };
+
+  // 1. Un numéro d'article suivi d'une source (« du CGI », « de la loi »…).
+  const sourceAfter = /\b(du|de\s+la|de\s+l'|des|dans\s+la)\s+(code|cgi|loi|d[ée]cret|ordonnance|acte\s+uniforme|ohada|syscohada|cour|tribunal|jurisprudence|convention\s+collective|anm|cps|cnps|passage)\b/i;
+
+  for (const match of text.matchAll(/\barticles?\s+(\d+[\s\w-]*)/gi)) {
+    const end = match.index! + match[0].length;
+    const tail = text.slice(end, end + 70);
+    if (sourceAfter.test(tail)) push(match[0]);
+  }
+
+  // 2. Les lois, ordonnances et décrets numérotés.
+  for (const match of text.matchAll(/\b(loi|ordonnance|d[ée]cret|arr[êe]t[ée])\s+n\s*[°o]?\s*([\d][\d\w./-]*)/gi)) {
+    push(`${match[1]} n° ${match[2]}`);
+  }
+
+  // 3. Les renvois internes pointant vers un article inexistant : le modèle a
+  //    inventé une référence.
+  if (articleCount > 0) {
+    for (const match of text.matchAll(/\barticles?\s+(\d+)\b/gi)) {
+      if (Number(match[1]) > articleCount) push(match[0]);
+    }
+  }
+
+  return out;
+}
+
+/**
  * Checks that every proper noun, amount or date of the contract comes either
  * from the user messages or from a `[À COMPLÉTER …]` placeholder.
  *
  * The wording of the template (skeleton and legal notes) is also accepted: the
  * model is supposed to reuse it, it is not an invention.
+ *
+ * The proper nouns are only looked for in the **identity block** of the
+ * parties (before the first article, plus the lines carrying a title of
+ * courtesy): the rest of the document is legal vocabulary, where a capitalised
+ * word proves nothing.
  */
 export function checkNoInventedFacts(
   document: string,

@@ -29,6 +29,7 @@ function context(overrides: Partial<Parameters<typeof executeTool>[2]> = {}) {
     safetyEnabled: false,
     safetyMode: 'advisory' as const,
     userText: 'Je veux un bail d habitation pour un studio a Yopougon, loyer 70 000 FCFA par mois, 12 mois, Monsieur Koné et Madame Aya.',
+    documentVersion: 1,
     maxEditChangedBlocks: 6,
     askUserCounter: 0,
     signal: new AbortController().signal,
@@ -42,7 +43,7 @@ describe('outils — définitions', () => {
     // `ask_user` est ajouté par AGENT-PROTOCOL.md §8 : l'agent pose une
     // question et le tour s'arrête sur `awaiting_input`.
     expect(tools.map((tool) => tool.name)).toEqual([
-      'ask_user', 'get_template', 'create_canvas', 'edit_canvas',
+      'ask_user', 'explain_clause', 'get_template', 'create_canvas', 'edit_canvas',
     ]);
   });
 

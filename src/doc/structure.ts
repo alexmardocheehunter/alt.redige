@@ -116,13 +116,14 @@ const ARTICLE_HEADING = /^##\s+(?:Article\s+(\d+)\s*[–—-]\s*)?(.+)$/;
 export function articles(markdown: string): ArticleInfo[] {
   const out: ArticleInfo[] = [];
   for (const line of markdown.split(/\r?\n/)) {
-    const match = ARTICLE_HEADING.exec(line.trim());
+    const match = /^##\s+(.*)$/.exec(line.trim());
     if (!match) continue;
-    const label = (match[2] ?? '').trim();
+    const title = match[1]!.trim();
+    const number = /^Article\s+(\d+)/i.exec(title);
     out.push({
-      number: match[1] ? Number(match[1]) : null,
-      title: line.trim(),
-      label: label.replace(/^Article\s+\d+\s*[–—-]\s*/i, '').trim(),
+      number: number ? Number(number[1]) : null,
+      title,
+      label: title.replace(/^Article\s+\d+\s*[–—-]\s*/i, '').trim(),
     });
   }
   return out;

@@ -6,15 +6,24 @@
 import { applyEdits, type Edit } from '../doc/edit.js';
 import { validate } from '../doc/validate.js';
 import { lostArticles, countChangedBlocks, renumberArticles } from '../doc/structure.js';
-import { informedRequiredFields } from '../doc/required-fields.js';
+import { informedRequiredFields, placeholdersForField } from '../doc/required-fields.js';
 import { checkReferences } from '../doc/references.js';
 import { checkFacts } from '../doc/facts.js';
 import type { Issue } from '../doc/validate.js';
 import type { LlmClient, LlmToolDefinition } from '../llm.js';
 import type { Logger } from '../logger.js';
 import { checkTextSafety, looksLikeContract, shouldBlock } from '../safety.js';
-import type { ContractTemplate, TemplateStore } from '../templates.js';
-import type { AgentEmit, AskUserPayload, QuestionField, QuestionOption } from './events.js';
+import type { ContractTemplate, TemplateField, TemplateStore } from '../templates.js';
+import type {
+  AgentEmit,
+  AskUserPayload,
+  ClauseExplainedPayload,
+  FieldStatus,
+  QuestionField,
+  QuestionOption,
+} from './events.js';
+import { checkExplanation, EXPLANATION_LIMITS, findArticle } from '../doc/explanation.js';
+import { articles } from '../doc/structure.js';
 
 export const TOOL_GET_TEMPLATE = 'get_template';
 export const TOOL_CREATE_CANVAS = 'create_canvas';
@@ -39,6 +48,8 @@ export interface ToolContext {
    * information exploitable a été fournie (garde-fou P0-3).
    */
   userText: string;
+  /** Version du document courant, reportée dans les explications de clause. */
+  documentVersion: number;
   /**
    * Nombre maximal de blocs qu'une modification ciblée a le droit de
    * toucher. Au-delà, la modification est refusée (garde-fou P0-2).
@@ -62,6 +73,16 @@ export interface ToolResult {
 }
 
 export const TOOL_ASK_USER = 'ask_user';
+export const TOOL_EXPLAIN_CLAUSE = 'explain_clause';
+
+/**
+ * Avertissement de revalidation juridique.
+ *
+ * Il est structuré (et non seulement une phrase de chat) : le frontend peut
+ * l'afficher comme un bandeau attaché au document.
+ */
+export const LEGAL_NOTICE_TEXT =
+  'Ce document doit être relu et validé par un professionnel du droit avant signature.';
 
 /** Outil `ask_user` : l'agent pose une question et le tour s'arrête. */
 export function askUserToolDefinition(): LlmToolDefinition {
@@ -120,6 +141,53 @@ export function toolDefinitions(templates: TemplateStore): LlmToolDefinition[] {
   return [
     askUserToolDefinition(),
     {
+      name: TOOL_EXPLAIN_CLAUSE,
+      description:
+        'Explique une clause du contrat à l\'utilisateur, à partir du texte présent dans le document. '
+        + 'À appeler quand l\'utilisateur demande ce que signifie une clause. Ne jamais inventer '
+        + 'une clause absente du document, ni citer un texte qui ne figure pas dans les notes.',
+      parameters: {
+        type: 'object',
+        properties: {
+          article: {
+            type: 'string',
+            description: 'Intitulé ou numéro de l\'article à expliquer, tel qu\'il figure dans le document.',
+          },
+          quote: {
+            type: 'string',
+            description: 'Extrait littéral de la clause, recopié exactement du document.',
+          },
+          explanation: {
+            type: 'string',
+            description: 'Explication en français, en langage courant, sans affirmation juridique non étayée.',
+          },
+          obligations: {
+            type: 'array',
+            description: 'Obligations qui découlent du texte de la clause.',
+            items: {
+              type: 'object',
+              properties: {
+                party: { type: 'string' },
+                duty: { type: 'string' },
+              },
+              required: ['party', 'duty'],
+            },
+          },
+          risks: {
+            type: 'array',
+            description: 'Points de vigilance pour l\'utilisateur.',
+            items: { type: 'string' },
+          },
+          depends_on: {
+            type: 'array',
+            description: 'Éléments du contrat dont la valeur change la portée de la clause.',
+            items: { type: 'string' },
+          },
+        },
+        required: ['article', 'quote', 'explanation'],
+      },
+    },
+    {
       name: TOOL_GET_TEMPLATE,
       description:
         'Charge le modèle de référence d’un type de contrat : squelette Markdown, champs attendus et notes juridiques vérifiées. À appeler avant de rédiger.',
@@ -171,6 +239,32 @@ export function toolDefinitions(templates: TemplateStore): LlmToolDefinition[] {
       },
     },
   ];
+}
+
+/**
+ * État de remplissage des champs d'un type de contrat.
+ *
+ * Un champ est « rempli » quand au moins un de ses espaces réservés a été
+ * remplacé dans le document. Un champ sans espace réservé associé n'a rien à
+ * compléter : il est reporté comme rempli.
+ */
+function fieldStatuses(
+  template: ContractTemplate | null,
+  markdown: string,
+): { required: FieldStatus[]; optional: FieldStatus[] } {
+  if (!template) return { required: [], optional: [] };
+
+  const status = (field: TemplateField): FieldStatus => {
+    const placeholders = placeholdersForField(template, field);
+    const filled = placeholders.length === 0
+      || placeholders.some((placeholder) => !markdown.includes(placeholder));
+    return { key: field.key, label: field.label, filled };
+  };
+
+  return {
+    required: template.required_fields.map(status),
+    optional: template.optional_fields.map(status),
+  };
 }
 
 function ok(payload: unknown): ToolResult {
@@ -252,9 +346,83 @@ export async function executeTool(
       return editCanvas(args, context);
     case TOOL_ASK_USER:
       return askUser(args, context);
+    case TOOL_EXPLAIN_CLAUSE:
+      return explainClause(args, context);
     default:
       return fail(`Outil inconnu : ${name}.`);
   }
+}
+
+/**
+ * L'agent explique une clause du contrat.
+ *
+ * L'explication est contrôlée avant d'être émise : l'extrait doit figurer dans
+ * le document, aucune affirmation juridique non étayée, aucune citation hors du
+ * référentiel, aucune mention de limite absente.
+ */
+function explainClause(args: Record<string, unknown>, context: ToolContext): ToolResult {
+  const document = context.workingDoc;
+  if (!document) {
+    return fail('Aucun contrat à expliquer : le Canvas est vide.');
+  }
+
+  const wanted = typeof args.article === 'string' ? args.article.trim() : '';
+  if (!wanted) {
+    return fail('Indique l\'article à expliquer.');
+  }
+
+  const found = findArticle(document, wanted);
+  if (!found) {
+    const available = articles(document).map((article) => article.title).join(', ');
+    return fail(
+      `L'article « ${wanted} » ne figure pas dans le contrat. Les articles disponibles sont : ${available}`,
+    );
+  }
+
+  const quote = typeof args.quote === 'string' ? args.quote.trim() : '';
+  const explanation = typeof args.explanation === 'string' ? args.explanation.trim() : '';
+  if (!explanation) {
+    return fail('L\'explication est vide.');
+  }
+
+  const template = context.workingDocType ? context.templates.get(context.workingDocType) ?? null : null;
+  const payload: ClauseExplainedPayload = {
+    article: found.title,
+    quote: quote || found.title,
+    explanation,
+    obligations: Array.isArray(args.obligations)
+      ? (args.obligations as Array<Record<string, unknown>>).map((item) => ({
+        party: String(item.party ?? ''),
+        duty: String(item.duty ?? ''),
+      }))
+      : [],
+    risks: Array.isArray(args.risks) ? (args.risks as unknown[]).map((risk) => String(risk)) : [],
+    depends_on: Array.isArray(args.depends_on)
+      ? (args.depends_on as unknown[]).map((item) => String(item))
+      : [],
+    limits: EXPLANATION_LIMITS,
+    document_version: context.documentVersion,
+  };
+
+  const problems = checkExplanation(payload, document, template);
+  if (problems.length > 0) {
+    context.logger.info('tool_explain_clause_refused', { problems: problems.length });
+    return fail(
+      `L'explication ne peut pas être publiée : ${problems.join(' ')} Corrige et recommence.`,
+      { problems },
+    );
+  }
+
+  context.emit('clause_explained', payload);
+  context.logger.info('tool_explain_clause', { article: payload.article });
+
+  return ok({
+    ok: true,
+    article: payload.article,
+    explanation: payload.explanation,
+    risks: payload.risks,
+    limits: payload.limits,
+  });
 }
 
 /**
@@ -482,7 +650,12 @@ async function createCanvas(args: Record<string, unknown>, context: ToolContext)
     version: context.nextVersion(),
     title,
     contract_type: contractType,
-    validation: { placeholders: validation.placeholders, issues: validation.issues },
+    validation: {
+      placeholders: validation.placeholders,
+      issues: validation.issues,
+      fields: fieldStatuses(template, markdown),
+    },
+    legal_notice: { required: true, text: LEGAL_NOTICE_TEXT },
   });
 
   context.logger.info('tool_create_canvas', {
