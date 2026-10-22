@@ -809,6 +809,18 @@ if(user)enter();
       '.srcrow{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}',
       '.srcrow .src{border:1px solid var(--line);border-radius:999px;padding:2px 9px;font-size:11.5px;color:var(--mut)}',
 
+      /* --- explication de clause --- */
+      '.clause{border:1px solid var(--line);border-radius:14px;padding:12px;margin:8px 0;background:var(--panel);font-size:13.5px;line-height:1.55}',
+      '.clause .clause-title{font-weight:600;margin-bottom:6px}',
+      '.clause .clause-quote{margin:6px 0;padding:6px 10px;border-left:3px solid var(--line);color:var(--mut);font-style:italic}',
+      '.clause .clause-list{margin:6px 0;padding-left:18px}',
+      '.clause .clause-limits{margin-top:8px;font-size:11.5px;color:var(--mut)}',
+
+      /* --- champs obligatoires et avertissement juridique --- */
+      '.fieldsbox{margin:8px 0;font-size:12.5px;color:var(--mut)}',
+      '.fieldsbox .fields-title{margin-bottom:2px}',
+      '.legalnotice{margin:8px 0;padding:8px 10px;border-radius:10px;font-size:11.5px;color:var(--mut);border:1px solid var(--line);background:var(--panel)}',
+
       /* --- bandeau mode simulé --- */
       '#mockBanner{position:fixed;top:0;left:0;right:0;z-index:50;background:#b45309;color:#fff;font-size:12px;text-align:center;padding:3px}',
 
@@ -1107,6 +1119,58 @@ if(user)enter();
   }
 
   /* ---------------------------------------------------------------- */
+  /* Rendu : explication de clause, champs, avertissement juridique     */
+  /* ---------------------------------------------------------------- */
+
+  /** L'explication d'une clause (`clause_explained`). */
+  function renderClause(message) {
+    if (!message.clause) return null;
+    var clause = message.clause;
+    var box = el('div', 'clause');
+
+    box.appendChild(el('div', 'clause-title', clause.article || 'Clause'));
+    if (clause.quote) box.appendChild(el('blockquote', 'clause-quote', clause.quote));
+    if (clause.explanation) box.appendChild(el('div', 'clause-text', clause.explanation));
+
+    if (clause.obligations && clause.obligations.length) {
+      var obligations = el('ul', 'clause-list');
+      clause.obligations.forEach(function (item) {
+        var label = item.party ? item.party + ' — ' : '';
+        obligations.appendChild(el('li', '', label + (item.duty || '')));
+      });
+      box.appendChild(obligations);
+    }
+
+    if (clause.risks && clause.risks.length) {
+      var risks = el('ul', 'clause-list');
+      clause.risks.forEach(function (risk) { risks.appendChild(el('li', '', risk)); });
+      box.appendChild(risks);
+    }
+
+    if (clause.limits) box.appendChild(el('div', 'clause-limits', clause.limits));
+    return box;
+  }
+
+  /** L'avertissement de revalidation juridique (`legal_notice`). */
+  function renderLegalNotice(message) {
+    if (!message.legalNotice || !message.legalNotice.text) return null;
+    return el('div', 'legalnotice', message.legalNotice.text);
+  }
+
+  /** Les champs obligatoires qui restent à compléter (`validation.fields`). */
+  function renderFields(message) {
+    if (!message.fields || !message.fields.required) return null;
+    var missing = message.fields.required.filter(function (field) { return !field.filled; });
+    if (!missing.length) return null;
+    var box = el('div', 'fieldsbox');
+    box.appendChild(el('div', 'fields-title', 'Champs obligatoires à compléter :'));
+    var row = el('div', 'chipsrow');
+    missing.forEach(function (field) { row.appendChild(el('span', 'chip', field.label)); });
+    box.appendChild(row);
+    return box;
+  }
+
+  /* ---------------------------------------------------------------- */
   /* Bulle de l'assistant                                                */
   /* ---------------------------------------------------------------- */
 
@@ -1122,6 +1186,15 @@ if(user)enter();
 
     var card = questionCard(message);
     if (card) bubble.appendChild(card);
+
+    var clause = renderClause(message);
+    if (clause) bubble.appendChild(clause);
+
+    var fields = renderFields(message);
+    if (fields) bubble.appendChild(fields);
+
+    var notice = renderLegalNotice(message);
+    if (notice) bubble.appendChild(notice);
 
     var sources = renderSources(message);
     if (sources) bubble.appendChild(sources);
@@ -1372,11 +1445,20 @@ if(user)enter();
         parsed.markdown = data.markdown;
         parsed.placeholders = data.validation ? data.validation.placeholders : 0;
         parsed.issues = (data.validation && data.validation.issues) || [];
+        // Champs obligatoires et avertissement juridique (contrat d'API §3.3).
+        message.fields = (data.validation && data.validation.fields) || null;
+        message.legalNotice = data.legal_notice || null;
         if (cur === curConv().id) { doc = parsed; render(true); }
         curConv().doc = parsed;
         curConv().title = parsed.title;
         persist(); renderHist();
         setState('replying');
+        refreshBubble(message);
+        break;
+
+      case 'clause_explained':
+        message.clause = data;
+        refreshBubble(message);
         break;
 
       case 'ask_user':
@@ -1531,6 +1613,16 @@ if(user)enter();
         { event: 'canvas_delta', data: { seq: 3, t: 100, text: '# Brouillon interrompu' } },
         { event: 'error', data: { seq: 4, t: 150, code: 'truncated', message: 'Le contrat est trop long pour être généré d\'un seul coup. Réessayez.', retryable: true } }
       ];
+    } else if (lower.indexOf('explique') !== -1 || lower.indexOf('expliquer') !== -1) {
+      events = [
+        { event: 'ready', data: { seq: 1, t: 0 } },
+        { event: 'phase', data: { seq: 2, t: 80, phase: 'understanding', label: 'Je relis la clause demandée' } },
+        { event: 'tool_start', data: { seq: 3, t: 120, id: 't1', name: 'explain_clause', label: 'J\'explique la clause' } },
+        { event: 'tool_end', data: { seq: 4, t: 400, id: 't1', ok: true, duration_ms: 280, result_summary: 'Article 2 – Résiliation expliqué' } },
+        { event: 'clause_explained', data: { seq: 5, t: 420, article: 'Article 2 – Résiliation', quote: 'Chaque partie peut résilier le bail selon les modalités ci-dessous.', explanation: 'Le texte prévoit que chaque partie peut mettre fin au bail en respectant les modalités indiquées juste après. Il s\'applique aux deux parties.', obligations: [{ party: 'chaque partie', duty: 'respecter les modalités de résiliation prévues au contrat' }], risks: ['Les délais de préavis doivent être respectés.'], depends_on: ['durée du bail'], limits: 'Cette explication est une aide à la lecture. Elle ne remplace pas l\'avis d\'un professionnel du droit.', document_version: 1 } },
+        { event: 'text_delta', data: { seq: 6, t: 500, text: 'Voici ce que prévoit la clause de résiliation.' } },
+        { event: 'done', data: { seq: 7, t: 550, stop_reason: 'end_turn' } }
+      ];
     } else if (lower.indexOf('question') !== -1) {
       events = [
         { event: 'ready', data: { seq: 1, t: 0 } },
@@ -1568,7 +1660,7 @@ if(user)enter();
         { event: 'tool_end', data: { seq: 14, t: 2600, id: 't2', ok: true, duration_ms: 700, result_summary: 'Contrat écrit, 5 champs à compléter' } },
         { event: 'canvas_start', data: { seq: 15, t: 2700, mode: 'create', title: 'Contrat de bail' } },
         { event: 'canvas_delta', data: { seq: 16, t: 2800, text: '# Contrat de bail à usage d\'habitation\n\n' } },
-        { event: 'canvas_set', data: { seq: 17, t: 3000, mode: 'create', markdown: MOCK_CONTRACT, version: 1, title: 'Contrat de bail', contract_type: 'bail-habitation', validation: { placeholders: 5, issues: [] } } },
+        { event: 'canvas_set', data: { seq: 17, t: 3000, mode: 'create', markdown: MOCK_CONTRACT, version: 1, title: 'Contrat de bail', contract_type: 'bail-habitation', validation: { placeholders: 5, issues: [], fields: { required: [{ key: 'bailleur', label: 'Identité du bailleur', filled: false }, { key: 'locataire', label: 'Identité du locataire', filled: false }, { key: 'loyer', label: 'Loyer mensuel', filled: true }], optional: [{ key: 'caution', label: 'Caution', filled: false }] } }, legal_notice: { required: true, text: 'Ce document doit être relu et validé par un professionnel du droit avant signature.' } } },
         { event: 'sources', data: { seq: 18, t: 3100, items: [{ id: 's01', title: 'Code du travail de Côte d\'Ivoire', ref: 'S01', kind: 'law', url: null }] } },
         { event: 'suggestions', data: { seq: 19, t: 3200, items: [{ label: 'Compléter les champs restants', message: 'Complète les champs restants' }, { label: 'Ajouter une pénalité de retard', message: 'Ajoute une clause de pénalité de retard' }] } },
         { event: 'text_delta', data: { seq: 20, t: 3300, text: 'Le bail est prêt. Il reste 5 champs à compléter.' } },
@@ -1578,7 +1670,7 @@ if(user)enter();
       events = [
         { event: 'ready', data: { seq: 1, t: 0 } },
         { event: 'canvas_start', data: { seq: 2, t: 60, mode: 'edit', title: 'Contrat de bail', reason: 'Je modifie le préavis' } },
-        { event: 'canvas_set', data: { seq: 3, t: 400, mode: 'edit', markdown: MOCK_CONTRACT.replace('12 mois', '3 mois'), version: 2, title: 'Contrat de bail', contract_type: 'bail-habitation', validation: { placeholders: 5, issues: [] } } },
+        { event: 'canvas_set', data: { seq: 3, t: 400, mode: 'edit', markdown: MOCK_CONTRACT.replace('12 mois', '3 mois'), version: 2, title: 'Contrat de bail', contract_type: 'bail-habitation', validation: { placeholders: 5, issues: [], fields: { required: [{ key: 'bailleur', label: 'Identité du bailleur', filled: false }, { key: 'locataire', label: 'Identité du locataire', filled: false }, { key: 'loyer', label: 'Loyer mensuel', filled: true }], optional: [{ key: 'caution', label: 'Caution', filled: false }] } }, legal_notice: { required: true, text: 'Ce document doit être relu et validé par un professionnel du droit avant signature.' } } },
         { event: 'text_delta', data: { seq: 4, t: 500, text: 'Le préavis est passé à trois mois.' } },
         { event: 'done', data: { seq: 5, t: 550, stop_reason: 'end_turn' } }
       ];
@@ -1609,7 +1701,7 @@ if(user)enter();
         { event: 'canvas_start', data: { seq: 9, t: 700, mode: 'create', title: 'Contrat de bail' } },
         { event: 'canvas_delta', data: { seq: 10, t: 760, text: '# Contrat de bail à usage d\'habitation\n\n' } },
         { event: 'canvas_delta', data: { seq: 11, t: 820, text: 'Entre les soussignés :\n\n' } },
-        { event: 'canvas_set', data: { seq: 12, t: 900, mode: 'create', markdown: MOCK_CONTRACT, version: 1, title: 'Contrat de bail', contract_type: 'bail-habitation', validation: { placeholders: 5, issues: [{ code: 'missing_article', severity: 'warning', message: 'Article « Charges » absent.' }] } } },
+        { event: 'canvas_set', data: { seq: 12, t: 900, mode: 'create', markdown: MOCK_CONTRACT, version: 1, title: 'Contrat de bail', contract_type: 'bail-habitation', validation: { placeholders: 5, issues: [{ code: 'missing_article', severity: 'warning', message: 'Article « Charges » absent.' }], fields: { required: [{ key: 'bailleur', label: 'Identité du bailleur', filled: false }], optional: [] } }, legal_notice: { required: true, text: 'Ce document doit être relu et validé par un professionnel du droit avant signature.' } } },
         { event: 'text_delta', data: { seq: 13, t: 1000, text: 'Le bail est prêt. Il reste 5 champs à compléter.' } },
         { event: 'done', data: { seq: 14, t: 1050, stop_reason: 'end_turn', usage: { input_tokens: 10, output_tokens: 20 } } }
       ];

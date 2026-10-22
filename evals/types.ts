@@ -50,6 +50,8 @@ export interface Expectation {
   no_invented_facts?: boolean;
   /** No legal reference may be cited (the notes are empty in V1). */
   no_legal_citation?: boolean;
+  /** Les articles obligatoires du modèle de référence doivent figurer au document. */
+  template_articles_present?: boolean;
   /** La question posée doit mentionner ces éléments (proposition du type le plus proche). */
   ask_user_contains?: string[];
   /** No legal reference may be cited in the chat. */

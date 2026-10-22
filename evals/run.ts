@@ -28,6 +28,7 @@ import {
   countChangedBlocks,
   countChangedSections,
   countQuestions,
+  checkRequiredArticles,
   findLegalCitations,
   type CheckResult,
 } from './assertions.js';
@@ -392,6 +393,19 @@ async function checkTurn(
         ...(unknown.length ? { detail: unknown.join(', ') } : {}),
       });
     }
+
+    if (expectation.template_articles_present) {
+      // Le modèle de contrat est épinglé dans le contexte : l'agent n'a plus
+      // besoin de l'appeler. Le document produit doit malgré tout en reprendre
+      // tous les articles obligatoires.
+      const required = template?.required_articles ?? [];
+      const missing = checkRequiredArticles(lastSet.markdown, required);
+      checks.push({
+        name: 'Les articles du modèle de référence sont présents',
+        ok: missing.length === 0,
+        ...(missing.length ? { detail: `absents : ${missing.join(', ')}` } : {}),
+      });
+    }
   }
 
   if (expectation.unchanged_sections && documentBefore && documentAfter) {
@@ -514,7 +528,8 @@ export async function runScenario(
         documentBefore,
         document?.markdown ?? null,
         userMessages,
-        template,
+        // Le modèle de référence dépend du type demandé au tour.
+        templates.get(turn.contract_type ?? 'bail-habitation') ?? template,
       );
       checks.push(...turnChecks);
 

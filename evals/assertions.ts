@@ -8,6 +8,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { validate } from '../src/doc/validate.js';
+import { articles } from '../src/doc/structure.js';
 import { renderDocx, titleFromMarkdown } from '../src/export/docx.js';
 import { countOccurrences, openDocx } from './docx-utils.js';
 
@@ -167,6 +168,32 @@ export function findLegalCitations(text: string, articleCount = 0): string[] {
   }
 
   return out;
+}
+
+/**
+ * Articles obligatoires du modèle de référence, absents du document produit.
+ *
+ * Le contrôle remplace l'ancien « l'agent a appelé `get_template` » : depuis
+ * que le modèle de contrat est épinglé dans le contexte, l'appel n'a plus
+ * lieu — mais le document produit doit toujours en reprendre les articles.
+ * La comparaison se fait sur les intitulés, sans tenir compte du
+ * numérotage (le serveur renumérote).
+ */
+export function checkRequiredArticles(
+  document: string,
+  required: string[],
+): string[] {
+  const labels = articles(document).map((article) => normalize(article.label));
+  const missing: string[] = [];
+
+  for (const wanted of required) {
+    const needle = normalize(wanted);
+    if (!needle) continue;
+    const found = labels.some((label) => label.includes(needle) || needle.includes(label));
+    if (!found) missing.push(wanted);
+  }
+
+  return missing;
 }
 
 /**

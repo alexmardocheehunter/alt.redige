@@ -1,7 +1,7 @@
 {
   "id": "01-demande-complete",
   "name": "Demande complète en un message → V1 sans question inutile",
-  "description": "Toutes les informations essentielles sont données : le contrat doit être rédigé sans poser de question.",
+  "description": "Toutes les informations essentielles sont données : le contrat doit être rédigé sans poser de question. Le modèle de contrat est épinglé dans le contexte : l'agent n'appelle plus get_template, mais le document produit doit en reprendre tous les articles.",
   "turns": [
     {
       "user": "Je veux un bail d'habitation pour un studio à Yopougon (Abidjan), loyer 70 000 FCFA par mois, durée 12 mois. Le bailleur est Monsieur Koné et la locataire est Madame Aya.",
@@ -13,7 +13,8 @@
         "chat_max_length": 600,
         "no_invented_facts": true,
         "placeholders_min": 1,
-        "tool_calls": [{ "name": "get_template", "count_min": 1 }, { "name": "create_canvas", "count_min": 1 }]
+        "template_articles_present": true,
+        "tool_calls": [{ "name": "create_canvas", "count_min": 1 }]
       }
     }
   ],
