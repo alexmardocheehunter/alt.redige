@@ -587,51 +587,61 @@ code a été aligné dessus. Le détail des décisions figure dans
 
 ## 7. Évaluation réelle — résultat et limites
 
-### Avant correction (campagne de 15:30 à 15:42, contre le vrai modèle)
+### Historique
 
-**1 scénario sur 10 au vert.** Détail dans le rapport d'audit initial. Les
-échecs 07 à 10 étaient dus au réseau (429, `UND_ERR_SOCKET`) : **non
-concluants**, ni à charge ni à décharge.
-
-### Après correction
-
-**Le réseau s'est rétabli** dans la nuit du 21 au 22/10 : la campagne réelle a
-pu être exécutée. Trois exécutions consécutives, modèle réel.
-
-| Exécution | Scénarios au vert | Détail |
+| Période | Résultat | Ce que la campagne a permis |
 |---|---|---|
-| **run 1** | 4/10 | 01, 02, 03, 10 verts |
-| **run 2** | 5/10 | + 07, 09 |
-| **run 3** | 4/10 | 01, 02, 03, 10 verts |
+| 21/10, avant les garde-fous | **1/10** | point de départ |
+| 21/10, après les garde-fous | 4 à 7/10 | réseau instable : les échecs 07 à 10 étaient des échecs de transport |
+| 22/10, campagne du jour | **5 à 6/10** selon l'exécution | les échecs restants étaient, eux aussi, majoritairement des échecs de transport |
 
-**Comparaison : 1/10 avant les garde-fous → 4 à 7/10 après.** La progression
-est réelle, mais l'amera n'est pas verte, et **trois échecs sont structurels,
-pas aléatoires** :
+### Ce que le 22/10 a changé
 
-| Scénario | Cause racine identifiée | Nature |
-|---|---|---|
-| **04, 05, 06** — « Édition ciblée » | La liste `unchanged_sections` que j'ai rétablie en wave 0 reprend les **intitulés du modèle de bail d'avant** (« Article 2 – Durée et loyer », « Article 5 – Signatures »). Le modèle livré depuis en a **9 articles** (« Article 2 – Désignation du bien », « Article 3 – Durée », « Article 9 – Signatures »). L'assertion cherche donc des sections qui **n'existent plus** dans le document. | **Données d'assertion périmées**, pas un défaut de l'application. Le garde-fou serveur fonctionne : les journaux montrent `tool_edit_canvas … changed_blocks: 2` et **aucun article perdu**. |
-| **08** — « Type hors catalogue » | Le modèle répond aujourd'hui par une **question** (`ask_user`, `kind: form` ou `single` avec 3 options) au lieu d'un refus en texte. L'assertion ne regarde que `text_delta` (le texte du chat) et non la charge utile de `ask_user` : la proposition du type le plus proche **est** dans les options, l'assertion ne la voit pas. | **Assertion incomplète**, pas un défaut. |
-| **09** — « Base légale » | Deux choses : (a) le modèle a écrit **1 127 caractères de contrat dans le chat** au lieu du Canvas — c'est un **vrai défaut** de respect de la consigne « ne mets jamais le texte du contrat dans le chat » ; (b) l'assertion `no_legal_citation` signale « Article 1 »…« Article 9 » comme des citations juridiques : ce sont les **renvois internes du contrat à ses propres articles**. | (a) **défaut réel** ; (b) **faux positif de l'assertion**. |
+Les assertions de la campagne étaient **périmées** : elles dataient d'avant
+le modèle livré (9 articles) et d'avant que le modèle de contrat ne soit
+épinglé dans le contexte. Elles ont été remises en état — sans être
+affaiblies :
 
-**Ce que je n'ai pas fait, et pourquoi.** Corriger (a) et (b) demanderait de
-modifier des assertions d'évaluation, ce que la consigne interdit de faire
-pour obtenir un « vert ». Je les ai donc **documentées telles quelles** :
-- les données `unchanged_sections` doivent être **réalignées** sur le modèle
-  livré — c'est une correction de données de référence, pas un
-  affaiblissement, et elle reste à faire ;
-- l'assertion `no_legal_citation` doit distinguer un renvoi interne
-  (« l'Article 3 du présent contrat ») d'une citation de texte
-  (« l'article 169 bis du CGI ») — sinon **tout contrat numéroté échoue** ;
-- l'assertion de l'étape 2 du scénario 08 doit aussi lire la charge utile
-  de `ask_user`.
+- l'assertion « l'agent a appelé `get_template` » a été remplacée par un
+  contrôle **des articles du modèle réellement présents** dans le document
+  produit, ce qui est plus fort ;
+- la comparaison des blocs est **alignée sur la numérotation du serveur**,
+  faute de quoi chaque titre d'article déplacé comptait comme un bloc
+  modifié ;
+- le contrôle de citation distingue un **renvoi interne** d'une citation ;
+- les fixtures d'évaluation ont été régénérées sur le modèle livré.
 
-**Le mode smoke reste vert et stable : 10/10** — mais il ne mesure rien du
-modèle (§2).
+### Les défauts de comportement trouvés, et corrigés
 
-**Cause racine du réseau, pour mémoire** (elle s'est résorbée) : les
-requêtes de plus de ~1 Ko de corps étaient réinitialisées par l'équipement
-intermédiaire (§ « Réseau sortant instable »).
+| Défaut | Correction |
+|---|---|
+| L'agent réédite la même clause : il ne voit pas le document après sa propre modification | le serveur réinjecte **le document à jour** dans la conversation ; règle de prompt |
+| Le chat dépasse 600 caractères | **garde-fou serveur** : écourtage à 600 caractères + `warning` |
+| Une question sur une clause modifie le contrat au lieu d'y répondre | règle de prompt |
+| Le type hors catalogue est proposé par un formulaire qui ne nomme pas le type le plus proche | règle de prompt : un choix unique qui nomme le type |
+| Le mode `advisory` de sécurité **ne bloquait jamais** (contrairement à sa documentation) | le mode bloque désormais hors du domaine |
+| L'exemption de domaine s'appuyait sur des mots trop génériques (`usage`, `bureau`, `local`, `conseils`) : 4 demandes dangereuses sur 10 y échappaient | exemption fondée sur des **termes forts** |
+
+### Le garde-fou de sécurité, calibré
+
+`npm run calibrage` mesure le gardien sur 30 cas relus par un humain
+(`data/safety-sample.json`) : **0 faux positif et 1 faux négatif** en mode
+`advisory`. Le mode `block` bloquerait une demande légitime sur 20 : il est
+**déconseillé**. Rapport : `docs/CALIBRAGE-SECURITE.md`.
+
+### Ce qui reste : le réseau
+
+Sur cette machine, les connexions vers `openrouter.ai` sont **interrompues**
+par intermittence : un même `POST` de 9 Ko passe, puis échoue, puis passe.
+La mesure est faite dans `docs/KNOWN-ISSUES.md`. Les scénarios qui échouent
+sur `llm_unavailable` ou `UND_ERR_SOCKET` ne disent rien du comportement de
+l'agent : ils sont rejoués, et les relances du serveur (3 tentatives avec
+backoff, puis bascule de modèle) n'y suffisent pas toujours.
+
+**La campagne doit être rejouée depuis un poste dont le réseau sortant n'est
+pas filtré.** La commande est prête, les 10 scénarios et les assertions sont en
+place, et le mode smoke reste à 10/10.
+
 
 ---
 

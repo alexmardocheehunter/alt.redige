@@ -299,9 +299,9 @@ lui-même affiche encore un écran de connexion simulé (sans compte en V1).
 | `b1`–`b3` | squelette, édition, validation, modèles | 4 |
 | `b4`–`b6` | flux SSE, outils, export, évaluations | 6 |
 | `b7`–`b9` | durcissement, numérotation, OpenRouter, sécurité, bout en bout | 7 |
-| `b10`–`b13` | corpus, règles, référentiel, nouveaux garde-fous, calibrage | 7 |
+| `b10`–`b14` | corpus, règles, référentiel, nouveaux garde-fous, calibrage, alignement | 8 |
 | `c1`–`c6` | interface, branchement, démarrage, UI agent | 6 |
-| **Total** | | **27 fichiers de test, 264 tests** |
+| **Total** | | **28 fichiers de test, 272 tests** |
 
 `npm run typecheck` sans erreur, `npm run build` sans erreur, `npm run eval
 -- --smoke` à 10/10.
