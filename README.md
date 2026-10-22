@@ -132,6 +132,7 @@ Quand Alex te remet `index.html` :
    - Accents ou « » cassés : vérifier `charset=utf-8` partout.
 5. Teste : coupure réseau en cours de génération (le front doit restaurer le document précédent) ; double clic rapide sur « Envoyer » ; rechargement en plein flux ; document de 20 000 caractères ; 401 avec `ACCESS_CODE`.
 6. Rédige `docs/INTEGRATION-REPORT.md` : ce qui passe, ce qui échoue, ce qui a été corrigé et où.
+7. **Avant la mise en production** : lance `npm run verif-prod` (voir `docs/EXPLOITATION.md` §5.1). Le script vérifie la configuration et sonde réellement chaque modèle de la chaîne ; il refuse de valider sans `ACCESS_CODE`, avec des modèles `:free` ou si le modèle principal ne répond pas.
 
 ## 10. Quand demander à Alex
 
