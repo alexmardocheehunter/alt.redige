@@ -389,6 +389,24 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
     }
 
     conversation.push(...toolResults);
+
+    // Le document a changé : le modèle doit le revoir, sinon il continue sur
+    // l'état précédent et réédite la même clause (constaté en campagne réelle :
+    // quatre `edit_canvas` successifs et une fin de tour en `max_steps`).
+    if (toolContext.workingDoc && canvasEventEmitted) {
+      conversation.push({
+        role: 'user',
+        content:
+          '<document_courant version="'
+          + String(baseVersion + setsEmitted)
+          + '">\n'
+          + toolContext.workingDoc
+          + '\n</document_courant>\n\n'
+          + 'Le document ci-dessus vient d’être mis à jour par ton outil. '
+          + 'C’est l’état actuel : ne le modifie pas à nouveau pour la même demande. '
+          + 'Si le document est conforme à la demande de l’utilisateur, réponds en une phrase.',
+      });
+    }
   }
 
   if (signal.aborted) {

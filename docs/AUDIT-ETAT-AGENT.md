@@ -286,9 +286,9 @@ branchement actuel est un adaptation minimale du prototype.
 | `b1`–`b3` | squelette, édition, validation, modèles | 4 |
 | `b4`–`b6` | flux SSE, outils, export, évaluations | 6 |
 | `b7`–`b9` | durcissement, numérotation, OpenRouter, sécurité, bout en bout | 7 |
-| `b10`–`b12` | corpus, règles, référentiel, nouveaux garde-fous | 6 |
+| `b10`–`b13` | corpus, règles, référentiel, nouveaux garde-fous, calibrage | 7 |
 | `c1`–`c6` | interface, branchement, démarrage, UI agent | 6 |
-| **Total** | | **26 fichiers de test, 255 tests** |
+| **Total** | | **27 fichiers de test, 261 tests** |
 
 `npm run typecheck` sans erreur, `npm run build` sans erreur, `npm run eval
 -- --smoke` à 10/10.
@@ -420,10 +420,12 @@ charge.
 prompts/system.fr.md          le prompt système (rôle, déroulé, règles, catalogue)
 data/templates/*.json         11 modèles de contrat
 data/legal-sources.json       le référentiel des sources (source unique)
+data/safety-sample.json       l'échantillon de calibrage du gardien (référence humaine)
 public/index.html             l'interface (fichier unique) + branchement injecté
 scripts/inject-app-api.mjs    injecte le branchement dans la page
 scripts/build.mjs             copie le convertisseur Word dans dist/
 scripts/dump-contexte.ts      capture le contexte réellement envoyé au modèle
+scripts/calibrage-securite.ts mesure le gardien sur l'échantillon relu
 src/
   server.ts                   démarrage, arrêt propre
   app.ts                      middlewares, CSP, montage des routes
@@ -453,8 +455,8 @@ src/
   middleware/                 requestId, requestLogger, auth, rateLimit, csp
   routes/                     chat, export, meta
 evals/                        10 scénarios, assertions, mode smoke
-test/                         26 fichiers de test (+ 3 aides partagées)
-docs/                         14 documents (audit, exploitation, contrat, décisions…)
+test/                         27 fichiers de test
+docs/                         15 documents (audit, exploitation, contrat, décisions…)
 reference/                    originaux : contrats types, référentiel juridique
 ```
 

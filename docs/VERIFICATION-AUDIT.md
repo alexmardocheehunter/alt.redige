@@ -569,16 +569,19 @@ Conformément à la consigne, aucun critère n'a été affaibli pour obtenir un
 
 ## 6. Modifications de contrat proposées (à valider par Alex)
 
-`docs/API-CONTRACT.md` **n'a pas été modifié**. Voici ce qui doit l'être.
+`docs/API-CONTRACT.md` a été **mis à jour** (22/10/2026) : les six propositions
+ci-dessous ont été tranchées, le contrat a été modifié **avant** le code, et le
+code a été aligné dessus. Le détail des décisions figure dans
+`docs/AUDIT-ETAT-AGENT.md` §11.
 
-| # | Emplacement | Divergence constatée | Proposition |
+| # | Emplacement | Divergence constatée | Décision prise |
 |---|---|---|---|
-| C1 | §7 — limites | « Durée maximale d'un flux : **120 secondes** » alors que le code utilise 240 000 ms | **Décider** la valeur de référence (120 s ou 240 s), puis aligner le code **et** le contrat. Les modèles de la chaîne sont à raisonnement : 120 s coupe des générations completes (constaté). |
-| C2 | §3.3 — `canvas_set` | La charge utile ne distingue pas les champs obligatoires des champs facultatifs | Ajouter `validation.fields: { required: [{key,label,filled}], optional: [...] }` pour que le frontend affiche « 2 champs obligatoires manquants » au lieu d'un simple compteur. |
-| C3 | §3.3 — `canvas_set` | L'avertissement « à faire valider par un juriste » n'est qu'une phrase de chat, non structurée | Ajouter `legal_notice: { required: true, text: "…" }`. |
-| C4 | §3.3 — nouveaux événements | Pas d'événement pour l'explication d'une clause | Ajouter `clause_explained` (voir `docs/SPEC-EXPLICATION-CLAUSES.md` §3.3) — **seulement si** la relecture pédagogique est retenue. |
-| C5 | §3.4 — export | Le contrat ne dit pas ce qui se passe si le document contient une construction interdite | Documenter le `400 bad_request` désormais retourné par `/api/export/docx`, et la liste des constructions refusées. |
-| C6 | §4 — erreurs | `llm_error` et `llm_unavailable` partaient le même message | Le contrat ne fixe pas les messages ; **aucune modification n'est nécessaire**, mais la distinction est à documenter. |
+| C1 | §7 — limites | « Durée maximale d'un flux : **120 secondes** » alors que le code utilise 240 000 ms | **240 secondes** — les modèles de la chaîne sont à raisonnement, 120 s coupe des générations complètes (constaté). Contrat mis à jour. |
+| C2 | §3.3 — `canvas_set` | La charge utile ne distingue pas les champs obligatoires des champs facultatifs | **Ajouté** : `validation.fields: { required: [{key,label,filled}], optional: [...] }`. Implémenté dans `src/agent/tools.ts`. |
+| C3 | §3.3 — `canvas_set` | L'avertissement « à faire valider par un juriste » n'est qu'une phrase de chat, non structurée | **Ajouté** : `legal_notice: { required: true, text: "…" }`. Implémenté dans `src/agent/tools.ts`. |
+| C4 | §3.3 — nouveaux événements | Pas d'événement pour l'explication d'une clause | **Ajouté** : `clause_explained` (outil + événement), avec les garde-fous de `docs/SPEC-EXPLICATION-CLAUSES.md`. Le **contenu** juridique des explications reste à valider par un juriste. |
+| C5 | §3.4 — export | Le contrat ne dit pas ce qui se passe si le document contient une construction interdite | **Documenté** : `400 bad_request`, liste des constructions refusées, aucun `.docx` produit. |
+| C6 | §4 — erreurs | `llm_error` et `llm_unavailable` partaient le même message | Le contrat ne fixe pas les messages ; **aucune modification n'a été nécessaire**, la distinction est documentée. |
 
 ---
 

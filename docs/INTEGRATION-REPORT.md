@@ -20,10 +20,12 @@ mise en conformité du backend avec `AGENT-PROTOCOL.md` et
 | `sources`, `suggestions` | **fait** |
 | `retry` | **fait** |
 | `thinking_*` | **non implémenté** (décision assumée, §5) |
+| `clause_explained` (explication d'une clause) | **fait** — outil + événement, avec garde-fous serveur ; le branchement affiche la carte |
+| `canvas_set.validation.fields` et `canvas_set.legal_notice` | **fait** — champs obligatoires restants et avertissement de revalidation, affichés par le branchement |
 | Le front appelle réellement `/api/chat` | **fait** — branchement ajouté (§3) |
 | Export Word / PDF depuis le front | **fait** — Word par l'API, PDF par `window.print()` |
 | Boutons de démarrage depuis `/api/templates` | **fait** — les 9 modèles publiés alimentent les boutons |
-| Carte de question riche (`ask_user` en carte) | **non** — la question s'affiche dans la bulle |
+| Carte de question riche (`ask_user` en carte) | **fait** — la carte est rendue dans la bulle (options, formulaire, « pourquoi je demande ») |
 
 Le backend est prêt et conforme au protocole. Le frontend livré **n'est pas** le
 front v2 décrit par `SPEC-FRONTEND.md` : c'est le prototype, qui appelait
@@ -151,8 +153,8 @@ la spécification ; le nonce de la CSP autorise le script intégré).
 |---|---|
 | L'écran de connexion simule Google | le backend n'a pas de comptes (V1 sans base de données). Le code d'accès passe par l'en-tête `X-Access-Code`, pas par ce dialogue |
 | Le document affiché est une vue en blocs | le backend est la source de vérité (Markdown) ; la page convertit pour l'affichage et reconvertit à l'envoi. La conversion perd la mise en forme fine (listes, tableaux) : le PDF imprimé est moins riche que le `.docx` |
-| Pas de carte de question (`ask_user`) | la question s'affiche dans la bulle et l'utilisateur y répond dans le composeur : fonctionnel, mais pas la carte riche de la spec v2 §12.5 |
-| Mode `?mock=1` incomplet | la spec v2 §15 décrit 14 scénarios de simulation ; seul le mode démo d'origine est conservé |
+| Le rendu Markdown est maison | le branchement rend gras, italique et `[À COMPLÉTER]` surlignés, mais pas les listes ni les tableaux comme le fait le front v2 §5.8 |
+| Mode `?mock=1` incomplet | la spec v2 §15 décrit 14 scénarios de simulation ; le mode démo d'origine est conservé, enrichi des nouveaux événements |
 | `thinking_*` non exposé | décision assumée : les modèles de la chaîne sont des modèles à raisonnement, le protocole interdit d'exposer la chaîne de pensée (§5) |
 | Historique : format `altredige.convs` | conservé tel quel (décision §2 de `docs/DECISIONS-PHASE-C.md`) |
 
@@ -197,17 +199,14 @@ répondues dans `docs/DECISIONS-PHASE-C.md`. En résumé :
 ## 7. Ce qui reste à faire
 
 1. **Livrer le front v2** : il remplacera le prototype. Le branchement
-   `public/app-api.js` sera alors à réécrire contre le vrai front (carte de
-   question, `?mock=1` complet, rendu Markdown natif) — c'est un travail de
-   front, pas de backend.
-2. **Campagne `npm run eval` contre le vrai modèle** : impossible depuis la
-   machine de développement (le réseau y coupe les `POST` au-delà de ~1 Ko —
-   voir `docs/KNOWN-ISSUES.md`).
-3. **Relecture juridique** du texte que l'IA produira : les règles sont
-   codées, pas les réponses.
-4. **Explications de clauses** (`docs/SPEC-EXPLICATION-CLAUSES.md`) :
-   spécifiées mais **non implémentées** — deux modifications de contrat
-   (`clause_explained`, `legal_notice`) attendent la validation d'Alex.
-5. **Informations de conformité à l'utilisateur** (transfert vers un
+   `public/app-api.js` sera alors à réécrire contre le vrai front (`?mock=1`
+   complet, rendu Markdown natif) — c'est un travail de front, pas de backend.
+2. **Relecture juridique** du texte que l'IA produira : les règles sont
+   codées, pas les réponses. Cela vaut aussi pour le **contenu** des
+   explications de clause : le mécanisme est en place, mais les mots employés
+   par le modèle doivent être validés par un juriste.
+3. **Calibrer le filtre de sécurité** sur un échantillon réel, puis passer
+   `SAFETY_MODE=block`.
+4. **Informations de conformité à l'utilisateur** (transfert vers un
    fournisseur hors UEMOA/CEDEAO) : à porter à la connaissance des
    utilisateurs — voir `docs/NOTE-CONFORMITE-DONNEES.md` §4.

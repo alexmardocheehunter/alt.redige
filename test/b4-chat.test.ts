@@ -196,6 +196,41 @@ describe('B4 — flux d’édition', () => {
     expect(set.data.validation.placeholders).toBe(7);
   });
 
+  it('renvoie le document à jour au modèle après une modification', async () => {
+    // Sans cela, le modèle continue sur l'état précédent et réédite la même
+    // clause (constaté en campagne réelle : quatre `edit_canvas` successifs).
+    const client = new FakeOpenRouter({
+      turns: [
+        {
+          toolUses: [{
+            id: 'tool_2',
+            name: 'edit_canvas',
+            input: {
+              edits: [{ old_str: '[À COMPLÉTER : durée du préavis]', new_str: 'trois (3) mois' }],
+            },
+          }],
+          finishReason: 'tool_calls',
+        },
+        { text: 'Préavis mis à jour.' },
+      ],
+    });
+    const app = appWith(client);
+    const res = await postChat(app, {
+      messages: [{ role: 'user', content: 'Change le préavis en 3 mois' }],
+      document: { markdown: SAMPLE_BAIL, version: 3 },
+    });
+    await res.text();
+
+    expect(client.calls.length).toBeGreaterThanOrEqual(2);
+    const secondCall = client.calls[1]!;
+    const messages = secondCall.messages as Array<{ role: string; content: string }>;
+    const update = messages.filter((message) => message.role === 'user').at(-1)!;
+
+    expect(update.content).toContain('<document_courant version="4">');
+    expect(update.content).toContain('trois (3) mois');
+    expect(update.content).not.toContain('[À COMPLÉTER : durée du préavis]');
+  });
+
   it('ne modifie rien quand old_str est introuvable', async () => {
     const client = new FakeOpenRouter({
       turns: [
@@ -294,6 +329,54 @@ describe('B4 — erreurs', () => {
     expect(error.data.code).toBe('truncated');
     expect(error.data.retryable).toBe(true);
     expect(events.filter((event) => event.event === 'canvas_set')).toHaveLength(0);
+  });
+});
+
+describe('B4 — le contrat ne doit pas être écrit dans le chat', () => {
+  it('ne relaie pas un texte qui ressemble à un contrat et émet un avertissement', async () => {
+    // Le modèle écrit le contrat dans le chat au lieu du Canvas : c'est le
+    // défaut mesuré en campagne réelle (1 127 caractères).
+    const client = new FakeOpenRouter({
+      turns: [{
+        text: 'Voici le contrat :\n\n## Article 1 – Objet du contrat\n\n'
+          + 'Le Bailleur donne à bail un studio, loyer 70 000 FCFA par mois, 12 mois.\n\n'
+          + '## Article 2 – Durée\n\nLe bail est conclu pour 12 mois.\n',
+        finishReason: 'stop',
+      }],
+    });
+    const app = appWith(client);
+    const res = await postChat(app, { messages: [{ role: 'user', content: COMPLETE_REQUEST }] });
+    const events = parseSse(await res.text());
+
+    const chat = events
+      .filter((event) => event.event === 'text_delta')
+      .map((event) => event.data.text)
+      .join('');
+
+    expect(chat).not.toMatch(/##\s*Article/);
+    expect(chat).not.toContain('70 000 FCFA');
+    expect(chat.length).toBeLessThanOrEqual(600);
+
+    const warning = events.find((event) => event.event === 'warning');
+    expect(warning).toBeDefined();
+    expect(warning!.data.code).toBe('contract_in_chat');
+  });
+
+  it('relaye un message normal', async () => {
+    const client = new FakeOpenRouter({
+      turns: [{ text: 'Le bail est prêt : il reste deux champs à compléter.', finishReason: 'stop' }],
+    });
+    const app = appWith(client);
+    const res = await postChat(app, { messages: [{ role: 'user', content: COMPLETE_REQUEST }] });
+    const events = parseSse(await res.text());
+
+    const chat = events
+      .filter((event) => event.event === 'text_delta')
+      .map((event) => event.data.text)
+      .join('');
+
+    expect(chat).toContain('Le bail est prêt');
+    expect(events.find((event) => event.event === 'warning')).toBeUndefined();
   });
 });
 

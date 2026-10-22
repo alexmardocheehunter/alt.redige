@@ -22,7 +22,7 @@ Ce qui n'est **pas** fait, et pourquoi :
 | Phase C — intégration du frontend | non commencée : le fichier `index.html` définitif n'a pas été livré. `public/index.html` est encore la page provisoire (49 lignes). La liste de contrôle que le frontend doit respecter est dans `docs/INTEGRATION-CHECKLIST.md`. |
 | Relecture juridique des modèles | **contenu reçu** (référentiel joint) et 9 modèles construits ; reste la relecture du texte rédigé par l'IA |
 | Vérification visuelle de l'export Word dans Word/LibreOffice | non faite : ni Word ni LibreOffice ne sont installés sur cette machine. L'archive OOXML est vérifiée par test (structure, surlignage, numérotation, pied de page) |
-| Relecture pédagogique des clauses | **spécifiée, non implémentée** : `docs/SPEC-EXPLICATION-CLAUSES.md`. Suppose le frontend livré et une validation humaine du contenu juridique. |
+| Relecture pédagogique des clauses | **mécanisme implémenté** (outil `explain_clause`, événement `clause_explained`, garde-fous serveur). Le **contenu** juridique des explications reste à valider par un juriste — c'est lui quijugera, pas le code. |
 
 ---
 
@@ -199,17 +199,22 @@ bloqué normalement.
 un modèle gratuit dont le comportement peut changer. Si un faux positif
 apparaît en production, `SAFETY_MODE=advisory` désactive le blocage en une
 variable d'environnement (le verdict reste journalisé). Le mode par défaut est
-`block` ; `SAFETY_CHECK=0` coupe complètement le gardien.
+`advisory` : en mode `advisory`, un contenu **hors du domaine** est bloqué,
+un contenu **dans le domaine** est journalisé. `SAFETY_CHECK=0` coupe
+complètement le gardien.
+
+**Mesure reproductible** : `npm run calibrage` (échantillon relu par un humain
+dans `data/safety-sample.json`, rapport dans `docs/CALIBRAGE-SECURITE.md`).
 
 Le filtrage du *document produit* par le gardien est en place (aucun
 `canvas_set` n'est publié si le document est rejeté), mais n'a pas été testé
 sur un document réellement dangereux : le mécanisme n'a été validé que sur des
 documents légitimes.
 
-### Réseau sortant instable vers openrouter.ai
-Depuis la machine de développement, les connexions `POST` vers
-`openrouter.ai` sont **coupées au-delà d'environ 1 Ko de corps de requête**.
-Mesure reproductible (le 21/10/2026, sur la même machine) :
+### Réseau sortant vers openrouter.ai : filtrage par intermittence
+Le 21/10/2026, depuis la machine de développement, les connexions `POST` vers
+`openrouter.ai` étaient **coupées au-delà d'environ 1 Ko de corps de requête**.
+Mesure reproductible ce jour-là :
 
 ```
 corps    215 o  status 200
@@ -221,47 +226,35 @@ corps   2115 o  coupe (UND_ERR_SOCKET)
 corps   4115 o  coupe (UND_ERR_SOCKET)
 ```
 
-Les `GET` passent, et les petits `POST` passent. Le corps envoyé par
-l'application fait **environ 8 Ko** (prompt système 6,3 Ko + schémas des outils
-1,3 Ko + message) : il est donc systématiquement coupé depuis cette machine.
-`curl` échoue exactement de la même façon : ce n'est pas un défaut du client
-HTTP, c'est le réseau du poste. Le TLS 1.3 y est par ailleurs bloqué (TLS 1.2
-passe).
+Le 22/10/2026, le même poste **accepte de nouveau** les corps de taille réelle
+de l'application. Nouvelle mesure, dans les mêmes conditions :
 
-**Ce que cela a mis en évidence** : le code ne réessayait pas sur une erreur
-de socket. Il le fait maintenant (3 tentatives avec backoff 500 ms / 1,5 s /
-3 s, puis bascule de modèle) et le journal `llm_socket_retry` permet de le
-voir. Sur un hébergeur avec un réseau normal, ces reprises ne se déclencheront
-pas.
-
-**Conséquence sur les évaluations** : quand le réseau coupe, le scénario est
-relancé automatiquement (2 relances, uniquement pour un échec de transport —
-une assertion en échec n'est jamais rejouée, ce qui masquerait un vrai
-problème de comportement). Depuis cette machine, la campagne réelle ne peut
-pas aboutir : il faut la lancer depuis un poste dont le réseau sortant vers
-OpenRouter n'est pas filtré.
-
-**Diagnostic** (à rejouer ailleurs) :
-
-```bash
-node -e "const b=JSON.stringify({model:'minimax/minimax-m3.1-flash:free',messages:[{role:'user',content:'x'.repeat(5000)}],max_tokens:8}); fetch('https://openrouter.ai/api/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+process.env.OPENROUTER_API_KEY},body:b}).then(r=>console.log('status',r.status)).catch(e=>console.log('coupé',e.cause?.code))"
+```
+corps   1000 o  status 200
+corps   2000 o  status 200
+corps   4000 o  status 200
+corps   8000 o  status 200
+corps  12000 o  status 200
 ```
 
-Le contournement local (TLS 1.3 bloqué) est `NODE_OPTIONS=--tls-max-v1.2` :
-voir « Dépannage » dans `docs/EXPLOITATION.md`.
+Le filtrage était donc ** intermittent**, et non une propriété du poste ni du
+client HTTP : `curl` échouait exactement de la même façon. Ce qui a bloqué
+les campagnes précédentes était un incident réseau, pas un défaut de code.
 
-**État de la campagne réelle** : la campagne du 21/10/2026 a été interrompue
-après 3 scénarios, tous en échec de transport (`ECONNRESET` sur les trois
-modèles, après relances) : le réseau sortant de ce poste coupe désormais
-systématiquement les requêtes `POST` de taille réelle de l'application. Ce
-n'est pas un défaut du code — la même chaîne a fonctionné plusieurs fois dans
-la journée (contrat complet généré, modification appliquée, bascule entre
-modèles observée), et le test de bout en bout `test/b9-bout-en-bout.test.ts`
-valide le chemin complet sur une vraie socket.
+**Ce que l'incident a mis en évidence** (et qui reste vrai) : le code ne
+reessayait pas sur une erreur de socket. Il le fait maintenant (3 tentatives
+avec backoff 500 ms / 1,5 s / 3 s, puis bascule de modèle) et le journal
+`llm_socket_retry` permet de le voir. Sur un hébergeur avec un réseau normal,
+ces reprises ne se déclencheront pas.
 
-**À refaire** : lancer `npm run eval` depuis une machine dont le réseau vers
-OpenRouter n'est pas filtré. La commande est prête, les 10 scénarios et les
-assertions sont en place.
+**Conséquence sur les évaluations** : quand le réseau coupe, le scénario est
+relancé automatiquement (2 relances, **uniquement pour un échec de transport** —
+une assertion en échec n'est jamais rejouée, ce qui masquerait un vrai
+problème de comportement).
+
+**Le contournement local** (le TLS 1.3 est bloqué sur ce poste, le TLS 1.2
+passe) : `NODE_OPTIONS=--tls-max-v1.2`. Voir « Dépannage » dans
+`docs/EXPLOITATION.md`.
 
 ### Le test de bout en bout ne dépend pas du réseau
 `test/b9-bout-en-bout.test.ts` démarre un serveur HTTP local qui parle le

@@ -15,7 +15,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "eval": "tsx evals/run.ts"
+    "eval": "tsx evals/run.ts",
+    "calibrage": "tsx scripts/calibrage-securite.ts"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.5",

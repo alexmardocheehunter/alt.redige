@@ -92,6 +92,27 @@ Le `content` est **toujours** un texte lisible, équivalent des `answers` : votr
 ## 11. `canvas_start` enrichi
 Champs ajoutés (facultatifs) : `target` (`{"block_index":14}` ou `{"article":5}`) pour que le front fasse défiler et surligne la zone avant la modification ; `reason` (libellé, ex. « Je modifie l'article 5 »). `canvas_set` reste **toujours** la source de vérité du document.
 
+## 11 bis. `clause_explained` : explication d'une clause
+Émis quand l'agent explique une clause du contrat (outil `explain_clause`). Événement **additif** : un client qui l'ignore ne casse pas.
+
+```
+event: clause_explained
+data: {"seq":24,"t":4200,"article":"Article 8 – Résiliation","quote":"Chaque partie peut résilier le bail moyennant un préavis de deux (2) mois.","explanation":"…","obligations":[{"party":"chaque partie","duty":"respecter le préavis"]},"risks":["…"],"depends_on":["durée du bail"],"limits":"Cette explication est une aide à la lecture. Elle ne remplace pas l'avis d'un professionnel du droit.","document_version":3}
+```
+
+| Champ | Rôle |
+|---|---|
+| `article` | l'article du document qui est expliqué (renuméroté par le serveur) |
+| `quote` | extrait **littéral** du document ; le serveur refuse l'explication si l'extrait n'y figure pas |
+| `explanation` | explication en français, en langage courant |
+| `obligations` | `{party, duty}` : ce que le texte fait porter à chaque partie |
+| `risks` | points de vigilance |
+| `depends_on` | éléments du contrat dont la valeur change la portée de la clause |
+| `limits` | mention obligatoire : l'explication ne remplace pas l'avis d'un professionnel du droit |
+| `document_version` | version du document au moment de l'explication |
+
+**Garde-fous (côté serveur, avant émission)** : l'extrait doit figurer dans le document ; aucune affirmation juridique que le texte ne porte pas (« est valide », « est nul », « est obligatoire »…) ; aucune citation d'un texte absent des notes du modèle ; aucune mention de limite absente. Une explication non conforme **n'est pas émise** : l'outil renvoie une erreur et l'agent doit recommencer.
+
 ## 12. `done` enrichi
 `{seq, stop_reason, request_id, duration_ms, usage?}` avec `stop_reason` ∈ `end_turn | awaiting_input | cancelled | max_tokens`.
 
@@ -109,6 +130,7 @@ Champs ajoutés (facultatifs) : `target` (`{"block_index":14}` ou `{"article":5}
 ## 15. Ordre garanti
 `ready` → { `phase` | `plan` | `step` | `thinking_*` | `tool_*` | `warning` | `retry` } (mêlés) → { `text_delta` | `canvas_start` → `canvas_delta`* → `canvas_set` } → `sources`? → `suggestions`? → `done`.
 `ask_user` est toujours immédiatement suivi de `done(awaiting_input)`. `error` clôt le flux (pas de `done` après).
+`clause_explained` est émis pendant la phase de rédaction, **après** l'événement `tool_end` de l'outil correspondant, et **jamais** après `done`.
 
 ## 16. Codes d'erreur ajoutés
 `cancelled` (non retryable), `conflict` (version du document périmée, retryable après resynchronisation), `content_filtered` (non retryable). Les codes existants sont inchangés.
