@@ -273,17 +273,21 @@ branchement. Le branchement (`public/app-api.js`, injecté par
 - l'historique conforme au contrat (`{role, content}`, alternance stricte) ;
 - la carte de question (`ask_user`), le bloc d'activité, les suggestions, les
   sources ;
+- la carte d'explication de clause (`clause_explained`) ;
+- les champs obligatoires restants (`validation.fields`) et l'avertissement de
+  revalidation (`legal_notice`) ;
 - le rendu Markdown (gras, italique, `[À COMPLÉTER]` surlignés) ;
 - l'export Word par l'API, le PDF par `window.print()` ;
 - les boutons d'accueil alimentés par `GET /api/templates` ;
-- le mode `?mock=1` (14 scénarios de la spec v2).
+- le mode `?mock=1` (mode démo d'origine, enrichi des nouveaux événements).
 
 Un test de bout en bout (`test/b9-bout-en-bout.test.ts`) lève un serveur
 OpenRouter local et exerce tout le chemin de production sur une vraie socket.
 
-**Ce qui manque** : le front v2 décrit par `SPEC-FRONTEND.md` (carte de question
-native, rendu Markdown natif, `?mock=1` complet, recherche et partage). Le
-branchement actuel est un adaptation minimale du prototype.
+**Ce qui manque** : le front v2 décrit par `SPEC-FRONTEND.md` (rendu Markdown
+natif, `?mock=1` complet avec ses 14 scénarios, recherche et partage). Le
+branchement actuel est une adaptation minimale du prototype, et le prototype
+lui-même affiche encore un écran de connexion simulé (sans compte en V1).
 
 ---
 
@@ -296,7 +300,7 @@ branchement actuel est un adaptation minimale du prototype.
 | `b7`–`b9` | durcissement, numérotation, OpenRouter, sécurité, bout en bout | 7 |
 | `b10`–`b13` | corpus, règles, référentiel, nouveaux garde-fous, calibrage | 7 |
 | `c1`–`c6` | interface, branchement, démarrage, UI agent | 6 |
-| **Total** | | **27 fichiers de test, 261 tests** |
+| **Total** | | **27 fichiers de test, 264 tests** |
 
 `npm run typecheck` sans erreur, `npm run build` sans erreur, `npm run eval
 -- --smoke` à 10/10.

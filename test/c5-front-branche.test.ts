@@ -56,4 +56,21 @@ describe('C5 — le frontend est branché sur l’API', () => {
     expect(source).toContain('Le service de rédaction est momentanément indisponible');
     expect(source).toContain('Trop de demandes');
   });
+
+  it('gère les événements et champs ajoutés au contrat', () => {
+    // `clause_explained` : l'explication d'une clause.
+    expect(source).toContain("case 'clause_explained':");
+    expect(source).toContain('renderClause');
+    // `canvas_set.validation.fields` : les champs obligatoires restants.
+    expect(source).toContain('data.validation && data.validation.fields');
+    expect(source).toContain('renderFields');
+    // `canvas_set.legal_notice` : l'avertissement de revalidation.
+    expect(source).toContain('data.legal_notice');
+    expect(source).toContain('renderLegalNotice');
+  });
+
+  it('affiche la carte de question, pas seulement son texte', () => {
+    expect(source).toContain('function questionCard');
+    expect(source).toContain('.qcard');
+  });
 });
