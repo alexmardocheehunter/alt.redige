@@ -17,7 +17,7 @@ import { loadEnvFile } from '../src/env.js';
 import { createLogger } from '../src/logger.js';
 import { createApp } from '../src/app.js';
 import { TemplateStore } from '../src/templates.js';
-import { renumberArticles } from '../src/doc/structure.js';
+import { alignNumbering } from '../src/doc/structure.js';
 import type { Expectation, Scenario, ScenarioTurn } from './types.js';
 import type { ContractTemplate } from '../src/templates.js';
 import {
@@ -441,7 +441,7 @@ async function checkTurn(
     // le « après » avant la comparaison, sinon chaque titre d'article
     // déplacé compterait comme un bloc modifié — et la mesure serait celle
     // du renumérotage, pas celle de l'ampleur réelle de la modification.
-    const alignedBefore = renumberArticles(documentBefore, documentAfter).markdown;
+    const alignedBefore = alignNumbering(documentBefore, documentAfter);
     const changed = countChangedBlocks(alignedBefore, documentAfter);
     checks.push({
       name: 'Blocs non concernés inchangés',

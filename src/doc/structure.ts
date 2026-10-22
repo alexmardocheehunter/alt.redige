@@ -216,6 +216,31 @@ export function renumberArticles(before: string, after: string): RenumberResult 
 }
 
 /**
+ * Renumérote un document selon la numérotation qu'un autre document lui
+ * attribue (même correspondance par intitulé).
+ *
+ * Quand une modification insère un article au milieu, le serveur renumérote
+ * les suivants : comparer le document d'avant au document d'après ferait
+ * alors compter chaque titre déplacé comme un bloc modifié. Cet alignement
+ * permet de comparer **le contenu**, pas la numérotation.
+ */
+export function alignNumbering(document: string, reference: string): string {
+  const mapping = renumberArticles(document, reference).mapping;
+  if (mapping.size === 0) return document;
+
+  return document.split(/\r?\n/).map((line) => {
+    const match = /^(##\s+)Article\s+\d+(\s*[–—-]\s*)(.*)$/.exec(line.trim());
+    if (!match) return line;
+
+    const label = match[3]!.trim();
+    const target = mapping.get(normalizeKey(label));
+    if (target === undefined) return line;
+
+    return `${match[1]}Article ${target}${match[2]}${label}`;
+  }).join('\n');
+}
+
+/**
  * Renvois internes pointant vers un article inexistant.
  * « conformément à l'article 12 » alors qu'il n'y a que 8 articles.
  */
