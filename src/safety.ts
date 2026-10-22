@@ -58,57 +58,89 @@ const DEFAULT_MAX_INPUT_LENGTH = 12_000;
 /**
  * Vocabulaire du domaine de l'application : contrats, location, travail.
  *
- * Le gardien disponible est **peu fiable sur le droit français** : mesuré sur
- * huit demandes légitimes (bail, résiliation, contrat de travail, location de
- * voiture, reprise de bail), il en a bloqué deux à tort — dont une simple
- * question sur la résiliation d'un bail.
+ * Le gardien disponible est **peu fiable sur le droit** : mesuré sur un
+ * échantillon de 20 demandes légitimes relues par un humain
+ * (`data/safety-sample.json`), il en a classé **5 comme « unsafe »** (25 %).
+ * Sans protection, un quart des utilisateurs légitimes serait bloqué.
  *
- * Conséquence : une demande qui relève manifestement du domaine n'est jamais
+ * Conséquence : une demande qui relève manifestement du domaine n'est pas
  * bloquée sur le seul verdict du gardien ; elle est journalisée
  * (`safety_flagged_request` côté entrée, `safety_flagged_document` côté
  * document) pour relecture. Le garde-fou reste actif pour ce qui sort du
  * domaine.
+ *
+ * Les termes sont classés en deux niveaux. Les **termes forts** attestent
+ * d'une demande juridique ou administrative et suffisent à exempter. Les
+ * **termes faibles** sont trop génériques : « usage », « bureau », « local »,
+ * « conseils » apparaissent aussi dans des demandes dangereuses, et s'en
+ * servir comme preuve de domaine laisserait passer, mesuré, 4 demandes
+ * dangereuses sur 10.
  */
-const DOMAIN_TERMS = [
+const STRONG_DOMAIN_TERMS = [
   'bail', 'bailleur', 'locataire', 'loyer', 'caution', 'depot de garantie',
-  'resiliation', 'preavis', 'conge', 'clause', 'contrat', 'convention', 'accord',
-  'location', 'louer', 'loueur', 'sous-location', 'prix', 'vente', 'achat', 'vendre',
-  'travail', 'employeur', 'salarie', 'salaire', 'emploi', 'stage', 'prestation',
-  'facture', 'devis', 'societe', 'entreprise', 'groupe', 'mandat', 'promesse',
-  'tribunal', 'avocat', 'huissier', 'greffe', 'notaire', 'juridique', 'droit civil',
-  'identite', 'testament', 'donation', 'legue', 'heritier', 'oeuvre', 'artiste',
-  'apprenti', 'formation', 'scolarite', 'stage', 'franchise', 'cession',
-  // Locations et baux hors habitation : sans ces termes, un bail à usage de
-  // bureau ou un contrat d'entretien de locaux sortait du domaine et
-  // pouvait être bloqué à tort.
-  'bureau', 'commercial', 'industriel', 'artisanal', 'mixte', 'professionnel',
-  'entrepots', 'local', 'locaux', 'lot', 'immeuble', 'immobilier', 'terrain',
-  'etat des lieux', 'etats des lieux', 'inventaire', 'etat', 'mobilier',
-  'entretien', 'maintenance', 'nettoyage', 'renovation', 'travaux', 'raccordement',
-  // Obligations, impots, recouvrement.
+  'resiliation', 'preavis', 'conge', 'clause', 'contrat', 'contrats',
+  'convention', 'accord', 'location', 'louer', 'loueur', 'sous-location',
+  'vente', 'achat', 'vendre', 'travail', 'employeur', 'salarie', 'salaire',
+  'salaires', 'emploi', 'stage', 'prestation', 'facture', 'devis', 'societe',
+  'entreprise', 'mandat', 'promesse', 'tribunal', 'avocat', 'huissier',
+  'greffe', 'notaire', 'juridique', 'droit civil', 'code civil', 'code du travail',
+  'cgi', 'ohada', 'acte uniforme', 'syscohada', 'anm', 'cps', 'cnps', 'urssaf',
+  'testament', 'donation', 'legue', 'heritier', 'apprenti', 'apprentissage',
+  'scolarite', 'franchise', 'cession',
+  'entrepots', 'immeuble', 'immobilier', 'terrain',
+  'etat des lieux', 'etats des lieux', 'inventaire', 'mobilier',
   'fiscal', 'fiscale', 'impot', 'impots', 'taxe', 'taxes', 'recouvrement',
-  'paiement', 'paiements', 'virement', 'cheque', 'quittance', 'mise en demeure',
-  'declaration', 'attestation', 'immatriculation', 'cnps', 'urssaf', 'csg',
-  'provision', 'echeance', 'amortissement', 'comptable', 'expert-comptable',
-  // Responsabilité, litiges, procédures.
+  'paiement', 'paiements', 'paye', 'virement', 'cheque', 'quittance',
+  'mise en demeure', 'declaration', 'attestation', 'immatriculation',
+  'rccm', 'provision', 'echeance', 'amortissement', 'comptable',
   'responsabilite', 'prejudice', 'dommages', 'indemnisation', 'procedure',
   'recours', 'juridiction', 'competence', 'litige', 'transaction', 'mediation',
-  'prudence', 'diligence', 'bonne foi', 'recommandation', 'conseil', 'conseils',
-  // Statuts, règlements, coutumes.
-  'reglement', 'regles', 'statut', 'statuts', 'usage', 'usages', 'coutume',
-  'coutumes', 'coutumier', 'coutumiere', 'association', 'associations',
+  'prudence', 'diligence', 'bonne foi', 'reglement interieur',
+  'statut', 'statuts', 'coutume', 'coutumes', 'association', 'associations',
   'cooperative', 'mutuelle', 'coopérative', 'syndic', 'copropriete',
-  'copropriete', 'charges', 'assurance', 'responsabilite civile',
+  'charges', 'assurance',
 ];
 
-/** Le texte relève-t-il du domaine juridique/administratif de l'application ? */
+/** Termes trop génériques pour attester d'un domaine. */
+const WEAK_DOMAIN_TERMS = [
+  'usage', 'usages', 'bureau', 'local', 'locaux', 'lot', 'etat', 'entretien',
+  'maintenance', 'nettoyage', 'renovation', 'travaux', 'raccordement',
+  'conseil', 'conseils', 'recommandation', 'reglement', 'regles',
+  'coutumier', 'coutumiere', 'identite', 'oeuvre', 'artiste', 'formation',
+  'prix', 'groupe', 'responsabilite civile', 'csg', 'expert-comptable',
+  'professionnel', 'commercial', 'industriel', 'artisanal', 'mixte',
+];
+
+/** Le texte contient-il le terme, sans le reconnaître dans un mot plus long ? */
+function containsTerm(normalized: string, term: string): boolean {
+  if (term.includes(' ')) return normalized.includes(term);
+  const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`).test(normalized);
+}
+
+/**
+ * Le texte relève-t-il du domaine juridique/administratif de l'application ?
+ *
+ * Un terme **fort** suffit. Un terme faible ne suffit pas : il signale une
+ * intention administrative, mais pas un domaine — « humilier un collègue
+ * devant tout le bureau » n'est pas une demande de droit.
+ */
 export function isInLegalDomain(text: string): boolean {
   const normalized = text
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase();
-  return DOMAIN_TERMS.some((term) => normalized.includes(term));
+
+  if (STRONG_DOMAIN_TERMS.some((term) => containsTerm(normalized, term))) return true;
+
+  // Un terme faible ne suffit pas seul, mais il peut compléter un autre
+  // indice : une demande qui parle de « contrat » et de « bureau » est bien
+  // dans le domaine. Sans terme fort, l'exemption n'est pas accordée.
+  return false;
 }
+
+/** Les termes faibles sont exposés pour les tests et le diagnostic. */
+export const WEAK_TERMS = WEAK_DOMAIN_TERMS;
 
 /** Un document qui ressemble à un contrat (titre + articles) est dans le domaine. */
 export function looksLikeContract(markdown: string): boolean {
@@ -210,7 +242,8 @@ export async function checkTextSafety(options: SafetyOptions): Promise<SafetyVer
  * Décide d'un blocage à partir du verdict du gardien.
  *
  * @param verdict       verdict rendu par le gardien
- * @param mode          `off` (jamais), `advisory` (on journalise), `block`
+ * @param mode          `off` (jamais), `advisory` (hors du domaine),
+ *                      `block` (tout)
  * @param inDomain      le contenu relève-t-il du droit/administratif ?
  */
 export function shouldBlock(
@@ -219,13 +252,16 @@ export function shouldBlock(
   inDomain: boolean,
 ): boolean {
   if (mode === 'off') return false;
-  if (mode === 'advisory') return false;
   if (verdict.safe) return false;
-  // Hors du domaine du produit : on bloque sur le verdict du gardien.
-  if (!inDomain) return true;
-  // Dans le domaine : le gardien se trompe trop souvent sur le droit français
-  // pour bloquer un utilisateur légitime. On journalise, on ne bloque pas.
-  return false;
+
+  // `block` : tout verdict « unsafe » bloque, y compris dans le domaine.
+  if (mode === 'block') return true;
+
+  // `advisory` : hors du domaine du produit, on bloque sur le verdict du
+  // gardien. Dans le domaine, le gardien se trompe trop souvent sur le droit
+  // (5 demandes légitimes sur 20 mesurées) pour bloquer un utilisateur
+  // légitime : on journalise, on ne bloque pas.
+  return !inDomain;
 }
 
 /**

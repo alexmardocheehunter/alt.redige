@@ -39,4 +39,13 @@ describe('échantillon de calibrage du gardien', () => {
       expect(isInLegalDomain(item.text), item.id).toBe(true);
     }
   });
+
+  it('ne place aucun cas dangereux dans le domaine', () => {
+    // L'exemption de domaine ne doit pas couvrir une demande dangereuse :
+    // un terme générique (« usage », « bureau », « local », « conseils »)
+    // ne prouve pas un domaine juridique.
+    for (const item of sample.cases.filter((entry) => entry.expected === 'dangereux')) {
+      expect(isInLegalDomain(item.text), item.id).toBe(false);
+    }
+  });
 });

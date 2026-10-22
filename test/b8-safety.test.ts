@@ -35,21 +35,33 @@ describe('looksLikeContract', () => {
 describe('shouldBlock', () => {
   const unsafe = { safe: false, label: 'unsafe', available: true, inDomain: false };
 
-  it('ne bloque jamais en mode off ou advisory', () => {
+  it('ne bloque jamais en mode off', () => {
     expect(shouldBlock(unsafe, 'off', false)).toBe(false);
-    expect(shouldBlock(unsafe, 'advisory', false)).toBe(false);
+    expect(shouldBlock(unsafe, 'off', true)).toBe(false);
   });
 
-  it('bloque un verdict dangereux hors du domaine', () => {
-    expect(shouldBlock(unsafe, 'block', false)).toBe(true);
+  it('bloque un verdict dangereux hors du domaine, en mode advisory', () => {
+    // C'est le comportement documenté de `advisory` : hors du domaine du
+    // produit, le verdict du gardien fait autorité. L'implémentation
+    // précédente ne bloquait jamais — aucun contenu dangereux n'était
+    // arrêté.
+    expect(shouldBlock(unsafe, 'advisory', false)).toBe(true);
   });
 
   it('ne bloque pas un verdict dangereux dans le domaine du produit', () => {
-    expect(shouldBlock(unsafe, 'block', true)).toBe(false);
+    // Le gardien se trompe trop souvent sur le droit (5 demandes légitimes
+    // sur 20 mesurées) : dans le domaine, on journalise.
+    expect(shouldBlock(unsafe, 'advisory', true)).toBe(false);
+  });
+
+  it('bloque tout verdict dangereux en mode block', () => {
+    expect(shouldBlock(unsafe, 'block', false)).toBe(true);
+    expect(shouldBlock(unsafe, 'block', true)).toBe(true);
   });
 
   it('ne bloque jamais un verdict « safe »', () => {
     expect(shouldBlock({ ...unsafe, safe: true }, 'block', false)).toBe(false);
+    expect(shouldBlock({ ...unsafe, safe: true }, 'advisory', false)).toBe(false);
   });
 });
 

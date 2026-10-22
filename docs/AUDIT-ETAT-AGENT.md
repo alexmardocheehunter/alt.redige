@@ -21,7 +21,7 @@ résolu est signalé comme tel.
 | Corpus juridique (11 modèles + référentiel) | **terminé** | relecture juriste jamais faite |
 | Filtre de sécurité | **fonctionnel** | `advisory` par défaut : bloque hors du domaine, journalise dans le domaine |
 | Interface | **branchée, pas finale** | le front v2 n'est pas livré |
-| Comportement réel du modèle | **partiellement conforme** | 4 à 7/10 en évaluation réelle |
+| Comportement réel du modèle | **partiellement conforme** | les scénarios rejoués un par un passent ; la campagne complète est perturbée par le réseau (voir §8) |
 | Mise en production | **non** | clé à tourner, hébergeur à choisir, conformité à informer |
 
 **Phrase de synthèse** : la mécanique est complète et testée ; ce qui n'est pas
@@ -310,32 +310,39 @@ lui-même affiche encore un écran de connexion simulé (sans compte en V1).
 
 ## 8. L'évaluation réelle
 
-Campagne exécutée contre le vrai modèle, trois fois.
+Campagne exécutée contre le vrai modèle (`npm run eval`), le 22 octobre 2026.
+Le mode **smoke** (`--smoke`) reste à 10/10 mais ne mesure rien du modèle : il
+rejoue des réponses écrites à l'avance. Seul ce qui suit est concluant.
 
-| Exécution | Au vert |
-|---|---|
-| run 1 | 4/10 (scénarios 01, 02, 03, 10) |
-| run 2 | 5/10 (+ 07, 09) |
-| run 3 | 4/10 (01, 02, 03, 10) |
+### Ce que la campagne a trouvé
 
-Avant les garde-fous : **1/10**. Les trois échecs récurrents étaient
-structurels ; **ils ont été corrigés depuis** :
+Chaque exécution a révélé des défauts réels, tous corrigés puis vérifiés par
+une exécution ciblée du scénario concerné :
 
-| Scénario | Cause | Correction |
+| Constat | Correctif | Vérifié par |
 |---|---|---|
-| 04, 05, 06 | `unchanged_sections` reprenait les intitulés de l'ancien modèle de bail | remplacé par la comparaison **par blocs** (la méthode de la spécification), insensible au renumérotage |
-| 08 | l'assertion ne lisait que `text_delta`, pas la charge utile de `ask_user` | nouvelle assertion `ask_user_contains`, qui lit la question et ses options |
-| 09 | le contrôle de citation confondait les renvois internes (« l'article 3 ») et les citations | `findLegalCitations` distingue les deux : renvoi interne ignoré, citation contrôlée |
+| L'agent **réédite la même clause** : il ne voit pas le document après sa propre modification (4 `edit_canvas` successifs, fin de tour en `max_steps`) | le serveur réinjecte **le document à jour** dans la conversation après chaque écriture ; règle de prompt ajoutée | scénario 04 et 05 au vert, test de bout en bout |
+| Le chat dépasse 600 caractères (857 dans le scénario 09) | **garde-fou serveur** : le texte relayé est écourté à 600 caractères, un `warning` `chat_too_long` est émis | test de flux SSE |
+| Une question sur une clause **modifie le contrat** au lieu d'y répondre | règle de prompt : une question se répond dans le chat ; `explain_clause` sert à ça | scénario 09 au vert |
+| Le type hors catalogue est proposé par un **formulaire** qui ne nomme pas le type le plus proche | règle de prompt : proposer par un choix unique nommant le type | scénario 08 (le modèle est passé en `kind: single`) |
+| Le contrôle « aucune citation » confondait un **renvoi interne** et une citation | `findLegalCitations` distingue les deux | scénario 09 |
+| L'assertion « un seul `edit_canvas` » exigeait un appel `get_template` devenu inutile | assertion replaced par un contrôle **des articles du modèle** réellement présents | scénario 01 |
+| Le comptage des blocs modifiés comptait le **renumérotage** du serveur comme une modification | le « avant » est aligné sur la numérotation du « après » (`alignNumbering`) | test unitaire + scénarios 04 à 06 |
+| La comparaison des questions était **sensible à la casse** et aux apostrophes typographiques | comparaison normalisée | scénario 08 |
+| Les fixtures d'évaluation dataient de l'ancien modèle à 5 articles | fixtures régénérées sur le modèle livré (9 articles) | tous les scénarios |
 
-Reste un **vrai défaut**, corrigé depuis : le modèle écrivait 1 127 caractères
-de contrat dans le chat (scénario 09). Le prompt l'interdit désormais
-explicitement, et un **garde-fou serveur** (G10) filtre le texte : un texte
-qui ressemble à un contrat n'est pas relayé, un `warning` est émis.
+### Ce qui reste : le réseau
 
-**La campagne doit être rejouée** pour mesurer l'effet de ces corrections.
+Sur cette machine, les connexions longues vers `openrouter.ai` sont
+**interrompues** par l'équipement intermédiaire (mesuré : un `POST` de 9 Ko
+en flux passe, puis le même flux est réinitialisé). Les scénarios qui
+échouent sur `llm_unavailable` ou `UND_ERR_SOCKET` ne disent **rien** du
+comportement de l'agent : ils sont rejoués, et les relances du serveur
+(3 tentatives avec backoff, puis bascule de modèle) n'y suffisent pas toujours.
 
-Le mode **smoke** reste à 10/10, mais il ne mesure rien du modèle : il rejoue
-des réponses écrites à l'avance. Il est étiqueté « non concluant » partout.
+C'est la raison pour laquelle la campagne n'a pas pu être conclue en une
+exécution : les échecs de transport se mélangent aux échecs de comportement.
+
 
 ---
 
@@ -417,10 +424,11 @@ charge.
 | Priorité | Action | Qui |
 |---|---|---|
 | **P0** | Tourner la clé OpenRouter (elle a été exposée en clair) | Alex |
-| **P0** | Rejouer la campagne réelle pour mesurer les corrections (chat, assertions) | dev |
+| **P0** | Rejouer la campagne réelle **depuis un réseau stable** : sur ce poste, les échecs de transport rendent le score inexploitable | dev |
 | **P1** | Livrer le front v2 et réécrire le branchement | Alex / front |
 | **P1** | Relecture juridique du texte produit par le modèle | juriste |
-| **P1** | Calibrer le filtre de sécurité sur un échantillon réel, puis passer `SAFETY_MODE=block` | dev + Alex |
+| **P1** | Relecture juridique du **contenu** des explications de clause (le mécanisme est livré) | juriste |
+| **P1** | Calibrer le filtre de sécurité sur un échantillon réel, puis décider `SAFETY_MODE=block` | dev + Alex |
 | **P2** | Information de conformité à l'utilisateur | Alex |
 | **P2** | Hébergeur, domaine, pipeline de déploiement | Alex |
 | **P2** | Rotation des identités : `AccessVerifier` → jeton individuel | dev |
