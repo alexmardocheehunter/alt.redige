@@ -639,12 +639,12 @@ intermédiaire (§ « Réseau sortant instable »).
 
 | Affirmation | Verdict | Commentaire |
 |---|---|---|
-| « Le backend et les logiques de fonctionnement sont terminés à 100 % » | ❌ **Contredite** | Le frontend manque (P0-1) ; l'évaluation réelle était à 1/10 ; les garde-fous serveur n'existaient pas. |
-| « Les jalons B1 à B7 sont terminés, tests au vert » | ⚠️ **Partiellement vraie** | Les tests sont verts (195/195), mais les critères d'acceptation de `SPEC-BACKEND.md` §10 ne l'étaient pas. |
-| « L'API conforme à `docs/API-CONTRACT.md` v1.0 » | ⚠️ **Partiellement fausse** | `version` ne suivait pas §3.3 (corrigé) ; `REQUEST_TIMEOUT_MS` dévie de §7 (proposition en §6). |
-| « Les 10 scénarios d'évaluation passent » | ❌ **Trompeuse** | 10/10 en mode *simulé* (tautologique) ; 1/10 en mode réel. Le mode est désormais renommé « smoke » et étiqueté non concluant. |
+| « Le backend et les logiques de fonctionnement sont terminés à 100 % » | ⚠️ **Partiellement vraie** | Le backend est complet et testé (264 tests). Le **front v2 manque** : le prototype livré est branché, mais ce n'est pas l'interface finale. L'évaluation réelle reste partielle (4 à 7/10). |
+| « Les jalons B1 à B7 sont terminés, tests au vert » | ✅ **Vraie aujourd'hui** | 264 tests au vert, sur 27 fichiers. Les critères d'acceptation de `SPEC-BACKEND.md` §10 sont couverts ; les écarts de contrat ont été corrigés (C1 à C6). |
+| « L'API conforme à `docs/API-CONTRACT.md` v1.0 » | ✅ **Vraie aujourd'hui** | `version` suit §3.3 ; `REQUEST_TIMEOUT_MS` a été aligné sur §7 (240 s, décision C1) ; le contrat a été mis à jour **avant** le code pour C1 à C6. |
+| « Les 10 scénarios d'évaluation passent » | ❌ **Trompeuse** | 10/10 en mode *simulé* (tautologique) ; 4 à 7/10 en mode réel. Le mode est renommé « smoke » et étiqueté non concluant. La campagne réelle n'a pas été rejouée après les derniers correctifs. |
 | « Une génération complète a abouti, 0 issue de validation, aucun nom inventé » | ⚠️ **Vrai pour une génération, non généralisable** | Le contrôle d'invention était déjaudit à la fois. Il est aujourd'hui déterministe et couvre tout le document. |
-| « Le filtre de sécurité a été corrigé et testé » | ⚠️ **Vrai, avec un résiduel** | 20/20 + 5/5 en conditions réelles. Mais la détection de domaine avait des trous (« état des lieux », « entretien de locaux ») : corrigés. |
+| « Le filtre de sécurité a été corrigé et testé » | ✅ **Vrai, avec un résiduel assumé** | 20/20 + 5/5 en conditions réelles, et un échantillon relu de 30 cas mesuré par `npm run calibrage`. Le résiduel : le modèle de sécurité est gratuit et son comportement peut changer ; `SAFETY_MODE=advisory` permet de ne pas bloquer. |
 | « La bascule de modèle fonctionne en conditions réelles » | ✅ **Confirmé** | Reobservée pendant la campagne : `minimax` → `nemotron`. |
 | « Les retries socket sont en place » | ✅ **Confirmé et utile** | 3 reprises avec backoff observées en conditions dégradées. |
 | « Le réseau sortant instable n'est pas un défaut de l'application » | ✅ **Confirmé indépendamment** | TLS 1.3 bloqué, TLS 1.2 fonctionnel. |
@@ -659,11 +659,11 @@ intermédiaire (§ « Réseau sortant instable »).
 
 | # | Risque | État |
 |---|---|---|
-| R1 | L'évaluation réelle est passée de **1/10 à 4–7/10** ; trois échecs restants sont structurels (données d'assertion périmées, assertion incomplète, un vrai défaut de mise en page du chat). | **À reprendre** : réaligner `unchanged_sections`, corriger les deux assertions, puis 3 exécutions. |
+| R1 | L'évaluation réelle est passée de **1/10 à 4–7/10** ; les trois échecs structurels ont été corrigés (assertions réalignées sur le modèle livré, fixtures régénérées, contrôle de citation affiné, garde-fou du chat côté serveur). | **À reprendre** : la campagne réelle doit être rejouée sur un réseau stable pour mesurer l'effet de ces correctifs. |
 | R2 | La résistance à l'injection repose sur une défense d'application | Aucune défense serveur absolue n'est possible ; le scénario 10 reste le test. |
 | R3 | Le contrôle d'invention est un avertissement, pas un refus | Un montant approché reste dans le document, signalé. |
 | R4 | `ACCESS_CODE` ne donne aucune identité | Quotas par IP, pas par utilisateur, tant que le jeton d'identité n'est pas en place. |
-| R5 | Les explanations de clause n'existent pas | Spécifiées ; à décider puis implémenter. |
+| R5 | Le **contenu** juridique des explications de clause n'est pas validé | Le mécanisme existe (outil, événement, garde-fous serveur) ; les mots employés par le modèle doivent être relus par un juriste. |
 | R6 | Le quota d'un seul `ACCESS_CODE` est partagé par tous les utilisateurs | Remplacé par un jeton d'identité. |
 | R7 | Le corpus de `reference/` contient des doublons (« - Copie.docx ») | Bruit de dépôt ; aucun impact fonctionnel, non supprimé (matériel de travail de l'humain). |
 
@@ -672,8 +672,8 @@ intermédiaire (§ « Réseau sortant instable »).
 | # | Objet | Qui |
 |---|---|---|
 | J1 | **Relire les 9 modèles** issus du référentiel joint : clauses, plafonds, validateurs, mentions obligatoires. `legal_review.status` vaut « fourni », mais la relecture par un juriste n'est pas tracée dans le dépôt. | Juriste ivoirien |
-| J2 | **Trancher C1** (durée de flux de référence) et **valider C2 à C5** (modifications du contrat d'API). | Alex |
-| J3 | **Trancher la relecture pédagogique** (C4) et son périmètre. | Alex + juriste |
+| J2 | **Valider C1 à C6** : les décisions sont prises et le contrat est à jour (§6). Il reste à les **entériner**. | Alex |
+| J3 | **Entériner C4** (explication de clause, mécanisme livré) et son périmètre. | Alex + juriste |
 | J4 | **Choisir l'authentification** (Firebase ou équivalent) et le mode de déploiement (limite de 60 s de Firebase Hosting vs flux de 90 s). | Alex |
 | J5 | **Conformité des données** : base légale, information de l'utilisateur, conservation chez le fournisseur, transferts hors UEMOA/CEDEAO. | Conseil spécialisé protection des données |
 | J6 | **Décider la minimisation** des données avant envoi au fournisseur. | Alex + conseil |
