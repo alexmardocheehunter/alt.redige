@@ -21,12 +21,40 @@ résolu est signalé comme tel.
 | Corpus juridique (11 modèles + référentiel) | **terminé** | relecture juriste jamais faite |
 | Filtre de sécurité | **fonctionnel et calibré** | `advisory` par défaut : bloque hors du domaine, journalise dans le domaine. Mesuré sur 30 cas : 0 faux positif, 1 faux négatif |
 | Interface | **branchée, pas finale** | le front v2 n'est pas livré |
-| Comportement réel du modèle | **partiellement conforme** | les scénarios rejoués un par un passent ; la campagne complète est perturbée par le réseau (voir §8) |
-| Mise en production | **non** | clé à tourner, hébergeur à choisir, conformité à informer |
+| Comportement réel du modèle | **partiellement conforme** | les scénarios rejoués un par un passent ; la campagne complète est perturbée par le réseau et par le retrait du modèle gratuit principal (voir §8) |
+| Mise en production | **prête côté backend** | crédit OpenRouter absent (`402`), clé à tourner, hébergeur à choisir, conformité à informer |
 
 **Phrase de synthèse** : la mécanique est complète et testée ; ce qui n'est pas
 prouvé, c'est la qualité du contrat que le modèle produit réellement, et
 l'interface finale.
+
+### 1.1 Les modèles utilisés (au 22/10/2026)
+
+| Rôle | Modèle | Contexte | Prix ($/M entrée → sortie) | Outils | État |
+|---|---|---|---|---|---|
+| Production — principal | `minimax/minimax-m3.1-flash` | 1 000 000 | 0,15 → 0,60 | oui | **cible de production** ; non utilisable aujourd'hui : compte sans crédit (`402`) |
+| Production — bascule | `nvidia/nemotron-3.5-super-vl` | 1 048 576 | 0,15 → 0,50 | oui | **cible de production** ; idem `402` |
+| Développement — principal | `dots-studio/dots-3-note-preview:free` | 512 000 | gratuit | oui | actif par défaut ; a passé les scénarios 01 et 04, mais repose parfois des questions au lieu de rédiger |
+| Développement — bascule | `nvidia/nemotron-3.5-super-vl:free` | 1 000 000 | gratuit | oui | répond parfois, expire souvent (saturé) |
+| Gardien de sécurité | `nvidia/nemotron-3.5-content-safety:free` | 128 000 | gratuit | non (classifieur) | **actif**, hors bascule ; filtre l'entrée et le document produit |
+| Retiré par le fournisseur | `minimax/minimax-m3.1-flash:free` | 1 000 000 | gratuit | oui | **retiré le 22/10/2026** (`404`, fin de la période gratuite) |
+| Écarté | `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free` | 256 000 | gratuit | oui | pose systématiquement une question au lieu de rédiger |
+| Écarté | `cohere/north-mini-code:free` | 256 000 | gratuit | oui | n'appelle pas les outils |
+| Écarté | `google/gemma-4-31b-it:free` | 262 144 | gratuit | oui | quota (`429`) |
+| Écarté | `thinkingmachines/inkling:free` | 1 048 576 | gratuit | oui | `403`, réservé aux harnais agentiques |
+
+**Lecture** :
+
+- la chaîne de rédaction effective est `LLM_MODELS`, essayée **dans l'ordre** :
+  le premier modèle qui répond sert la requête, le suivant prend le relais en
+  cas d'échec ; `LLM_MODEL` (facultatif) force le principal en tête ;
+- `LLM_SAFETY_MODEL` est **hors bascule** et ne rédige jamais : c'est un
+  classifieur, il ne supporte pas les appels d'outils ;
+- la production doit utiliser les **jumeaux payants** (les deux premières
+  lignes) ; les variantes `:free` sont limitées en débit et peuvent disparaître
+  sans préavis — constaté le 22/10/2026 ;
+- `npm run verif-prod` sonde chaque modèle de la chaîne avant déploiement et
+  refuse une configuration en `:free`.
 
 ---
 
