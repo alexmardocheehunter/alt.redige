@@ -1,12 +1,13 @@
-# alt.redige — Audit de l'état de l'agent
+# alt.redige — Audit complet de l'application
 
 **Date** : 22 octobre 2026
-**Objet** : état vérifié du backend (agent de rédaction de contrats), de l'interface
-et du corpus juridique, tel qu'il est réellement en dépôt.
+**Objet** : l'application dans son ensemble — l'agent de rédaction, son
+interface, le corpus juridique, l'exploitation — et **toutes ses
+interactions**.
 **Méthode** : lecture du code, exécution de la suite de tests, capture du
 contexte réellement envoyé au modèle, campagne d'évaluation contre le vrai
-modèle. Chaque affirmation ci-dessous est vérifiable dans le dépôt ; les points
-non résolus sont signalés comme tels.
+modèle. Chaque affirmation est vérifiable dans le dépôt ; ce qui n'est pas
+résolu est signalé comme tel.
 
 ---
 
@@ -15,13 +16,13 @@ non résolus sont signalés comme tels.
 | Domaine | État | Réserve |
 |---|---|---|
 | Architecture, stack, outillage | **terminé** | — |
-| API HTTP + flux SSE | **terminé** | 6 modifications de contrat proposées, non validées |
-| Boucle agentique, outils, garde-fous | **terminé** | — |
-| Corpus juridique (11 modèles + référentiel) | **terminé** | Relecture juriste jamais faite |
-| Filtre de sécurité | **fonctionnel** | Mode `advisory` par défaut : il journalise, il ne bloque pas |
-| Interface | **branchée, pas finale** | Le front v2 n'est pas livré ; le prototype reste branché |
+| API HTTP + flux SSE | **terminé** | contrat mis à jour (C1–C5) |
+| Boucle agentique, outils, garde-fous | **terminé** | 12 garde-fous |
+| Corpus juridique (11 modèles + référentiel) | **terminé** | relecture juriste jamais faite |
+| Filtre de sécurité | **fonctionnel** | `advisory` par défaut : journalise, ne bloque pas |
+| Interface | **branchée, pas finale** | le front v2 n'est pas livré |
 | Comportement réel du modèle | **partiellement conforme** | 4 à 7/10 en évaluation réelle |
-| Mise en production | **non** | Clé à tourner, hébergeur à choisir, conformité à informer |
+| Mise en production | **non** | clé à tourner, hébergeur à choisir, conformité à informer |
 
 **Phrase de synthèse** : la mécanique est complète et testée ; ce qui n'est pas
 prouvé, c'est la qualité du contrat que le modèle produit réellement, et
@@ -34,9 +35,9 @@ l'interface finale.
 ### 2.1 Le principe
 
 L'agent ne rédige pas dans le chat. Il rédige **dans le document** (le « Canvas »),
-via quatre outils. Le chat ne sert qu'à poser des questions et à expliquer. Le
-document est la seule source de vérité ; le modèle reçoit le document courant à
-chaque tour et ne doit jamais se fier à sa mémoire.
+via les outils. Le chat ne sert qu'à poser des questions et à expliquer. Le
+document est la seule source de vérité : le modèle reçoit le document courant à
+chaque tour et ne doit jamais se fier à sa mémoire de la conversation.
 
 ### 2.2 Le tour, étape par étape
 
@@ -48,25 +49,28 @@ chaque tour et ne doit jamais se fier à sa mémoire.
       system   = prompts/system.fr.md + catalogue des 11 types
       messages = historique tronqué + dernier message utilisateur
                  (<document_courant> + <type_choisi> + <modele_contrat> + <demande_utilisateur>)
-      tools    = les 4 outils
+      tools    = les 5 outils
 4. L'appel au modèle part en flux SSE ; le serveur relaie :
       phase / plan / step / tool_start / tool_end / thinking_* / retry / warning
-      text_delta   → texte de la bulle du chat
+      text_delta   → texte de la bulle du chat (filtré : jamais le contrat)
       canvas_delta → brouillon du document (non exportable)
       canvas_set   → document définitif, versionné, validé
+      ask_user     → question ; le tour s'arrête
+      clause_explained → explication d'une clause
 5. Les outils s'exécutent, leurs résultats repartent au modèle, la boucle
    recommence — 6 étapes au maximum (MAX_STEPS)
 6. done(end_turn) | done(awaiting_input) | error
 ```
 
-### 2.3 Les quatre outils
+### 2.3 Les cinq outils
 
 | Outil | Entrée | Effet |
 |---|---|---|
-| `get_template` | `contract_type` | Renvoie squelette, champs, notes juridiques du modèle de référence. **N'est plus appelé quand le type est connu** (le bloc `<modele_contrat>` est déjà dans le contexte). |
+| `get_template` | `contract_type` | Renvoie squelette, champs, notes juridiques du modèle de référence. **N'est plus appelé quand le type est connu** : le bloc `<modele_contrat>` est déjà dans le contexte. |
 | `create_canvas` | `title`, `contract_type`, `markdown`, `replace?` | Écrit le contrat complet. `replace: true` pour tout recommencer. |
 | `edit_canvas` | `edits: [{old_str, new_str}]` (1 à 20) | Remplace des chaînes exactes, uniques dans le document. Tout ou rien. |
 | `ask_user` | `question`, `kind`, `options?`, `fields?` | Pose une question ; le tour s'arrête sur `done(awaiting_input)`, la réponse arrive au tour suivant. |
+| `explain_clause` | `article`, `quote`, `explanation`, `obligations?`, `risks?`, `depends_on?` | Explique une clause à partir du texte **présent** dans le document. Contrôlé avant émission. |
 
 ### 2.4 Le contexte réellement envoyé
 
@@ -78,7 +82,7 @@ reconstruit — voir `docs/CONTEXTE-MODELE.md` et `docs/contexte-modele/`.
 | `system` | 8 087 car. | 8 087 car. (identique) |
 | `messages` | 2 | 4 |
 | message utilisateur | 3 666 car. (avec le modèle de contrat) | 2 125 car. (avec le document) |
-| `tools` | 4 | 4 |
+| `tools` | 5 | 5 |
 | `model` | `minimax/minimax-m3.1-flash:free` | idem |
 | `max_tokens` | 16 000 | 16 000 |
 
@@ -89,10 +93,98 @@ du JSON OpenAI-compatible.
 
 ---
 
-## 3. Les garde-fous
+## 3. Les interactions, une par une
 
-Ils sont côté serveur, dans `src/agent/tools.ts` et `src/doc/`. Un garde-fou qui
-laisse passer est un bug ; un garde-fou qui bloque tout est un incident.
+### 3.1 L'utilisateur envoie un message
+
+| Étape | Qui | Ce qui se passe |
+|---|---|---|
+| 1 | client | `POST /api/chat` : `{messages, document, contract_type, answers}` + `X-Request-Id` (+ `X-Access-Code`) |
+| 2 | serveur | quotas, corps ≤ 1 Mo, code d'accès, arrêt en cours |
+| 3 | serveur | `ready` (`request_id`) — **toujours le premier événement** |
+| 4 | serveur | garde-fou de sécurité sur le dernier message |
+| 5 | serveur | composition du contexte (système, historique, document, modèle de contrat) |
+| 6 | modèle | appel en flux, avec les 5 outils |
+| 7 | serveur | relais des événements de progression |
+| 8 | modèle | appel d'outil(s) |
+| 9 | serveur | exécution de l'outil, garde-fous, `canvas_set` si le document change |
+| 10 | modèle | dernier tour : réponse en texte |
+| 11 | serveur | `done(stop_reason, usage)` — **toujours le dernier événement** |
+
+### 3.2 L'agent pose une question
+
+| Qui | Ce qui se passe |
+|---|---|
+| modèle | appelle `ask_user` |
+| serveur | **une seule question par tour** : au-delà, l'appel est refusé |
+| serveur | émet `ask_user` avec `question_id`, `kind`, `question`, `why`, `blocking`, `allow_other`, `options` ou `fields` |
+| serveur | émet `done(stop_reason: "awaiting_input")` **immédiatement après** |
+| client | affiche la carte de question ; l'utilisateur répond |
+| client | renvoie un **nouveau** `POST /api/chat` : le texte de la réponse dans `messages`, et `answers` (structuré) en complément |
+| serveur | l'agent reçoit la réponse au tour suivant, comme un message ordinaire |
+
+`answers` n'est jamais la source unique : le texte lisible reste dans
+`messages`, comme le veut le protocole.
+
+### 3.3 L'agent modifie le contrat
+
+| Qui | Ce qui se passe |
+|---|---|
+| modèle | appelle `edit_canvas` avec 1 à 20 remplacements |
+| serveur | chaque `old_str` doit être **présent et unique** ; sinon tout est refusé |
+| serveur | garde-fou : un article disparu → refus ; trop de blocs touchés → refus |
+| serveur | garde-fou : une mention normative hors référentiel → refus |
+| serveur | **renumérotation** : les `## Article N` sont renumérotés à la suite, les renvois internes suivent |
+| serveur | `canvas_start(mode: "edit")` puis `canvas_set(mode: "edit", edits_applied)` |
+| client | le document est remplacé, la version est incrémentée, un toast « Annuler » est proposé |
+
+### 3.4 L'utilisateur édite le contrat à la main
+
+| Qui | Ce qui se passe |
+|---|---|
+| client | le champ Markdown est éditable ; le texte est renvoyé tel quel au tour suivant |
+| serveur | le document reçu **fait foi** : il est renvoyé dans `<document_courant>` et sert de base à toute modification |
+| serveur | garde-fou : un article supprimé par l'utilisateur n'est pas « perdu » au sens de l'outil — mais une modification IA qui le supprime, elle, est refusée |
+
+### 3.5 L'utilisateur annule
+
+| Qui | Ce qui se passe |
+|---|---|
+| client | `AbortController.abort()` |
+| serveur | l'abort est propagé à l'appel au modèle (≤ 2 s) |
+| serveur | **aucun** `canvas_set` n'est émis après l'annulation |
+| client | le document précédent est conservé, le brouillon est jeté |
+
+### 3.6 L'utilisateur exporte
+
+| Qui | Ce qui se passe |
+|---|---|
+| client | `POST /api/export/docx` : `{markdown, title, footer}` |
+| serveur | document vide → 400 ; corps > 200 Ko → 413 |
+| serveur | **construction interdite dans le document → 400** : aucun `.docx` n'est produit |
+| serveur | conversion en Word (A4, Times New Roman 11 pt, pied de page « Page X / Y ») |
+| client | téléchargement du `.docx` ; le nom vient de `Content-Disposition` |
+| client | le PDF passe par `window.print()` : **aucun endpoint PDF** |
+
+### 3.7 Le client se trompe ou l'utilisateur se trompe
+
+| Cas | Réponse |
+|---|---|
+| JSON invalide, rôles non alternés, dernier message ≠ `user` | 400 `bad_request` |
+| message > 8 000 caractères, document > 200 000 octets, corps > 1 Mo | 413 `payload_too_large` |
+| code d'accès absent ou faux | 401 `unauthorized` |
+| trop de requêtes | 429 `rate_limited` + `Retry-After` |
+| fournisseur saturé | 503 `llm_unavailable`, puis bascule de modèle |
+| contrat coupé par la limite de jetons | `error` `truncated`, **rien n'est appliqué** |
+| délai dépassé | `error` `timeout` |
+| flux coupé par le client | restauration du document par le client |
+
+---
+
+## 4. Les garde-fous
+
+Ils sont côté serveur. Un garde-fou qui laisse passer est un bug ; un garde-fou
+qui bloque tout est un incident.
 
 | # | Garde-fou | Déclencheur | Effet |
 |---|---|---|---|
@@ -102,22 +194,18 @@ laisse passer est un bug ; un garde-fou qui bloque tout est un incident.
 | G4 | Référence normative absente | mention hors `legal_notes` | modification **refusée** (`unsupported_reference`) |
 | G5 | Fait non fourni | montant/date/nom propre absent de la demande | **avertissement** `fact_unverified` |
 | G6 | Anglicisme | mot anglais dans l'acte | avertissement `anglicism` |
-| G7 | Construction interdite | image, lien, code, titre N≥4 | avertissement `forbidden_construct` — **bloque l'export Word** (HTTP 400, `bad_request`) |
+| G7 | Construction interdite | image, lien, code, titre N≥4 | avertissement `forbidden_construct` — **bloque l'export Word** (400) |
 | G8 | Renvoi cassé | « l'article 12 » sans article 12 | avertissement `broken_reference` |
 | G9 | Numérotation | le modèle écrit un numéro d'article | le serveur **renumérote** et corrige les renvois |
-| G10 | Sécurité | message ou document dangereux | `safety` : selon `SAFETY_MODE`, refus d'écriture ou simple journalisation |
-
-La numérotation (G9) mérite un mot : le serveur est l'autorité. Le modèle peut
-écrire « Article 7 » là où il en faut 4, c'est rattrapé, et les renvois internes
-suivent le déplacement de l'article visé. Ce n'est pas un système d'identifiants
-stables (`art_objet`) — c'est un choix assumé, expliqué dans
-`docs/VERIFICATION-AUDIT.md`.
+| G10 | Contrat dans le chat | le texte ressemble à un contrat | le texte **n'est pas relayé**, `warning` émis |
+| G11 | Explication non étayée | extrait absent, affirmation juridique, citation hors référentiel, limite absente | explication **refusée** |
+| G12 | Sécurité | message ou document dangereux | selon `SAFETY_MODE` : refus d'écriture ou simple journalisation |
 
 ---
 
-## 4. Le corpus juridique
+## 5. Le corpus juridique
 
-### 4.1 Onze modèles
+### 5.1 Onze modèles
 
 `data/templates/*.json` — un fichier par type, même schéma.
 
@@ -126,7 +214,7 @@ stables (`art_objet`) — c'est un choix assumé, expliqué dans
 | `bail-habitation` | Bail d'habitation | Code civil, CGI (art. 169 bis, 530, 716) |
 | `bail-bureau` | Bail à usage de bureau (personne publique) | Loi 77-995, décret 79-715, CGI 587-590 et 964 |
 | `bail-professionnel` | Bail professionnel (local commercial) | Acte Uniforme OHADA (2010), Code civil |
-| `cdd-terme-precis` | CDT à terme précis | Code du travail art. 15.3, 15.4, 15.8 |
+| `cdd-terme-precis` | CDD à terme précis | Code du travail art. 15.3, 15.4, 15.8 |
 | `cdd-terme-imprecis` | CDD à terme imprécis | Code du travail art. 15.6 (tâche précise) |
 | `cdi` | CDI | Code du travail, décret 96-195 (essai), 2013-791 (SMIG) |
 | `stage-ecole` | Convention de stage-école | Code du travail art. 13.11, 13.12 |
@@ -135,10 +223,10 @@ stables (`art_objet`) — c'est un choix assumé, expliqué dans
 | `teletravail` | Accord de télétravail | Décret 2022-31 |
 | `prestation-service` | Prestation, sous-traitance, fourniture | Code du travail art. 11.5-11.7, CGI (BNC, TVA) |
 
-Les deux CDD sont bien distincts : conditions de recours, motif de tâche
-précise, durée maximale de deux ans, prime de précarité de 3 %.
+Les deux CDD sont distincts : conditions de recours, motif de tâche précise,
+durée maximale de deux ans, prime de précarité de 3 %.
 
-### 4.2 Le référentiel des sources
+### 5.2 Le référentiel des sources
 
 `data/legal-sources.json` est la **source unique** (18 entrées). Chaque entrée :
 `code`, `aliases`, `country`, `status`, `to_verify`, `applies_to`.
@@ -157,7 +245,7 @@ travail, louage du Code civil, décrets sur les stages.
 d'article dont on n'est pas certain — écrire « en ses dispositions
 applicables » ; ne pas transposer les références d'un autre pays.
 
-### 4.3 Ce qui n'a pas été fait
+### 5.3 Ce qui n'a pas été fait
 
 - **Aucune relecture par un juriste** du texte que le modèle produit. Les règles
   sont codées, pas les réponses.
@@ -167,7 +255,7 @@ applicables » ; ne pas transposer les références d'un autre pays.
 
 ---
 
-## 5. L'interface
+## 6. L'interface
 
 `public/index.html` est un **fichier unique** qui porte le prototype et son
 branchement. Le branchement (`public/app-api.js`, injecté par
@@ -191,37 +279,25 @@ branchement actuel est un adaptation minimale du prototype.
 
 ---
 
-## 6. Les tests
+## 7. Les tests
 
-| Fichier | Objet | Lignes |
+| Famille | Objet | Fichiers |
 |---|---|---|
-| `b1-skeleton.test.ts` | health, page, en-têtes, CSP | 92 |
-| `b2-edit.test.ts` | édition atomique, tout ou rien | 103 |
-| `b2-validate.test.ts` | sous-ensemble Markdown, articles | 113 |
-| `b3-templates.test.ts` | chargement des modèles, contexte | 68 |
-| `b4-chat.test.ts` | flux SSE complet, bascule, annulation | 344 |
-| `b4-tools.test.ts` | outils, garde-fous | 163 |
-| `b5-export*.test.ts` | export Word, en-têtes, refus | 155 |
-| `b6-evals.test.ts` | harnais d'évaluation | 44 |
-| `b7-hardening.test.ts` | quotas, arrêt propre, erreurs | 107 |
-| `b7-renumerotation.test.ts` | numérotation et renvois | 60 |
-| `b8-openrouter.test.ts` | bascule, format OpenRouter | 116 |
-| `b8-safety.test.ts` | filtre de sécurité | 146 |
-| `b9-bout-en-bout.test.ts` | bout en bout sur socket réelle | 265 |
-| `b10-templates/validators/sources` | corpus, règles, référentiel | 279 |
-| `b11-audit-guardes.test.ts` | les 10 garde-fous du protocole | 486 |
-| `c1`…`c6` | interface, branchement, démarrage | 412 |
-| **Total** | **28 fichiers** | **3 292 lignes** |
+| `b1`–`b3` | squelette, édition, validation, modèles | 4 |
+| `b4`–`b6` | flux SSE, outils, export, évaluations | 6 |
+| `b7`–`b9` | durcissement, numérotation, OpenRouter, sécurité, bout en bout | 7 |
+| `b10`–`b12` | corpus, règles, référentiel, nouveaux garde-fous | 6 |
+| `c1`–`c6` | interface, branchement, démarrage, UI agent | 6 |
+| **Total** | | **26 fichiers de test, 255 tests** |
 
-**244 tests au vert.** `npm run typecheck` sans erreur, `npm run build` sans
-erreur.
+`npm run typecheck` sans erreur, `npm run build` sans erreur, `npm run eval
+-- --smoke` à 10/10.
 
 ---
 
-## 7. L'évaluation réelle
+## 8. L'évaluation réelle
 
-Campagne exécutée contre le vrai modèle, trois fois (le réseau de la machine de
-développement s'est rétabli dans la nuit du 21 au 22).
+Campagne exécutée contre le vrai modèle, trois fois.
 
 | Exécution | Au vert |
 |---|---|
@@ -229,38 +305,40 @@ développement s'est rétabli dans la nuit du 21 au 22).
 | run 2 | 5/10 (+ 07, 09) |
 | run 3 | 4/10 (01, 02, 03, 10) |
 
-Avant les garde-fous : **1/10**. L'amélioration est réelle mais l'amera n'est
-pas verte. Les trois échecs récurrents sont **structurels**, pas aléatoires :
+Avant les garde-fous : **1/10**. Les trois échecs récurrents étaient
+structurels ; **ils ont été corrigés depuis** :
 
-| Scénario | Cause | Nature |
+| Scénario | Cause | Correction |
 |---|---|---|
-| **04, 05, 06** | La liste `unchanged_sections` reprend les intitulés de l'ancien modèle de bail (« Article 2 – Durée et loyer ») alors que le modèle livré en a 9 (« Article 2 – Désignation du bien »). L'assertion cherche des sections qui n'existent plus. | **Données périmées** — à réaligner. Le garde-fou serveur, lui, fonctionne : les journaux montrent `changed_blocks: 2` et aucun article perdu. |
-| **08** | Le modèle répond par une question (`ask_user`, 3 options) au lieu d'un refus en texte. L'assertion ne lit que `text_delta` et non la charge utile de `ask_user`. | **Assertion incomplète** — la proposition du type le plus proche est bien présente, dans les options. |
-| **09** | (a) Le modèle a écrit **1 127 caractères de contrat dans le chat** au lieu du Canvas. (b) L'assertion `no_legal_citation` signale « Article 1 »…« Article 9 » comme des citations juridiques : ce sont les **renvois internes** du contrat à ses propres articles. | (a) **vrai défaut** de respect de la consigne ; (b) **faux positif** de l'assertion. |
+| 04, 05, 06 | `unchanged_sections` reprenait les intitulés de l'ancien modèle de bail | remplacé par la comparaison **par blocs** (la méthode de la spécification), insensible au renumérotage |
+| 08 | l'assertion ne lisait que `text_delta`, pas la charge utile de `ask_user` | nouvelle assertion `ask_user_contains`, qui lit la question et ses options |
+| 09 | le contrôle de citation confondait les renvois internes (« l'article 3 ») et les citations | `findLegalCitations` distingue les deux : renvoi interne ignoré, citation contrôlée |
+
+Reste un **vrai défaut**, corrigé depuis : le modèle écrivait 1 127 caractères
+de contrat dans le chat (scénario 09). Le prompt l'interdit désormais
+explicitement, et un **garde-fou serveur** (G10) filtre le texte : un texte
+qui ressemble à un contrat n'est pas relayé, un `warning` est émis.
+
+**La campagne doit être rejouée** pour mesurer l'effet de ces corrections.
 
 Le mode **smoke** reste à 10/10, mais il ne mesure rien du modèle : il rejoue
 des réponses écrites à l'avance. Il est étiqueté « non concluant » partout.
 
-**Deux actions, distinctes** :
-1. Réaligner les données de référence des scénarios 04/05/06 et compléter les
-   assertions 08 et 09 — ce sont des corrections de données, pas un
-   affaiblissement, mais elles modifient le référentiel d'évaluation et
-   méritent d'être validées ;
-2. Traiter le défaut (a) du scénario 09 : le modèle écrit le contrat dans le
-   chat. C'est un sujet de prompt et de garde-fou, à traiter.
-
 ---
 
-## 8. L'exploitation
+## 9. L'exploitation
 
 | Variable | Défaut | Rôle |
 |---|---|---|
 | `OPENROUTER_API_KEY` | *(obligatoire)* | Clé du fournisseur |
 | `OPENROUTER_BASE_URL` | `https://openrouter.ai/api/v1` | API |
+| `OPENROUTER_SITE_URL` | *(vide)* | URL du site, envoyée en `HTTP-Referer` |
+| `OPENROUTER_APP_TITLE` | `LexCanvas` | Envoyé en `X-Title` |
 | `LLM_MODELS` | `minimax/…-flash:free,nvidia/…-super-vl:free` | Chaîne de bascule |
+| `LLM_MODEL` | *(vide)* | Alias : force le modèle principal en tête |
 | `LLM_SAFETY_MODEL` | `nvidia/…-content-safety:free` | Gardien |
 | `SAFETY_CHECK` | `1` | Coupe le gardien |
-| `SAFETY_MODE` | `advisory` | `off` / `advisory` / `block` — **par défaut `advisory`** : le verdict est journalisé, rien n'est bloqué. Passer à `block` après calibrage. |
+| `SAFETY_MODE` | `advisory` | `off` / `advisory` / `block` |
 | `MAX_STEPS` | `6` | Itérations de la boucle |
 | `MAX_OUTPUT_TOKENS` | `16 000` | Budget par appel (raisonnement compris) |
 | `MAX_HISTORY_MESSAGES` | `12` | Troncature de l'historique |
@@ -271,6 +349,10 @@ des réponses écrites à l'avance. Il est étiqueté « non concluant » partou
 | `MAX_BODY_BYTES` | `1 048 576` | Corps max |
 | `ACCESS_CODE` | *(vide)* | Code d'accès partagé |
 | `PORT` | `3000` | Port d'écoute |
+| `LOG_LEVEL` | `info` | Niveau de logs |
+| `TRUST_PROXY` | `0` | Lire l'IP dans `X-Forwarded-For` |
+| `ALLOWED_ORIGIN` | *(vide)* | Front séparé en développement |
+| `EXPORT_FOOTER` | *(vide)* | Pied de page des exports |
 
 Le serveur est **sans état** : ni base, ni session, ni historique. Tout vit
 dans le navigateur (`localStorage`).
@@ -284,7 +366,7 @@ explicite au lieu d'une pile d'exécution.
 
 ---
 
-## 9. Sécurité et conformité
+## 10. Sécurité et conformité
 
 | Mesure | État |
 |---|---|
@@ -300,40 +382,20 @@ explicite au lieu d'une pile d'exécution.
 
 ---
 
-## 10. Les décisions en attente d'Alex
+## 11. Les décisions prises
 
-| # | Sujet | Proposition |
+| # | Sujet | Décision |
 |---|---|---|
-| C1 | Durée de flux : le contrat dit 120 s, le code 240 s | Trancher, puis aligner code **et** contrat. 120 s coupe des générations complètes (constaté). |
-| C2 | `canvas_set.validation.fields` | Distinguer champs obligatoires et facultatifs dans la charge utile. |
-| C3 | `canvas_set.legal_notice` | Rendre structuré l'avertissement de revalidation juridique. |
-| C4 | `clause_explained` | Explication de clause — **seulement si** la relecture pédagogique est retenue (`docs/SPEC-EXPLICATION-CLAUSES.md`). |
-| C5 | Export et construction interdite | Documenter le `400 bad_request` désormais retourné par `/api/export/docx`. |
-| C6 | `llm_error` vs `llm_unavailable` | Aucune modification du contrat ; distinguer les messages. |
+| C1 | Durée de flux | **240 s** — le contrat a été mis à jour : les modèles sont à raisonnement, 120 s coupait des générations complètes |
+| C2 | `canvas_set.validation.fields` | **ajouté** : champs obligatoires et facultatifs, avec leur état de remplissage |
+| C3 | `canvas_set.legal_notice` | **ajouté** : l'avertissement de revalidation est structuré |
+| C4 | `clause_explained` | **implémenté** : outil + événement, avec les garde-fous de `docs/SPEC-EXPLICATION-CLAUSES.md`. Le contenu juridique des explications reste à valider par un juriste |
+| C5 | Export hors sous-ensemble | **documenté** dans le contrat : 400 `bad_request`, aucun `.docx` produit |
+| C6 | `llm_error` / `llm_unavailable` | messages distincts, contrat inchangé |
 
 Hors de portée de la V1 (README §11) : audit d'un contrat importé, comptes et
 paiement, base de données, historique serveur, PDF serveur, multilingue, tests de
 charge.
-
----
-
-## 11. Le skill
-
-`skill principal de redaction-contrats/` (22 fichiers, ~110 Ko), ajouté le
-21/10 : 11 modèles Markdown, 7 références, 2 scripts Python, 4 scénarios.
-
-Audit complet dans `docs/AUDIT-SKILL.md`. Verdict : **skill de très bonne
-qualité**, discipline juridique exemplaire (neutralité, « points de départ,
-pas vérité à jour », interdiction de citer un article incertain, repli en champ à
-compléter pour un autre pays). Trois défauts mineurs, tous dans
-`check_neutrality.py` (crash Windows, faux positifs) et un problème de chemin.
-
-**Le skill et le backend ne partagent pas le même format de document et ne
-couvrent pas les mêmes types.** Le skill a des modèles de : consultance,
-assistance technique, formation, maintenance, entretien de locaux, sécurité
-privée, bail bureau/professionnel, CDD, stage de qualification, stage-école. Le
-backend a regroupé les cinq premiers sous `prestation-service` et a ajouté CDI,
-télétravail, apprentissage et bail d'habitation.
 
 ---
 
@@ -342,11 +404,10 @@ télétravail, apprentissage et bail d'habitation.
 | Priorité | Action | Qui |
 |---|---|---|
 | **P0** | Tourner la clé OpenRouter (elle a été exposée en clair) | Alex |
-| **P0** | Corriger le défaut « le contrat écrit dans le chat » (scénario 09) | dev |
-| **P0** | Réaligner les assertions 04/05/06 et compléter 08/09 | dev, à valider |
+| **P0** | Rejouer la campagne réelle pour mesurer les corrections (chat, assertions) | dev |
 | **P1** | Livrer le front v2 et réécrire le branchement | Alex / front |
-| **P1** | Trancher C1 (durée de flux) et mettre le contrat à jour | Alex |
 | **P1** | Relecture juridique du texte produit par le modèle | juriste |
+| **P1** | Calibrer le filtre de sécurité sur un échantillon réel, puis passer `SAFETY_MODE=block` | dev + Alex |
 | **P2** | Information de conformité à l'utilisateur | Alex |
 | **P2** | Hébergeur, domaine, pipeline de déploiement | Alex |
 | **P2** | Rotation des identités : `AccessVerifier` → jeton individuel | dev |
@@ -373,9 +434,10 @@ src/
   legal-sources.ts            lecture du référentiel
   templates.ts                chargement des modèles
   agent/loop.ts               la boucle agentique
-  agent/tools.ts              les 4 outils et les garde-fous
+  agent/tools.ts              les 5 outils et les garde-fous
   agent/prompt.ts             system prompt, <document_courant>, <modele_contrat>
   agent/progress.ts           phase, plan, étapes, sources, suggestions
+  agent/chat-guard.ts         le contrat ne doit pas être écrit dans le chat
   agent/events.ts             types des événements SSE
   agent/json-partial.ts       extraction du JSON partiel des arguments d'outil
   doc/validate.ts             sous-ensemble Markdown, articles, règles
@@ -385,12 +447,13 @@ src/
   doc/references.ts           garde-fou de citations
   doc/lexical.ts              anglicismes
   doc/required-fields.ts      champs obligatoires renseignés ou non
+  doc/explanation.ts          explication de clause : contrôles
   export/docx.ts              enveloppe TypeScript du convertisseur
   export/export-docx.mjs      le convertisseur (référence, étendu)
   middleware/                 requestId, requestLogger, auth, rateLimit, csp
   routes/                     chat, export, meta
 evals/                        10 scénarios, assertions, mode smoke
-test/                         28 fichiers de test
+test/                         26 fichiers de test (+ 3 aides partagées)
 docs/                         14 documents (audit, exploitation, contrat, décisions…)
 reference/                    originaux : contrats types, référentiel juridique
 ```
@@ -400,7 +463,7 @@ reference/                    originaux : contrats types, référentiel juridiqu
 ## 14. Comment reproduire les mesures
 
 ```bash
-npm test                        # 244 tests
+npm test                        # 255 tests
 npm run typecheck
 npm run build
 
@@ -410,5 +473,5 @@ LLM_DEBUG_DIR=tmp/contexte npm start     # → chaque requête sortante, en dire
 
 # évaluation
 npm run eval -- --smoke         # 10/10, ne mesure pas le modèle
-npm run eval                    # contre le vrai modèle : 4 à 7/10 aujourd'hui
+npm run eval                    # contre le vrai modèle
 ```
