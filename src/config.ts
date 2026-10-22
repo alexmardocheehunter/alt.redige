@@ -10,7 +10,15 @@ loadEnvFile();
 const positiveInt = (fallback: number, max: number) =>
   z.coerce.number().int().min(1).max(max).default(fallback);
 
-const DEFAULT_MODELS = ['minimax/minimax-m3.1-flash:free', 'nvidia/nemotron-3.5-super-vl:free'];
+/**
+ * Chaîne de bascule par défaut (développement). Elle n'est PAS prévue pour la
+ * production : les variantes `:free` d'OpenRouter sont limitées en débit et
+ * **peuvent être retirées du catalogue sans préavis** — constaté le 22/10/2026
+ * avec `minimax/minimax-m3.1-flash:free`. La production doit fixer `LLM_MODELS`
+ * sur les jumeaux payants (voir `.env.example`), et `npm run verif-prod` sonde
+ * chaque modèle de la chaîne avant déploiement.
+ */
+const DEFAULT_MODELS = ['dots-studio/dots-3-note-preview:free', 'nvidia/nemotron-3.5-super-vl:free'];
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 
@@ -27,7 +35,7 @@ const schema = z.object({
   LLM_MODELS: z
     .string()
     .min(1)
-    .default('minimax/minimax-m3.1-flash:free,nvidia/nemotron-3.5-super-vl:free'),
+    .default('dots-studio/dots-3-note-preview:free,nvidia/nemotron-3.5-super-vl:free'),
 
   // Gardien de sécurité : hors bascule, appelé séparément.
   LLM_SAFETY_MODEL: z.string().min(1).default('nvidia/nemotron-3.5-content-safety:free'),
@@ -67,6 +75,9 @@ const schema = z.object({
 });
 
 export type RawConfig = z.infer<typeof schema>;
+
+/** Toutes les variables reconnues, pour la documentation et les tests. */
+export const CONFIG_KEYS: string[] = Object.keys(schema.shape);
 
 export interface AppConfig {
   nodeEnv: 'development' | 'production' | 'test';

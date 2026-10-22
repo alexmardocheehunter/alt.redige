@@ -222,7 +222,7 @@ describe('B9 — bout en bout (serveur OpenRouter local)', () => {
 
     // Le garde-fou a bien été appelé, hors bascule de rédaction.
     expect(recorded.some((call) => call.model === 'nvidia/nemotron-3.5-content-safety:free')).toBe(true);
-    expect(recorded.some((call) => call.model === 'minimax/minimax-m3.1-flash:free')).toBe(true);
+    expect(recorded.some((call) => call.model === 'dots-studio/dots-3-note-preview:free')).toBe(true);
   });
 
   it('reconstruit le document à partir des canvas_delta', async () => {

@@ -1,15 +1,17 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { ConfigError, loadConfig } from '../src/config.js';
+import { CONFIG_KEYS, ConfigError, loadConfig } from '../src/config.js';
 
 describe('config', () => {
   it('applique les valeurs par défaut', () => {
     const config = loadConfig({ OPENROUTER_API_KEY: 'k' });
     expect(config.baseUrl).toBe('https://openrouter.ai/api/v1');
     expect(config.models).toEqual([
-      'minimax/minimax-m3.1-flash:free',
+      'dots-studio/dots-3-note-preview:free',
       'nvidia/nemotron-3.5-super-vl:free',
     ]);
-    expect(config.model).toBe('minimax/minimax-m3.1-flash:free');
+    expect(config.model).toBe('dots-studio/dots-3-note-preview:free');
     expect(config.safetyModel).toBe('nvidia/nemotron-3.5-content-safety:free');
     expect(config.safetyCheck).toBe(true);
     expect(config.port).toBe(3000);
@@ -63,5 +65,32 @@ describe('config', () => {
   it('désactive le filtre de sécurité avec SAFETY_CHECK=0', () => {
     expect(loadConfig({ OPENROUTER_API_KEY: 'k', SAFETY_CHECK: '0' }).safetyCheck).toBe(false);
     expect(loadConfig({ OPENROUTER_API_KEY: 'k', SAFETY_CHECK: '1' }).safetyCheck).toBe(true);
+  });
+
+  it('exige ACCESS_CODE en production', () => {
+    expect(() => loadConfig({ OPENROUTER_API_KEY: 'k', NODE_ENV: 'production' })).toThrow(ConfigError);
+    const config = loadConfig({
+      OPENROUTER_API_KEY: 'k',
+      NODE_ENV: 'production',
+      ACCESS_CODE: 'un-code-de-production',
+    });
+    expect(config.accessCode).toBe('un-code-de-production');
+  });
+
+  it('documente toutes les variables reconnues dans .env.example', () => {
+    // Une variable absente de .env.example est une variable que personne ne
+    // pensera à régler : le fichier est la référence d'exploitation.
+    const example = readFileSync(resolve(process.cwd(), '.env.example'), 'utf8');
+    // Une variable peut être documentée en commentaire (alias historique) :
+    // `# LLM_MODEL=...` compte comme documentée.
+    const missing = CONFIG_KEYS.filter((key) => !new RegExp(`^#?\\s*${key}=`, 'm').test(example));
+    expect(missing).toEqual([]);
+  });
+
+  it('recommande le mode advisory dans .env.example', () => {
+    // Le mode par défaut doit être celui qui est mesuré comme sûr : `block`
+    // bloque une demande légitime sur 20 (docs/CALIBRAGE-SECURITE.md).
+    const example = readFileSync(resolve(process.cwd(), '.env.example'), 'utf8');
+    expect(example).toMatch(/^SAFETY_MODE=advisory$/m);
   });
 });

@@ -86,7 +86,7 @@ pas dériver de la réalité.
 | `messages` | 2 | 5 | 4 |
 | dernier message | 3 666 car. (avec le modèle de contrat) | 953 car. (document à jour) | 2 125 car. (avec le document) |
 | `tools` | 5 | 5 | 5 |
-| `model` | `minimax/minimax-m3.1-flash:free` | idem | idem |
+| `model` | `dots-studio/dots-3-note-preview:free` | idem | idem |
 | `max_tokens` | 16 000 | 16 000 | 16 000 |
 
 Le prompt système est un **fichier Markdown** (`prompts/system.fr.md`, 7,5 Ko),
@@ -343,6 +343,29 @@ comportement de l'agent : ils sont rejoués, et les relances du serveur
 C'est la raison pour laquelle la campagne n'a pas pu être conclue en une
 exécution : les échecs de transport se mélangent aux échecs de comportement.
 
+### Le fournisseur a retiré le modèle principal en cours de journée
+
+Le 22 octobre 2026, `minimax/minimax-m3.1-flash:free` — le modèle principal de
+la chaîne depuis le début du projet — a été **retiré du catalogue** (réponse
+`404` : « the free launch period ended on Oct 22, 2026 »). Le compte du projet
+est **sans crédit** (`402` sur tous les modèles payants). Les modèles gratuits
+restants ont été sondés avec la requête réelle de l'application :
+
+| Modèle gratuit | Réponse | Comportement |
+|---|---|---|
+| `nvidia/nemotron-3.5-super-vl:free` | répond parfois, sinon expire | rédige correctement (validé en campagne) |
+| `dots-studio/dots-3-note-preview:free` | répond en ~2 s | a passé les scénarios 01 et 04, mais **repose des questions** au lieu de rédiger sur une demande complète |
+| `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free` | répond en ~3 s | **pose systématiquement une question** au lieu de rédiger : écarté |
+| `cohere/north-mini-code:free` | répond | n'appelle pas les outils : écarté |
+| `google/gemma-4-31b-it:free` | `429` | quota |
+| `thinkingmachines/inkling:free` | `403` | réservé aux harnais agentiques |
+
+**Conséquence** : le backend est prêt, mais la qualité dépend du modèle. La
+production doit créditer le compte et utiliser les jumeaux payants
+(`minimax/minimax-m3.1-flash`, `nvidia/nemotron-3.5-super-vl`), sur lesquels la
+campagne a été validée. `npm run verif-prod` sonde chaque modèle avant
+déploiement et refuse la mise en production avec des modèles `:free`.
+
 
 ---
 
@@ -354,7 +377,7 @@ exécution : les échecs de transport se mélangent aux échecs de comportement.
 | `OPENROUTER_BASE_URL` | `https://openrouter.ai/api/v1` | API |
 | `OPENROUTER_SITE_URL` | *(vide)* | URL du site, envoyée en `HTTP-Referer` |
 | `OPENROUTER_APP_TITLE` | `LexCanvas` | Envoyé en `X-Title` |
-| `LLM_MODELS` | `minimax/…-flash:free,nvidia/…-super-vl:free` | Chaîne de bascule |
+| `LLM_MODELS` | `dots-studio/dots-3-note-preview:free,nvidia/nemotron-3.5-super-vl:free` | Chaîne de bascule (développement ; production : jumeaux payants) |
 | `LLM_MODEL` | *(vide)* | Alias : force le modèle principal en tête |
 | `LLM_SAFETY_MODEL` | `nvidia/…-content-safety:free` | Gardien |
 | `SAFETY_CHECK` | `1` | Coupe le gardien |
@@ -426,8 +449,10 @@ charge.
 
 | Priorité | Action | Qui |
 |---|---|---|
+| **P0** | **Créditer le compte OpenRouter** : sans crédit, aucun modèle payant ne répond (`402`), et les modèles gratuits sont instables (le principal, `minimax/minimax-m3.1-flash:free`, a été retiré le 22/10/2026) | Alex |
 | **P0** | Tourner la clé OpenRouter (elle a été exposée en clair) | Alex |
-| **P0** | Rejouer la campagne réelle **depuis un réseau stable** : sur ce poste, les échecs de transport rendent le score inexploitable | dev |
+| **P0** | Passer `LLM_MODELS` aux jumeaux payants et lancer `npm run verif-prod` sur le serveur de production | dev + Alex |
+| **P1** | Rejouer la campagne réelle **depuis un réseau stable** : sur ce poste, les échecs de transport rendent le score inexploitable | dev |
 | **P1** | Livrer le front v2 et réécrire le branchement | Alex / front |
 | **P1** | Relecture juridique du texte produit par le modèle | juriste |
 | **P1** | Relecture juridique du **contenu** des explications de clause (le mécanisme est livré) | juriste |

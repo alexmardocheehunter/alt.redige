@@ -10,7 +10,7 @@ Public : l'agent de code qui construit le backend. Lire d'abord `README.md`, pui
 | Serveur HTTP | **Hono** + `@hono/node-server` (helper `streamSSE`) | Léger, SSE natif. Express accepté seulement si Hono bloque, à signaler |
 | Front | Un seul `public/index.html` servi par le serveur | Le front n'est pas React : pas de Next.js, pas de Vercel AI SDK `useChat` |
 | LLM | **OpenRouter** via son API compatible OpenAI, en `fetch` natif (aucun SDK). Modèles dans `LLM_MODELS` (ordre de bascule) | Choix d'Alex : trois modèles OpenRouter, le premier qui répond l'emporte. L'API OpenAI-compatible évite une dépendance supplémentaire ; `src/llm.ts` isole le fournisseur |
-| Modèles | Rédaction : `minimax/minimax-m3.1-flash:free` puis `nvidia/nemotron-3.5-super-vl:free`. Sécurité : `nvidia/nemotron-3.5-content-safety:free`, **hors bascule** | Le modèle de sécurité est un classifieur : il ne supporte pas les appels d'outils, il ne peut donc pas rédiger. Il filtre les entrées utilisateur et le contrat produit |
+| Modèles | Rédaction (développement) : `dots-studio/dots-3-note-preview:free` puis `nvidia/nemotron-3.5-super-vl:free`. Production : jumeaux payants `minimax/minimax-m3.1-flash` et `nvidia/nemotron-3.5-super-vl` (`EXPLOITATION.md` §5.1). Sécurité : `nvidia/nemotron-3.5-content-safety:free`, **hors bascule** | Le modèle de sécurité est un classifieur : il ne supporte pas les appels d'outils, il ne peut donc pas rédiger. Il filtre les entrées utilisateur et le contrat produit. Les variantes gratuites sont instables : retrait constaté le 22/10/2026 |
 | Jetons | `MAX_OUTPUT_TOKENS` = 16 000 par défaut | Les deux modèles de rédaction sont des **modèles à raisonnement** : une partie du budget part en `reasoning`, avant le contenu. Un budget trop faible coupe le contrat (`truncated`). Le champ `reasoning` n'est jamais relayé au client |
 | État | **Aucun état serveur** : le client renvoie historique + document | Déploiement trivial, pas de base de données pour la V1 |
 | Persistance | `localStorage` côté front uniquement | Suffisant pour le challenge |
@@ -67,7 +67,7 @@ Copie `reference/export-docx.mjs` vers `src/export/export-docx.mjs` (ou importe-
 | `OPENROUTER_BASE_URL` | `https://openrouter.ai/api/v1` | URL de l'API |
 | `OPENROUTER_SITE_URL` | (vide) | URL du site, envoyée en `HTTP-Referer` (attribution OpenRouter) |
 | `OPENROUTER_APP_TITLE` | `LexCanvas` | Nom de l'application, envoyé en `X-Title` |
-| `LLM_MODELS` | `minimax/minimax-m3.1-flash:free,nvidia/nemotron-3.5-super-vl:free` | Chaîne de bascule, dans l'ordre d'essai |
+| `LLM_MODELS` | `dots-studio/dots-3-note-preview:free,nvidia/nemotron-3.5-super-vl:free` | Chaîne de bascule, dans l'ordre d'essai (développement ; production : jumeaux payants) |
 | `LLM_MODEL` | (vide) | Alias : force le modèle principal en tête de la chaîne |
 | `LLM_SAFETY_MODEL` | `nvidia/nemotron-3.5-content-safety:free` | Gardien de sécurité, hors bascule |
 | `SAFETY_CHECK` | `1` | `0` désactive le filtre de sécurité |

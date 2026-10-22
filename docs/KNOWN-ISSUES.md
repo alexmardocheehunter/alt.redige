@@ -143,9 +143,37 @@ au vert sur cette machine, à cause du réseau sortant instable vers
 OpenRouter (coupures de connexion intermittentes). Voir « Réseau sortant » plus
 bas. Le harnais, lui, est validé : 10/10 en mode hors ligne.
 
+### OpenRouter retire les variantes `:free` sans préavis (constaté le 22/10/2026)
+Le 22 octobre 2026, `minimax/minimax-m3.1-flash:free` — le modèle principal de
+la chaîne depuis le début du projet — a été **retiré du catalogue en cours de
+journée**. Réponse du fournisseur :
+
+```
+404 — The free launch period for MiniMax M3.1 Flash ended on Oct 22, 2026.
+The ':free' variant has been retired.
+```
+
+Le compte OpenRouter du projet est par ailleurs **sans crédit** : tout modèle
+payant répond `402 Insufficient credits`.
+
+Conséquences, appliquées :
+
+- `npm run verif-prod` sonde désormais **chaque** modèle de la chaîne (un jeton
+  par appel) et échoue si le principal ne répond pas : la disparition d'un
+  modèle se voit au déploiement, pas en production ;
+- la chaîne par défaut a été remplacée par des modèles gratuits qui répondent
+  aujourd'hui, et la documentation de production donne les **jumeaux payants** ;
+- **avant la mise en production, il faut créditer le compte** : le coût mesuré
+  est d'environ 0,003 à 0,005 $ par contrat, soit près de 2 000 contrats pour
+  10 $. Sans crédit, aucun modèle payant ne répond et les modèles gratuits ne
+  tiennent pas la charge.
+
 ### Les modèles de la chaîne sont des modèles à raisonnement
-`minimax/minimax-m3.1-flash:free` et `nvidia/nemotron-3.5-super-vl:free` produisent
-un champ `reasoning` avant le contenu. Conséquences appliquées :
+Les modèles validés (`minimax/minimax-m3.1-flash`, `nvidia/nemotron-3.5-super-vl`,
+et leurs variantes `:free` tant qu'elles existaient) produisent un champ
+`reasoning` avant le contenu. Le modèle gratuit de remplacement n'a pas été
+mesuré sur ce point : les réglages ci-dessous restent valables dans les deux
+cas. Conséquences appliquées :
 
 - `MAX_OUTPUT_TOKENS` passe de 8 000 à **16 000** par défaut : le raisonnement
   et la réponse doivent tenir dans le même budget, sinon le contrat est coupé

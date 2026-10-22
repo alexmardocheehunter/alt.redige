@@ -77,6 +77,12 @@ export function createApp({ config, logger, templates, client, onToolCall }: App
     xContentTypeOptions: 'nosniff',
     referrerPolicy: 'no-referrer',
     xFrameOptions: 'DENY',
+    // HSTS en production uniquement : en développement le serveur est en HTTP
+    // et l'en-tête n'aurait aucun effet, en production il évite qu'une
+    // première visite en clair ne soit détournée.
+    ...(config.nodeEnv === 'production'
+      ? { strictTransportSecurity: 'max-age=31536000; includeSubDomains' }
+      : {}),
     permissionsPolicy: {
       geolocation: [],
       microphone: [],

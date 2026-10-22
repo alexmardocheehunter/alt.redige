@@ -11,7 +11,7 @@
  */
 import type { AppConfig } from '../config.js';
 import { AppError } from '../errors.js';
-import { streamCompletion, type LlmClient, type LlmMessage, type LlmOutcome } from '../llm.js';
+import { isAbortError, streamCompletion, type LlmClient, type LlmMessage, type LlmOutcome } from '../llm.js';
 import type { Logger } from '../logger.js';
 import type { TemplateStore } from '../templates.js';
 import type { AgentEmit, AgentEventPayloads } from './events.js';
@@ -211,7 +211,12 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
     const canvasStates = new Map<string, CanvasStreamState>();
     const partials = new Map<string, string>();
 
-    const outcome: LlmOutcome = await streamCompletion(client, {
+    // Une erreur du tour de clôture ne doit pas transformer une réussite en
+    // échec : si le document a déjà été écrit dans ce tour, la demande de
+    // l'utilisateur est satisfaite. Sans cette règle, le flux se terminait par
+    // `error` juste après un `canvas_set`, et le front — qui restaure le
+    // document précédent sur `error` — jetait un contrat valide.
+    const outcome: LlmOutcome | null = await streamCompletion(client, {
       models: config.models,
       system,
       messages: conversation,
@@ -315,7 +320,29 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
           state.pendingDeltas.push(suffix);
         }
       },
+    }).catch((error: unknown) => {
+      if (setsEmitted === 0 || isAbortError(error)) throw error;
+      logger.warn('llm_after_canvas_failed', {
+        step,
+        error_kind: error instanceof Error ? error.name : 'unknown',
+      });
+      return null;
     });
+
+    if (outcome === null) {
+      // Le document est livré : le tour se termine normalement, sans phrase de
+      // clôture. `done` doit rester le dernier événement d'un flux réussi
+      // (API-CONTRACT.md §3.3).
+      progress.phase('finalizing');
+      progress.step(document === null ? 's4' : 's3', 'done');
+      progress.suggestions(buildSuggestions({
+        hasDocument: true,
+        placeholders: lastPlaceholders,
+        askedUser: false,
+      }));
+      emit('done', done('end_turn'));
+      return { stopReason: 'end_turn', usage: totalUsage, steps: step, modelsUsed };
+    }
 
     modelsUsed.push(outcome.model);
     totalUsage.input_tokens += outcome.usage.inputTokens;

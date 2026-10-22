@@ -115,6 +115,45 @@ describe('B4 — flux de création', () => {
     expect(streamed).toBe(CONTRACT_MARKDOWN);
   });
 
+  it('termine par done, sans error, quand la phrase de clôture échoue après un canvas_set', async () => {
+    // Constaté en production : le document est livré, puis l'appel de clôture
+    // échoue (réseau) et le flux se terminait par `error`. Le front, qui
+    // restaure le document précédent sur `error`, jetait un contrat valide.
+    const client = new FakeOpenRouter({
+      turns: [
+        {
+          toolUses: [{
+            id: 'tool_1',
+            name: 'create_canvas',
+            input: { title: 'T', contract_type: 'bail-habitation', markdown: CONTRACT_MARKDOWN },
+          }],
+          finishReason: 'tool_calls',
+        },
+        { httpError: { status: 503 } },
+        { httpError: { status: 503 } },
+      ],
+    });
+    const app = appWith(client);
+    const res = await postChat(app, { messages: [{ role: 'user', content: COMPLETE_REQUEST }] });
+    const events = parseSse(await res.text());
+
+    expect(events.some((event) => event.event === 'canvas_set')).toBe(true);
+    expect(events.filter((event) => event.event === 'error')).toHaveLength(0);
+    const done = events.find((event) => event.event === 'done')!;
+    expect(done.data.stop_reason).toBe('end_turn');
+    expect(events[events.length - 1]!.event).toBe('done');
+  });
+
+  it('signale l’erreur quand aucun document n’a été produit', async () => {
+    const client = new FakeOpenRouter({
+      turns: [{ httpError: { status: 503 } }, { httpError: { status: 503 } }],
+    });
+    const app = appWith(client);
+    const res = await postChat(app, { messages: [{ role: 'user', content: COMPLETE_REQUEST }] });
+    const events = parseSse(await res.text());
+    expect(events.some((event) => event.event === 'error')).toBe(true);
+  });
+
   it('incrémente la version à chaque canvas_set', async () => {
     const client = new FakeOpenRouter({
       turns: [
