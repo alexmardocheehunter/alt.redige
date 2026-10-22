@@ -301,7 +301,7 @@ lui-même affiche encore un écran de connexion simulé (sans compte en V1).
 | `b7`–`b9` | durcissement, numérotation, OpenRouter, sécurité, bout en bout | 7 |
 | `b10`–`b14` | corpus, règles, référentiel, nouveaux garde-fous, calibrage, alignement | 8 |
 | `c1`–`c6` | interface, branchement, démarrage, UI agent | 6 |
-| **Total** | | **28 fichiers de test, 272 tests** |
+| **Total** | | **28 fichiers de test, 277 tests** |
 
 `npm run typecheck` sans erreur, `npm run build` sans erreur, `npm run eval
 -- --smoke` à 10/10.
@@ -514,7 +514,7 @@ reference/                    originaux : contrats types, référentiel juridiqu
 ## 14. Comment reproduire les mesures
 
 ```bash
-npm test                        # 255 tests
+npm test                        # 277 tests
 npm run typecheck
 npm run build
 

@@ -642,6 +642,23 @@ backoff, puis bascule de modèle) n'y suffisent pas toujours.
 pas filtré.** La commande est prête, les 10 scénarios et les assertions sont en
 place, et le mode smoke reste à 10/10.
 
+### Le 22/10, le fournisseur a retiré le modèle principal
+
+En fin de journée, `minimax/minimax-m3.1-flash:free` — le modèle principal de
+la chaîne — a été **retiré du catalogue OpenRouter** (`404`, fin de la période
+gratuite). Le compte du projet est par ailleurs **sans crédit** : tous les
+modèles payants répondent `402`. Les modèles gratuits restants ont été sondés
+avec la requête réelle de l'application ; un seul a passé un scénario complet
+(`dots-studio/dots-3-note-preview:free`, scénarios 01 et 04), et il repose
+parfois des questions au lieu de rédiger. Les autres sont inutilisables :
+questions systématiques, pas d'appel d'outils, quotas ou délais dépassés.
+
+Conséquence : le verdict de la campagne ne peut pas être rétabli sur des
+modèles gratuits. **La production exige le crédit du compte et les jumeaux
+payants** (`minimax/minimax-m3.1-flash`, `nvidia/nemotron-3.5-super-vl`) ; la
+porte `npm run verif-prod` sonde chaque modèle et refuse les variantes `:free`.
+Le détail des sondes est dans `docs/AUDIT-ETAT-AGENT.md` §8.
+
 
 ---
 
@@ -649,8 +666,8 @@ place, et le mode smoke reste à 10/10.
 
 | Affirmation | Verdict | Commentaire |
 |---|---|---|
-| « Le backend et les logiques de fonctionnement sont terminés à 100 % » | ⚠️ **Partiellement vraie** | Le backend est complet et testé (264 tests). Le **front v2 manque** : le prototype livré est branché, mais ce n'est pas l'interface finale. L'évaluation réelle reste partielle (4 à 7/10). |
-| « Les jalons B1 à B7 sont terminés, tests au vert » | ✅ **Vraie aujourd'hui** | 264 tests au vert, sur 27 fichiers. Les critères d'acceptation de `SPEC-BACKEND.md` §10 sont couverts ; les écarts de contrat ont été corrigés (C1 à C6). |
+| « Le backend et les logiques de fonctionnement sont terminés à 100 % » | ⚠️ **Partiellement vraie** | Le backend est complet et testé (277 tests). Le **front v2 manque** : le prototype livré est branché, mais ce n'est pas l'interface finale. L'évaluation réelle reste partielle : la chaîne de modèles gratuits est instable (retrait constaté le 22/10/2026) et la campagne doit être rejouée avec les modèles payants. |
+| « Les jalons B1 à B7 sont terminés, tests au vert » | ✅ **Vraie aujourd'hui** | 277 tests au vert, sur 28 fichiers. Les critères d'acceptation de `SPEC-BACKEND.md` §10 sont couverts ; les écarts de contrat ont été corrigés (C1 à C6). |
 | « L'API conforme à `docs/API-CONTRACT.md` v1.0 » | ✅ **Vraie aujourd'hui** | `version` suit §3.3 ; `REQUEST_TIMEOUT_MS` a été aligné sur §7 (240 s, décision C1) ; le contrat a été mis à jour **avant** le code pour C1 à C6. |
 | « Les 10 scénarios d'évaluation passent » | ❌ **Trompeuse** | 10/10 en mode *simulé* (tautologique) ; 4 à 7/10 en mode réel. Le mode est renommé « smoke » et étiqueté non concluant. La campagne réelle n'a pas été rejouée après les derniers correctifs. |
 | « Une génération complète a abouti, 0 issue de validation, aucun nom inventé » | ⚠️ **Vrai pour une génération, non généralisable** | Le contrôle d'invention était déjaudit à la fois. Il est aujourd'hui déterministe et couvre tout le document. |
