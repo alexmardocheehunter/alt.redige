@@ -19,7 +19,7 @@ résolu est signalé comme tel.
 | API HTTP + flux SSE | **terminé** | contrat mis à jour (C1–C5) |
 | Boucle agentique, outils, garde-fous | **terminé** | 12 garde-fous |
 | Corpus juridique (11 modèles + référentiel) | **terminé** | relecture juriste jamais faite |
-| Filtre de sécurité | **fonctionnel** | `advisory` par défaut : journalise, ne bloque pas |
+| Filtre de sécurité | **fonctionnel** | `advisory` par défaut : bloque hors du domaine, journalise dans le domaine |
 | Interface | **branchée, pas finale** | le front v2 n'est pas livré |
 | Comportement réel du modèle | **partiellement conforme** | 4 à 7/10 en évaluation réelle |
 | Mise en production | **non** | clé à tourner, hébergeur à choisir, conformité à informer |
@@ -57,8 +57,9 @@ chaque tour et ne doit jamais se fier à sa mémoire de la conversation.
       canvas_set   → document définitif, versionné, validé
       ask_user     → question ; le tour s'arrête
       clause_explained → explication d'une clause
-5. Les outils s'exécutent, leurs résultats repartent au modèle, la boucle
-   recommence — 6 étapes au maximum (MAX_STEPS)
+5. Les outils s'exécutent, leurs résultats repartent au modèle, et le document
+   à jour est réinjecté dans la conversation — la boucle recommence,
+   6 étapes au maximum (MAX_STEPS)
 6. done(end_turn) | done(awaiting_input) | error
 ```
 
@@ -75,21 +76,27 @@ chaque tour et ne doit jamais se fier à sa mémoire de la conversation.
 ### 2.4 Le contexte réellement envoyé
 
 Capturé sur le réseau (serveur local parlant le protocole OpenRouter), pas
-reconstruit — voir `docs/CONTEXTE-MODELE.md` et `docs/contexte-modele/`.
+reconstruit — voir `docs/CONTEXTE-MODELE.md` et `docs/contexte-modele/`. Le
+document de contexte est **généré** par `scripts/dump-contexte.ts` : il ne peut
+pas dériver de la réalité.
 
-| Élément | 1re question | 2e question |
-|---|---|---|
-| `system` | 8 087 car. | 8 087 car. (identique) |
-| `messages` | 2 | 4 |
-| message utilisateur | 3 666 car. (avec le modèle de contrat) | 2 125 car. (avec le document) |
-| `tools` | 5 | 5 |
-| `model` | `minimax/minimax-m3.1-flash:free` | idem |
-| `max_tokens` | 16 000 | 16 000 |
+| Élément | 1re question | après l'outil | 2e question |
+|---|---|---|---|
+| `system` | 8 853 car. | 8 853 car. (identique) | 8 853 car. |
+| `messages` | 2 | 5 | 4 |
+| dernier message | 3 666 car. (avec le modèle de contrat) | 953 car. (document à jour) | 2 125 car. (avec le document) |
+| `tools` | 5 | 5 | 5 |
+| `model` | `minimax/minimax-m3.1-flash:free` | idem | idem |
+| `max_tokens` | 16 000 | 16 000 | 16 000 |
 
-Le prompt système est un **fichier Markdown** (`prompts/system.fr.md`, 7 Ko,
-35 lignes), pas un JSON : rôle, déroulé, règles non négociables, règles
-d'écriture des références juridiques, puis le catalogue des types. Le reste est
-du JSON OpenAI-compatible.
+Le prompt système est un **fichier Markdown** (`prompts/system.fr.md`, 7,5 Ko),
+pas un JSON : rôle, déroulé, règles non négociables, règles d'écriture des
+références juridiques, puis le catalogue des types. Le reste est du JSON
+OpenAI-compatible.
+
+L'appel **après l'outil** est capital : il porte le document à jour (le message
+`user` `[4]`). Sans lui, le modèle continue sur l'état précédent — c'est ce qui
+lui faisait rééditer la même clause.
 
 ---
 
@@ -136,6 +143,7 @@ du JSON OpenAI-compatible.
 | serveur | garde-fou : une mention normative hors référentiel → refus |
 | serveur | **renumérotation** : les `## Article N` sont renumérotés à la suite, les renvois internes suivent |
 | serveur | `canvas_start(mode: "edit")` puis `canvas_set(mode: "edit", edits_applied)` |
+| serveur | **le document à jour est renvoyé au modèle** : sans cela, il continuait sur l'état précédent et réédisait la même clause (mesuré : quatre `edit_canvas` successifs, fin de tour en `max_steps`) |
 | client | le document est remplacé, la version est incrémentée, un toast « Annuler » est proposé |
 
 ### 3.4 L'utilisateur édite le contrat à la main

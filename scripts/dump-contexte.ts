@@ -200,3 +200,151 @@ for (const name of [
 ]) {
   console.log('  →', resolve(OUT_DIR, name));
 }
+
+/* --- rédaction de docs/CONTEXTE-MODELE.md ------------------------------ */
+
+/** Les messages d'un appel, rendus en Markdown. */
+function renderMessages(body: any): string {
+  const messages = (body?.messages ?? []) as Array<{ role: string; content: string; tool_calls?: unknown[] }>;
+  const blocks: string[] = [];
+
+  for (const [index, message] of messages.entries()) {
+    if (message.role === 'system') {
+      blocks.push(`### [${index}] \`system\`\n\n\`\`\`text\n${message.content}\n\`\`\``);
+      continue;
+    }
+
+    if (message.role === 'tool') {
+      blocks.push(`### [${index}] \`tool\`\n\n\`\`\`text\n${message.content}\n\`\`\``);
+      continue;
+    }
+
+    if (message.role === 'assistant' && message.tool_calls) {
+      blocks.push(
+        `### [${index}] \`assistant\`\n\n_Appels d'outils :_\n\n\`\`\`json\n`
+        + JSON.stringify(message.tool_calls, null, 2)
+        + '\n```',
+      );
+      continue;
+    }
+
+    blocks.push(`### [${index}] \`${message.role}\`\n\n\`\`\`text\n${message.content}\n\`\`\``);
+  }
+
+  return blocks.join('\n\n');
+}
+
+function renderMarkdown(): string {
+  const first = chats[0]?.body ?? {};
+  const afterTool = chats[1]?.body ?? {};
+  const second = chats[2]?.body ?? {};
+
+  const system = (first.messages ?? []).find((message: any) => message.role === 'system');
+  const firstUser = (first.messages ?? [])[first.messages.length - 1];
+  const tools = (first.tools ?? []) as Array<{ function?: { name?: string; description?: string } }>;
+  const toolNames = tools.map((tool) => tool.function?.name ?? '?');
+
+  return `# Contexte envoyé au modèle
+
+Ce document décrit **exactement** ce que le modèle reçoit à chaque appel.
+Les fichiers \`docs/contexte-modele/*.json\` sont les charges utiles capturées
+sur le réseau (via un serveur local qui parle le protocole OpenRouter) : ce ne
+sont pas des reconstructions.
+
+Ce fichier est **généré** par \`scripts/dump-contexte.ts\` : il ne peut pas
+dériver de la réalité.
+
+Pour régénérer :
+
+\`\`\`bash
+npx tsx scripts/dump-contexte.ts
+\`\`\`
+
+Pour capturer le contexte d'une **session réelle**, lancer le serveur avec :
+
+\`\`\`bash
+LLM_DEBUG_DIR=tmp/contexte npm start
+\`\`\`
+
+Chaque requête sortante est alors écrite dans \`tmp/contexte/\` (dossier ignoré
+par git). Ces fichiers contiennent les données de l'utilisateur : ils ne doivent
+pas être versionnés.
+
+---
+
+## 1. Ce qui est envoyé, à chaque appel
+
+| Élément | Origine | Taille (1re question) |
+|---|---|---|
+| \`system\` | \`prompts/system.fr.md\` + catalogue des modèles | ${system?.content?.length ?? 0} caractères |
+| \`messages[]\` | historique du client + bloc \`<document_courant>\` | ${firstUser?.content?.length ?? 0} caractères (dernier message) |
+| \`tools[]\` | \`src/agent/tools.ts\` | ${tools.length} outils |
+| \`model\` | \`LLM_MODELS\` (1er de la chaîne de bascule) | \`${first.model ?? '?'}\` |
+| \`max_tokens\` | \`MAX_OUTPUT_TOKENS\` | ${first.max_tokens ?? '?'} |
+| \`stream\` / \`usage\` | fixes | \`${first.stream}\` / \`{include:true}\` |
+
+### Les ${tools.length} outils
+
+| Outil | Rôle |
+|---|---|
+| \`get_template\` | charge le modèle de référence (squelette, champs, notes juridiques) |
+| \`create_canvas\` | écrit le contrat complet dans le Canvas |
+| \`edit_canvas\` | modifie le document par remplacements ciblés \`{old_str, new_str}\` |
+| \`ask_user\` | pose une question à l'utilisateur (le tour s'arrête) |
+| \`explain_clause\` | explique une clause du document (contrôlé avant émission) |
+
+Outils déclarés : ${toolNames.map((name) => `\`${name}\``).join(', ')}.
+
+---
+
+## 2. Première question
+
+${renderMessages(first)}
+
+---
+
+## 3. Le modèle reçoit le résultat de l'outil
+
+${renderMessages(afterTool)}
+
+Le dernier message est le **document à jour** : après une écriture, le modèle
+revoit l'état réel du contrat. Sans cela, il continuait sur l'état précédent et
+rééditait la même clause.
+
+---
+
+## 4. Deuxième question
+
+L'historique est renvoyé tel quel, et le **document courant** est joint au
+dernier message utilisateur, encadré par \`<document_courant>\`. C'est ce bloc
+qui fait foi : le modèle ne doit pas se fier à sa mémoire de la conversation.
+
+${renderMessages(second)}
+
+---
+
+## 5. Le garde-fou de sécurité
+
+Avant même l'appel de rédaction, le message de l'utilisateur passe par le
+modèle de sécurité. C'est un appel **séparé**, dans un autre modèle, avec un
+autre prompt.
+
+${renderMessages(safety?.body ?? {})}
+
+---
+
+## 6. Ce qui n'est **pas** envoyé
+
+- Aucun outil n'est déclaré pour le garde-fou : il ne fait que classer.
+- Le prompt ne contient **jamais** de donnée du contrat ou du message de
+  l'utilisateur : le squelette du modèle n'est envoyé qu'à l'intérieur du
+  bloc \`<modele_contrat>\`, c'est-à-dire dans le contexte de l'outil.
+- Aucune donnée n'est écrite dans les journaux du serveur
+  (cf. \`src/logger.ts\` : les clés \`content\`, \`markdown\`, \`message\`,
+  \`prompt\`, \`new_str\`, \`old_str\` sont remplacées par \`[redacted]\`).
+`;
+}
+
+const markdownPath = resolve(process.cwd(), 'docs', 'CONTEXTE-MODELE.md');
+writeFileSync(markdownPath, renderMarkdown(), 'utf8');
+console.log('  →', markdownPath);
