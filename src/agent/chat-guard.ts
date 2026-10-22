@@ -34,11 +34,20 @@ export interface ChatGuardState {
   tripped: boolean;
   /** Longueur totale du texte produit par le modèle. */
   length: number;
+  /** Longueur effectivement relayée au client. */
+  relayed: number;
+  /** Le texte relayé a été tronqué : il dépassait la limite. */
+  truncated: boolean;
 }
+
+/** Longueur maximale du texte de chat relayé (SPEC-BACKEND.md §8). */
+export const MAX_CHAT_LENGTH = 600;
 
 export class ChatGuard {
   private buffer = '';
-  private state: ChatGuardState = { tripped: false, length: 0 };
+  private state: ChatGuardState = { tripped: false, length: 0, relayed: 0, truncated: false };
+
+  constructor(private readonly maxLength: number = MAX_CHAT_LENGTH) {}
 
   /**
    * Examine le texte avant relais.
@@ -55,6 +64,22 @@ export class ChatGuard {
     }
 
     this.buffer = candidate;
+
+    // Le chat doit rester court : ce que le modèle écrit au-delà de la limite
+    // n'est pas relayé. Le modèle est prévenu par un avertissement.
+    if (this.state.relayed >= this.maxLength) {
+      this.state.truncated = true;
+      return null;
+    }
+
+    const room = this.maxLength - this.state.relayed;
+    if (delta.length > room) {
+      this.state.truncated = true;
+      this.state.relayed = this.maxLength;
+      return delta.slice(0, room);
+    }
+
+    this.state.relayed += delta.length;
     return delta;
   }
 
@@ -62,8 +87,17 @@ export class ChatGuard {
     return this.state.tripped;
   }
 
+  get truncated(): boolean {
+    return this.state.truncated;
+  }
+
   get length(): number {
     return this.state.length;
+  }
+
+  /** Longueur effectivement relayée au client. */
+  get relayedLength(): number {
+    return this.state.relayed;
   }
 
   /** Résumé à afficher à la place du texte retenu. */

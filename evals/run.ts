@@ -29,7 +29,9 @@ import {
   countChangedSections,
   countQuestions,
   checkRequiredArticles,
+  containsLoose,
   findLegalCitations,
+  foldPunctuation,
   type CheckResult,
 } from './assertions.js';
 
@@ -315,9 +317,13 @@ async function checkTurn(
   if (expectation.ask_user_contains) {
     const question = observation.question;
     const haystack = question
-      ? [question.question, question.why ?? '', ...(question.options ?? []).map((o) => o.label)].join(' ')
+      ? foldPunctuation(
+        [question.question, question.why ?? '', ...(question.options ?? []).map((o) => o.label)].join(' '),
+      )
       : '';
-    const missing = expectation.ask_user_contains.filter((needle) => !haystack.includes(needle));
+    const missing = expectation.ask_user_contains.filter(
+      (needle) => !haystack.includes(foldPunctuation(needle)),
+    );
     const detail = !question
       ? 'aucune question posée'
       : missing.length
@@ -357,10 +363,13 @@ async function checkTurn(
 
   if (lastSet) {
     for (const needle of expectation.document_contains ?? []) {
+      // Le format des nombres est toléré : « 90.000 FCFA » et « 90 000 FCFA »
+      // sont le même montant.
+      const present = containsLoose(lastSet.markdown, needle);
       checks.push({
         name: 'Document contient le texte attendu',
-        ok: lastSet.markdown.includes(needle),
-        ...(lastSet.markdown.includes(needle) ? {} : { detail: `« ${needle} » absent` }),
+        ok: present,
+        ...(present ? {} : { detail: `« ${needle} » absent` }),
       });
     }
 

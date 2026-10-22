@@ -378,6 +378,26 @@ describe('B4 — le contrat ne doit pas être écrit dans le chat', () => {
     expect(chat).toContain('Le bail est prêt');
     expect(events.find((event) => event.event === 'warning')).toBeUndefined();
   });
+
+  it('écourte un chat trop long et le signale', async () => {
+    const client = new FakeOpenRouter({
+      turns: [{ text: 'a'.repeat(1_500), finishReason: 'stop' }],
+    });
+    const app = appWith(client);
+    const res = await postChat(app, { messages: [{ role: 'user', content: COMPLETE_REQUEST }] });
+    const events = parseSse(await res.text());
+
+    const chat = events
+      .filter((event) => event.event === 'text_delta')
+      .map((event) => event.data.text)
+      .join('');
+
+    expect(chat.length).toBe(600);
+
+    const warning = events.find((event) => event.event === 'warning');
+    expect(warning).toBeDefined();
+    expect(warning!.data.code).toBe('chat_too_long');
+  });
 });
 
 describe('B4 — annulation', () => {

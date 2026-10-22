@@ -189,6 +189,7 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
   let lastPlaceholders = 0;
   const chatGuard = new ChatGuard();
   let contractWarned = false;
+  let chatTooLongWarned = false;
 
   // Progression visible (AGENT-PROTOCOL.md §3, §4, §6, §7, §9).
   const progress = new Progress(emit, document !== null);
@@ -228,8 +229,8 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
         });
       },
       onText: (delta) => {
-        // Le contrat ne doit pas être écrit dans le chat : le texte est
-        // examiné avant d'être relayé.
+        // Le contrat ne doit pas être écrit dans le chat, et le chat doit rester
+        // court : le texte est examiné avant d'être relayé.
         const relayed = chatGuard.filter(delta);
         if (relayed === null) {
           if (chatGuard.tripped && !contractWarned) {
@@ -238,8 +239,21 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
               code: 'contract_in_chat',
               label: 'Le contrat a été écrit dans le document, pas dans le chat.',
             });
+          } else if (chatGuard.truncated && !chatTooLongWarned) {
+            chatTooLongWarned = true;
+            emit('warning', {
+              code: 'chat_too_long',
+              label: 'La réponse a été écourtée : le détail est dans le document.',
+            });
           }
           return;
+        }
+        if (chatGuard.truncated && !chatTooLongWarned) {
+          chatTooLongWarned = true;
+          emit('warning', {
+            code: 'chat_too_long',
+            label: 'La réponse a été écourtée : le détail est dans le document.',
+          });
         }
         emit('text_delta', { text: relayed });
       },

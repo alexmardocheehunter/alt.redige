@@ -36,6 +36,54 @@ export function compact(value: string): string {
   return normalize(value).replace(/[^a-z0-9]/g, '');
 }
 
+/**
+ * Compare un texte à une chaîne attendue, en tolérant les formats de nombre.
+ *
+ * Le modèle écrit les montants tantôt « 90 000 FCFA », tantôt « 90.000 FCFA »,
+ * tantôt « 90 000,00 FCFA » : ce sont le même montant. La comparaison se fait
+ * sur les chiffres, les séparateurs de milliers et les espaces (y compris
+ * insécables) étant neutralisés.
+ */
+export function containsLoose(haystack: string, needle: string): boolean {
+  if (haystack.includes(needle)) return true;
+  return normalizeAmounts(haystack).includes(normalizeAmounts(needle));
+}
+
+/**
+ * Normalise l'écriture des montants.
+ *
+ * Le modèle écrit tantôt « 90 000 FCFA », tantôt « 90.000 FCFA », tantôt
+ * « 90 000,00 FCFA » : ce sont le même montant. La normalisation retire les
+ * séparateurs de milliers (espace, point, virgule devant trois chiffres) et
+ * ramène la décimale à deux chiffres près.
+ */
+export function normalizeAmounts(value: string): string {
+  return value
+    // Séparateur de milliers : espace, point ou virgule devant trois chiffres.
+    .replace(/(\d)[\s\u00a0\u202f.,](?=\d{3}(?!\d))/g, '$1')
+    // Virgule décimale : « 90 000,00 » → « 90000.00 ».
+    .replace(/(\d),(\d{1,2})(?!\d)/g, '$1.$2')
+    // Décimale sans valeur : « 90000.00 » → « 90000 ».
+    .replace(/(\d)\.0{1,2}(?!\d)/g, '$1')
+    // Espaces restantes.
+    .replace(/[\s\u00a0\u202f]+/g, ' ')
+    .trim();
+}
+
+/**
+ * Compare deux textes en neutralisant les apostrophes typographiques.
+ *
+ * « bail d'habitation » et « bail d'habitation » sont la même chaîne : sans
+ * cette normalisation, l'assertion échouerait sur une simple différence de
+ * caractère.
+ */
+export function foldPunctuation(value: string): string {
+  return value
+    .replace(/[\u2018\u2019\u02bc]/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 /** Splits a document into its sections (one per `## ` heading). */
 export function sections(markdown: string): Map<string, string> {
   const out = new Map<string, string>();

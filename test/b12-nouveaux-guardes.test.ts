@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { checkExplanation, findArticle, EXPLANATION_LIMITS } from '../src/doc/explanation.js';
 import { ChatGuard, isContractLike } from '../src/agent/chat-guard.js';
-import { findLegalCitations } from '../evals/assertions.js';
+import { findLegalCitations, containsLoose, foldPunctuation } from '../evals/assertions.js';
 import { TemplateStore } from '../src/templates.js';
 
 const CONTRACT = `# Contrat de bail
@@ -37,6 +37,17 @@ describe('Garde-fou du chat', () => {
     expect(guard.tripped).toBe(true);
     // Plus rien ne passe ensuite.
     expect(guard.filter('et la suite du contrat')).toBeNull();
+  });
+
+  it('écourte un texte trop long', () => {
+    const guard = new ChatGuard(600);
+    const long = 'x'.repeat(400);
+    expect(guard.filter(long)).toBe(long);
+    expect(guard.filter('y'.repeat(400))).toHaveLength(200);
+    expect(guard.truncated).toBe(true);
+    expect(guard.relayedLength).toBe(600);
+    // Plus rien ne passe.
+    expect(guard.filter('z')).toBeNull();
   });
 });
 
@@ -124,5 +135,19 @@ describe('Citations : renvoi interne ou citation', () => {
     expect(findLegalCitations('la loi n° 77-995', 2).length).toBe(1);
     // Renvoi vers un article inexistant : c'est une invention.
     expect(findLegalCitations('selon l\'article 12', 2).length).toBe(1);
+  });
+});
+
+describe('Comparaisons tolérantes', () => {
+  it('tolère le format des nombres', () => {
+    expect(containsLoose('Le loyer est de 90 000 FCFA.', '90 000 FCFA')).toBe(true);
+    expect(containsLoose('Le loyer est de 90.000 FCFA.', '90 000 FCFA')).toBe(true);
+    expect(containsLoose('Le loyer est de 90 000,00 FCFA.', '90 000 FCFA')).toBe(true);
+    expect(containsLoose('Le loyer est de 80 000 FCFA.', '90 000 FCFA')).toBe(false);
+  });
+
+  it('neutralise les apostrophes typographiques', () => {
+    expect(foldPunctuation('bail d’habitation')).toBe("bail d'habitation");
+    expect(foldPunctuation("bail d'habitation")).toBe("bail d'habitation");
   });
 });
