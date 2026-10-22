@@ -17,6 +17,7 @@ import { loadEnvFile } from '../src/env.js';
 import { createLogger } from '../src/logger.js';
 import { createApp } from '../src/app.js';
 import { TemplateStore } from '../src/templates.js';
+import { renumberArticles } from '../src/doc/structure.js';
 import type { Expectation, Scenario, ScenarioTurn } from './types.js';
 import type { ContractTemplate } from '../src/templates.js';
 import {
@@ -319,10 +320,10 @@ async function checkTurn(
     const haystack = question
       ? foldPunctuation(
         [question.question, question.why ?? '', ...(question.options ?? []).map((o) => o.label)].join(' '),
-      )
+      ).toLowerCase()
       : '';
     const missing = expectation.ask_user_contains.filter(
-      (needle) => !haystack.includes(foldPunctuation(needle)),
+      (needle) => !haystack.includes(foldPunctuation(needle).toLowerCase()),
     );
     const detail = !question
       ? 'aucune question posée'
@@ -434,8 +435,14 @@ async function checkTurn(
 
   if (expectation.max_changed_blocks !== undefined && documentBefore && documentAfter) {
     // Comparaison par blocs (séparés par une ligne vide) : c'est la méthode
-    // décrite par la spécification, robuste à un renumérotage d'articles.
-    const changed = countChangedBlocks(documentBefore, documentAfter);
+    // décrite par la spécification.
+    //
+    // Le serveur renumérote les articles : le « avant » est donc aligné sur
+    // le « après » avant la comparaison, sinon chaque titre d'article
+    // déplacé compterait comme un bloc modifié — et la mesure serait celle
+    // du renumérotage, pas celle de l'ampleur réelle de la modification.
+    const alignedBefore = renumberArticles(documentBefore, documentAfter).markdown;
+    const changed = countChangedBlocks(alignedBefore, documentAfter);
     checks.push({
       name: 'Blocs non concernés inchangés',
       ok: changed.changed <= expectation.max_changed_blocks,

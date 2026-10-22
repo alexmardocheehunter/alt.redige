@@ -208,6 +208,7 @@ qui bloque tout est un incident.
 | G10 | Contrat dans le chat | le texte ressemble à un contrat | le texte **n'est pas relayé**, `warning` émis |
 | G11 | Explication non étayée | extrait absent, affirmation juridique, citation hors référentiel, limite absente | explication **refusée** |
 | G12 | Sécurité | message ou document dangereux | selon `SAFETY_MODE` : refus d'écriture ou simple journalisation |
+| G13 | Chat trop long | le texte dépasse 600 caractères | le texte est **écourté** au-delà, `warning` `chat_too_long` |
 
 ---
 

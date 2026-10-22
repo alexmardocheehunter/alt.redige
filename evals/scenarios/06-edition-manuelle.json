@@ -1,7 +1,7 @@
 {
   "id": "06-edition-manuelle",
   "name": "L'utilisateur a modifié le document à la main puis demande un changement → le texte manuel est conservé",
-  "description": "Le document reçu du client fait foi : le texte écrit à la main ne doit pas être écrasé.",
+  "description": "Le document reçu du client fait foi : le texte écrit à la main ne doit pas être écrasé. Le document de départ est le bail livré (9 articles) : la clause manuelle porte le numéro 10, le nouveau contrat la renumérote.",
   "turns": [
     {
       "user": "Rédige-moi un bail d'habitation pour un studio à Yopougon (Abidjan), 12 mois, loyer 70 000 FCFA par mois.",
@@ -16,7 +16,7 @@
     {
       "user": "Ajoute une clause sur la révision du loyer.",
       "document": {
-        "markdown": "{{BASE_CONTRACT}}\n\n## Article 6 – Clause personnalisée\n\nClause ajoutée manuellement par l'utilisateur.\n",
+        "markdown": "{{BASE_CONTRACT}}\n\n## Article 10 – Clause personnalisée\n\nClause ajoutée manuellement par l'utilisateur.\n",
         "version": 2
       },
       "expect": {
@@ -70,7 +70,7 @@
             "edits": [
               {
                 "old_str": "Clause ajoutée manuellement par l'utilisateur.",
-                "new_str": "Clause ajoutée manuellement par l'utilisateur.\n\n## Article 7 – Révision du loyer\n\nLe loyer peut être révisé une fois par an, sur accord écrit des deux parties."
+                "new_str": "Clause ajoutée manuellement par l'utilisateur.\n\n## Article 11 – Révision du loyer\n\nLe loyer peut être révisé une fois par an, sur accord écrit des deux parties."
               }
             ]
           }
