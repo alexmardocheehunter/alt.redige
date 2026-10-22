@@ -26,8 +26,8 @@ service.
 | Connexion CLI (`firebase login`) | **fait** — projet `altredige` courant |
 | Base Firestore | **existe** — `(default)`, région `eur3` (UE), Native |
 | Règles Firestore | **déployées** — compilation et release réussies |
-| Compte de service du backend | **à créer** (voir §2.1) |
-| `npm run verif-firebase` | **à lancer** après le compte de service |
+| Compte de service du backend | **fait** — clé créée, stockée hors du dépôt |
+| `npm run verif-firebase` | **FIRESTORE OK** — écriture, relecture et suppression vérifiées le 22/10/2026 |
 
 > **Région** : `europe-west1` avait été choisie, mais créer une deuxième base
 > exige l'offre payante (`403 — billing required`). La base existante est en
@@ -37,18 +37,17 @@ service.
 > devient une exigence, activer la facturation puis créer une base nommée
 > `lexcanvas` dans cette région.
 
-### 2.1 Compte de service du backend — à faire
+### 2.1 Compte de service du backend — fait
 
-Console Firebase → **Paramètres du projet** → **Comptes de service** →
-**Générer une nouvelle clé privée**. Enregistre le fichier JSON **hors du
-dépôt**, par exemple :
+La clé a été générée dans la console puis **déplacée hors du dépôt** :
 
 ```
 C:\OASIS\secrets\altredige-firebase-adminsdk.json
 ```
 
-Ne me colle pas son contenu : indique-moi seulement le chemin. Le fichier est
-déjà exclu de Git (`*-firebase-adminsdk-*.json`).
+`.env` pointe dessus via `FIREBASE_SERVICE_ACCOUNT`. Le fichier est exclu de
+Git. Ne jamais le copier dans le dépôt ni le coller dans un message. En cas de
+doute, le révoquer dans la console et en générer un autre.
 
 ### 2.2 Variables du serveur
 
@@ -66,7 +65,7 @@ npm run verif-firebase
 ```
 
 Le script écrit un document technique, le relit, le supprime, et affiche
-`FIRESTORE OK`. Il ne touche à aucune donnée métier.
+`FIRESTORE OK`. Il ne touche à aucune donnée métier. Vérifié le 22/10/2026.
 
 ## 3. Décisions prises (22/10/2026)
 
@@ -76,10 +75,9 @@ Le script écrit un document technique, le relit, le supprime, et affiche
 | Conservation | **90 jours** après la dernière modification (TTL Firestore + suppression manuelle) |
 | Région Firestore | **eur3** (multi-région UE) — base existante ; `europe-west1` exigerait l'offre payante pour une seconde base |
 
-Conséquence : Firestore est **préparé** (base et règles déployées ; compte de
-service à créer) mais **aucune donnée n'y est écrite** tant que Google Auth
-n'est pas branché. Le contrat d'API reste donc inchangé : le serveur demeure
-sans état.
+Conséquence : Firestore est **prêt** (base, règles et compte de service
+vérifié) mais **aucune donnée n'y est écrite** tant que Google Auth n'est pas
+branché. Le contrat d'API reste donc inchangé : le serveur demeure sans état.
 
 ## 4. Modèle de données prévu (après Google Auth)
 
