@@ -195,16 +195,42 @@ bloqué normalement.
 | bloquées à tort | **0** | — |
 | laissées passer | — | **0** |
 
-**Ce qui reste fragile** : l'échantillon est court (14 cas) et le modèle est
-un modèle gratuit dont le comportement peut changer. Si un faux positif
-apparaît en production, `SAFETY_MODE=advisory` désactive le blocage en une
-variable d'environnement (le verdict reste journalisé). Le mode par défaut est
-`advisory` : en mode `advisory`, un contenu **hors du domaine** est bloqué,
-un contenu **dans le domaine** est journalisé. `SAFETY_CHECK=0` coupe
-complètement le gardien.
+**Calibrage du 22/10/2026 (30 cas, référence humaine).** L'échantillon
+(`data/safety-sample.json`, 20 demandes légitimes et 10 dangereuses, relues par
+un humain) est mesuré par `npm run calibrage`, qui interroge le vrai modèle et
+compare les deux réglages. Résultat (rapport complet :
+`docs/CALIBRAGE-SECURITE.md`) :
 
-**Mesure reproductible** : `npm run calibrage` (échantillon relu par un humain
-dans `data/safety-sample.json`, rapport dans `docs/CALIBRAGE-SECURITE.md`).
+| Réglage | Faux positifs (légitime bloqué) | Faux négatifs (dangereux laissé passer) |
+|---|---|---|
+| `advisory` (défaut) | **0** | **1** |
+| `block` | **1** | **1** |
+
+**Conclusion : `SAFETY_MODE=block` ne doit pas être activé.** Il bloque une
+demande légitime sur 20 (le gardien classe à tort « unsafe » des demandes de
+droit ordinaires — jusqu'à 5 sur 20 selon l'exécution, le modèle étant gratuit
+et variable). Le réglage par défaut reste `advisory` : un contenu **hors du
+domaine** est bloqué, un contenu **dans le domaine** est journalisé pour
+relecture.
+
+**Un défaut corrigé au passage.** En mode `advisory`, le code **ne bloquait
+rien** : la fonction de décision renvoyait « ne pas bloquer » avant même de
+regarder le domaine, alors que la documentation annonçait l'inverse. Mesuré :
+les 10 demandes dangereuses passaient. Le mode `advisory` bloque maintenant
+effectivement tout ce qui est hors du domaine, comme annoncé.
+
+**L'exemption de domaine a été resserrée.** Elle reposait sur une liste de
+mots dont certains ne prouvent rien (`usage`, `bureau`, `local`,
+`conseils`, `professionnel`) : quatre des dix demandes dangereuses y
+échappaient. Les termes sont désormais classés en **forts** (bail, contrat,
+loyer, employeur, jurisprudence…) et **faibles** ; seule la présence d'un
+terme fort accorde l'exemption. Mesuré après correction : les 20 demandes
+légitimes restent dans le domaine, les 10 dangereuses sont hors du domaine.
+
+**Ce qui reste fragile** : l'échantillon est court (30 cas) et le modèle est
+un modèle gratuit dont le comportement peut changer d'une exécution à l'autre.
+Si un faux positif apparaît en production, `SAFETY_MODE=off` coupe le
+gardien (le verdict reste journalisé). `SAFETY_CHECK=0` fait de même.
 
 Le filtrage du *document produit* par le gardien est en place (aucun
 `canvas_set` n'est publié si le document est rejeté), mais n'a pas été testé
@@ -264,8 +290,9 @@ production sur une vraie socket : client, parsing du flux SSE, appels d'outils,
 quand le réseau sortant est incertain.
 
 ### Le filtre de sécurité n'a pas été calibré sur le modèle réel
-*Ce point est résolu : le calibrage réalisé et ses résultats sont décrits dans
-« Le verdict du modèle de sécurité a un format propriétaire » ci-dessus.*
+*Ce point est résolu : le calibrage du 22/10/2026 et ses résultats sont
+décrits dans « Le verdict du modèle de sécurité a un format propriétaire »
+ci-dessus, et le rapport est dans `docs/CALIBRAGE-SECURITE.md`.*
 
 ---
 

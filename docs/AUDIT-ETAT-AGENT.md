@@ -19,7 +19,7 @@ résolu est signalé comme tel.
 | API HTTP + flux SSE | **terminé** | contrat mis à jour (C1–C5) |
 | Boucle agentique, outils, garde-fous | **terminé** | 12 garde-fous |
 | Corpus juridique (11 modèles + référentiel) | **terminé** | relecture juriste jamais faite |
-| Filtre de sécurité | **fonctionnel** | `advisory` par défaut : bloque hors du domaine, journalise dans le domaine |
+| Filtre de sécurité | **fonctionnel et calibré** | `advisory` par défaut : bloque hors du domaine, journalise dans le domaine. Mesuré sur 30 cas : 0 faux positif, 1 faux négatif |
 | Interface | **branchée, pas finale** | le front v2 n'est pas livré |
 | Comportement réel du modèle | **partiellement conforme** | les scénarios rejoués un par un passent ; la campagne complète est perturbée par le réseau (voir §8) |
 | Mise en production | **non** | clé à tourner, hébergeur à choisir, conformité à informer |
@@ -207,7 +207,7 @@ qui bloque tout est un incident.
 | G9 | Numérotation | le modèle écrit un numéro d'article | le serveur **renumérote** et corrige les renvois |
 | G10 | Contrat dans le chat | le texte ressemble à un contrat | le texte **n'est pas relayé**, `warning` émis |
 | G11 | Explication non étayée | extrait absent, affirmation juridique, citation hors référentiel, limite absente | explication **refusée** |
-| G12 | Sécurité | message ou document dangereux | selon `SAFETY_MODE` : refus d'écriture ou simple journalisation |
+| G12 | Sécurité | message ou document dangereux | hors du domaine : **bloqué** ; dans le domaine : journalisé (`SAFETY_MODE=advisory`, le défaut) |
 | G13 | Chat trop long | le texte dépasse 600 caractères | le texte est **écourté** au-delà, `warning` `chat_too_long` |
 
 ---
@@ -397,6 +397,7 @@ explicite au lieu d'une pile d'exécution.
 | En-têtes `nosniff`, `no-referrer`, `frame-ancestors` | en place |
 | **Aucun contenu de contrat ni de message dans les journaux** | en place (liste de clés interdites) |
 | Capture du contexte sur demande (`LLM_DEBUG_DIR`) | en place, dossier ignoré par git |
+| Gardien de sécurité | **calibré** sur 30 cas relus (`npm run calibrage`) : 0 faux positif, 1 faux négatif en `advisory`. Le mode `block` est **déconseillé** |
 | Information de l'utilisateur sur le transfert hors UEMOA/CEDEAO | **à faire** (`docs/NOTE-CONFORMITE-DONNEES.md` §4) |
 | Clé API | **à tourner** : elle a été partagée en clair dans une conversation |
 
@@ -412,6 +413,8 @@ explicite au lieu d'une pile d'exécution.
 | C4 | `clause_explained` | **implémenté** : outil + événement, avec les garde-fous de `docs/SPEC-EXPLICATION-CLAUSES.md`. Le contenu juridique des explications reste à valider par un juriste |
 | C5 | Export hors sous-ensemble | **documenté** dans le contrat : 400 `bad_request`, aucun `.docx` produit |
 | C6 | `llm_error` / `llm_unavailable` | messages distincts, contrat inchangé |
+| C7 | Mode de sécurité | **`advisory` par défaut** : bloque hors du domaine, journalise dans le domaine. La mesure (30 cas) conseille de **ne pas** passer en `block` |
+| C8 | Domaine de l'exemption de sécurité | fondé sur des **termes forts** (« bail », « contrat », « loyer »…) ; les termes génériques (« usage », « bureau », « local ») ne suffisent plus |
 
 Hors de portée de la V1 (README §11) : audit d'un contrat importé, comptes et
 paiement, base de données, historique serveur, PDF serveur, multilingue, tests de
@@ -428,7 +431,7 @@ charge.
 | **P1** | Livrer le front v2 et réécrire le branchement | Alex / front |
 | **P1** | Relecture juridique du texte produit par le modèle | juriste |
 | **P1** | Relecture juridique du **contenu** des explications de clause (le mécanisme est livré) | juriste |
-| **P1** | Calibrer le filtre de sécurité sur un échantillon réel, puis décider `SAFETY_MODE=block` | dev + Alex |
+| **P1** | Décider du mode de sécurité : la mesure **recommande de rester en `advisory`** (`block` bloquerait une demande légitime sur 20) | Alex |
 | **P2** | Information de conformité à l'utilisateur | Alex |
 | **P2** | Hébergeur, domaine, pipeline de déploiement | Alex |
 | **P2** | Rotation des identités : `AccessVerifier` → jeton individuel | dev |
