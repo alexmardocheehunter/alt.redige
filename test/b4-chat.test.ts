@@ -144,9 +144,15 @@ describe('B4 — flux de création', () => {
     expect(events[events.length - 1]!.event).toBe('done');
   });
 
-  it('signale l’erreur quand aucun document n’a été produit', async () => {
+  it('signale l\'erreur quand aucun document n\'a été produit', async () => {
     const client = new FakeOpenRouter({
-      turns: [{ httpError: { status: 503 } }, { httpError: { status: 503 } }],
+      turns: [
+        { httpError: { status: 503 } },
+        { httpError: { status: 503 } },
+        { httpError: { status: 503 } },
+        { httpError: { status: 503 } },
+        { httpError: { status: 503 } },
+      ],
     });
     const app = appWith(client);
     const res = await postChat(app, { messages: [{ role: 'user', content: COMPLETE_REQUEST }] });

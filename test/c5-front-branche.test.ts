@@ -11,14 +11,16 @@ const html = readFileSync(INDEX, 'utf8');
 const source = readFileSync(SOURCE, 'utf8');
 
 describe('C5 — le frontend est branché sur l’API', () => {
-  it('n’a plus aucun script externe', () => {
+  it('ne charge que le SDK Firebase comme ressource externe', () => {
     const external = [...html.matchAll(/<script[^>]*src="([^"]+)"/g)].map((match) => match[1]!);
-    expect(external).toEqual([]);
+    expect(external).toEqual([
+      'https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js',
+      'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js',
+    ]);
     expect(html).not.toContain('cdnjs');
-    // Aucun appel à une origine externe (le namespace SVG du prototype est
-    // une URL de namespace, pas une ressource chargée).
+    // Aucune autre origine externe : les exports Word/PDF passent par l'API.
     const remote = [...html.matchAll(/\b(?:src|href)="(https?:\/\/[^"]+)"/g)].map((match) => match[1]!);
-    expect(remote).toEqual([]);
+    expect(remote.every((url) => url.startsWith('https://www.gstatic.com/firebasejs/'))).toBe(true);
   });
 
   it('reste un fichier unique : le branchement est intégré dans la page', () => {
@@ -48,8 +50,11 @@ describe('C5 — le frontend est branché sur l’API', () => {
   });
 
   it('le garde-fou d’accès est transmis', () => {
-    expect(source).toContain('X-Access-Code');
+    expect(source).toContain('signInWithPopup');
+    expect(source).toContain('Authorization');
+    expect(source).toContain("'Bearer '");
     expect(source).toContain('X-Request-Id');
+    expect(source).not.toContain('X-Access-Code');
   });
 
   it('les erreurs sont traduites en français', () => {

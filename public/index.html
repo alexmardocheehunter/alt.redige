@@ -4,6 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>alt.redige – Vos contrats, rédigés en une phrase</title>
+<!-- Firebase App (obligatoire) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<!-- Firebase Auth -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <style>
 :root{--bg:#faf9f7;--panel:#fff;--ink:#1d1b19;--mut:#6a645d;--line:#ebe7e1;--btn:#1d1b19;--btnink:#fff;--chip:#f2efea;--you:#efece6;
 box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -175,6 +179,27 @@ body.drag *{transition:none!important}
 }
 @media (min-width:821px){.bar .hint{display:block}}
 </style>
+
+<!-- Configuration web Firebase (valeurs publiques, projet altredige). -->
+<script>
+  var firebaseConfig = {
+    apiKey: "AIzaSyDn5S3R3qms7s9TpTlBsZV1MN3KWb3KAVc",
+    authDomain: "altredige.firebaseapp.com",
+    projectId: "altredige",
+    storageBucket: "altredige.firebasestorage.app",
+    messagingSenderId: "586777695980",
+    appId: "1:586777695980:web:ee30ad4638ec1f3f28b7c9",
+    measurementId: "G-WGWPE7BNDG"
+  };
+  try {
+    firebase.initializeApp(firebaseConfig);
+    var auth = firebase.auth();
+    var provider = new firebase.auth.GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+  } catch (e) {
+    window.firebaseInitError = true;
+  }
+</script>
 </head>
 <body>
 <a class="skip" href="#content">Aller au contenu</a>
@@ -257,8 +282,10 @@ const QUICK=["Ajoute une clause de confidentialité","Rends le ton plus simple",
 let doc=null,busy=false,cur=null,convs=[],user=null,tm;
 const store=(k,v)=>{try{localStorage.setItem(k,v)}catch{}};
 const getS=k=>{try{return localStorage.getItem(k)}catch{return null}};
-try{convs=JSON.parse(getS('altredige.convs')||'[]');user=JSON.parse(getS('altredige.user')||'null')}catch{}
-const persist=()=>store('altredige.convs',JSON.stringify(convs));
+// Les contrats ne sont plus conservés dans le navigateur : l'historique
+// authentifié vit côté serveur (Firestore). Seuls les réglages d'interface
+// restent dans localStorage.
+const persist=()=>{if(window.lexPersist)window.lexPersist()};
 const curConv=()=>convs.find(c=>c.id===cur);
 function view(v){$('home').hidden=v!=='home';$('app').hidden=v!=='app'}
 function closeSide(){$('side').classList.remove('open');$('scrim').classList.remove('show')}
@@ -416,7 +443,7 @@ $('dlPdf').onclick=async()=>{
 };
 
 $('newBtn').onclick=newConv;
-$('gbtn').onclick=()=>{user={name:'Alex',email:'alex@gmail.com'};store('altredige.user',JSON.stringify(user));enter()};
+$('gbtn').onclick=()=>{if(window.startGoogleSignIn)window.startGoogleSignIn();else toast('La connexion Google est indisponible. Rechargez la page.')};
 $('mout').onclick=leave;$('out2').onclick=leave;
 let lastF=null;
 function menu(o){$('menu').hidden=!o;$('acc').setAttribute('aria-expanded',o);if(o)$('mset').focus()}
@@ -473,7 +500,7 @@ setZ(+getS('altredige.z')||1);
 $('foc').onclick=()=>{const f=$('app').classList.toggle('focus');$('foc').textContent=f?'Afficher le chat':'Masquer le chat'};
 $('rst').onclick=()=>{['--sw','--cw'].forEach(k=>R.style.removeProperty(k));['altredige.sw','altredige.cw','altredige.z','altredige.col'].forEach(k=>store(k,''));setZ(1);$('shell').classList.remove('collapsed');syncTog(false);toast('Mise en page réinitialisée')};
 theme(getS('altredige.theme')||'auto');render();
-if(user)enter();
+// L'ouverture de la session est pilotée par Firebase Auth (app-api.js).
 </script>
 <!-- app-api:debut -->
 <script>
@@ -511,9 +538,16 @@ if(user)enter();
     QUESTION_MAX_FIELDS: 6
   };
 
-  var CODE_KEY = 'altredige.accesscode';
-  var accessCode = '';
-  try { accessCode = localStorage.getItem(CODE_KEY) || ''; } catch (e) { accessCode = ''; }
+  var session = {
+    user: null,
+    history: [],
+    historyEnabled: true,
+    historyLoading: false,
+    saveTimer: null,
+    saving: false,
+    saveAgain: false,
+    storageWarningShown: false
+  };
 
   /* ---------------------------------------------------------------- */
   /* Utilitaires                                                        */
@@ -674,22 +708,167 @@ if(user)enter();
   }
 
   /* ---------------------------------------------------------------- */
-  /* Accès                                                              */
+  /* Authentication (Firebase Auth, Google sign-in)                     */
   /* ---------------------------------------------------------------- */
 
-  function headers(extra) {
+  function firebaseAuth() {
+    return window.firebase && window.auth ? window.auth : null;
+  }
+
+  function currentFirebaseUser() {
+    var auth = firebaseAuth();
+    return auth ? auth.currentUser : null;
+  }
+
+  async function idToken(forceRefresh) {
+    var fbUser = currentFirebaseUser();
+    if (!fbUser) return null;
+    try { return await fbUser.getIdToken(!!forceRefresh); } catch (e) { return null; }
+  }
+
+  async function authHeaders(extra) {
     var head = { 'Content-Type': 'application/json' };
-    if (accessCode) head['X-Access-Code'] = accessCode;
+    var token = await idToken(false);
+    if (token) head.Authorization = 'Bearer ' + token;
     if (extra) Object.keys(extra).forEach(function (k) { head[k] = extra[k]; });
     return head;
   }
 
-  function askAccessCode() {
-    var code = window.prompt('Code d’accès requis :');
-    if (code === null) return false;
-    accessCode = code.trim();
-    store(CODE_KEY, accessCode);
-    return true;
+  function authErrorMessage(error) {
+    var code = error && error.code ? String(error.code) : '';
+    if (code.indexOf('popup-closed-by-user') !== -1 || code.indexOf('cancelled-popup-request') !== -1) return '';
+    if (code.indexOf('popup-blocked') !== -1) {
+      return 'Le navigateur a bloqué la fenêtre Google. Autorisez les fenêtres puis réessayez.';
+    }
+    if (code.indexOf('unauthorized-domain') !== -1) {
+      return 'Ce domaine n’est pas autorisé dans la console Firebase.';
+    }
+    if (code.indexOf('operation-not-allowed') !== -1) {
+      return 'La connexion Google n’est pas activée dans la console Firebase.';
+    }
+    if (code.indexOf('network-request-failed') !== -1) {
+      return 'Connexion impossible. Vérifiez votre réseau.';
+    }
+    if (code.indexOf('account-exists-with-different-credential') !== -1) {
+      return 'Un compte existe déjà avec cette adresse et une autre méthode de connexion.';
+    }
+    return 'La connexion Google a échoué. Réessayez.';
+  }
+
+  function startGoogleSignIn() {
+    var auth = firebaseAuth();
+    if (!auth || !window.provider) {
+      toast(window.firebaseInitError
+        ? 'La connexion Google n’a pas pu être initialisée. Rechargez la page.'
+        : 'La connexion Google est indisponible. Rechargez la page.');
+      return;
+    }
+    var button = $('gbtn');
+    if (button) button.disabled = true;
+    try {
+      auth.signInWithPopup(window.provider)
+        .catch(function (error) {
+          var text = authErrorMessage(error);
+          if (text) toast(text);
+        })
+        .then(function () { if (button) button.disabled = false; });
+    } catch (error) {
+      if (button) button.disabled = false;
+      var text = authErrorMessage(error);
+      if (text) toast(text);
+    }
+  }
+  window.startGoogleSignIn = startGoogleSignIn;
+
+  function resetSession() {
+    clearTimeout(session.saveTimer);
+    session.user = null;
+    session.history = [];
+    session.historyEnabled = true;
+    session.historyLoading = false;
+    session.saving = false;
+    session.saveAgain = false;
+    session.storageWarningShown = false;
+    user = null;
+    convs = [];
+    cur = null;
+    doc = null;
+    var messages = $('msgs');
+    if (messages) messages.innerHTML = '';
+    render();
+    renderHist();
+    if ($('dlWord')) $('dlWord').disabled = true;
+    if ($('dlPdf')) $('dlPdf').disabled = true;
+    if ($('ttl')) $('ttl').textContent = 'Nouveau contrat';
+    if ($('shell')) $('shell').hidden = true;
+    if ($('login')) $('login').hidden = false;
+    if ($('set')) $('set').hidden = true;
+    if ($('menu')) $('menu').hidden = true;
+  }
+
+  function enterApp(fbUser) {
+    session.user = fbUser;
+    var name = fbUser.displayName
+      || (fbUser.email ? fbUser.email.split('@')[0] : 'Utilisateur');
+    var email = fbUser.email || '';
+    user = { name: name, email: email };
+    var initial = String(name).trim().charAt(0).toUpperCase() || '?';
+    if ($('av')) $('av').textContent = initial;
+    if ($('av2')) $('av2').textContent = initial;
+    if ($('nm')) $('nm').textContent = name;
+    if ($('un')) $('un').textContent = name;
+    if ($('ue')) $('ue').textContent = email;
+    if ($('login')) $('login').hidden = true;
+    if ($('shell')) $('shell').hidden = false;
+    newConv();
+  }
+  window.enter = function () {
+    var fbUser = currentFirebaseUser();
+    if (fbUser) enterApp(fbUser);
+  };
+
+  function signOutUser() {
+    var auth = firebaseAuth();
+    if (auth) auth.signOut().catch(function () { /* local state is cleared below */ });
+    resetSession();
+  }
+  window.signOutUser = signOutUser;
+
+  function initAuth() {
+    if (CONFIG.MOCK) {
+      enterApp({
+        displayName: 'Mode démonstration',
+        email: 'demo@local',
+        getIdToken: async function () { return 'mock'; }
+      });
+      return;
+    }
+
+    var button = $('gbtn');
+    if (button) button.onclick = startGoogleSignIn;
+    var menuOut = $('mout');
+    var settingsOut = $('out2');
+    if (menuOut) menuOut.onclick = signOutUser;
+    if (settingsOut) settingsOut.onclick = signOutUser;
+
+    var auth = firebaseAuth();
+    if (!auth) {
+      if (button) {
+        button.onclick = function () {
+          toast('La connexion Google est indisponible. Rechargez la page.');
+        };
+      }
+      return;
+    }
+    auth.onAuthStateChanged(function (fbUser) {
+      if (fbUser) {
+        enterApp(fbUser);
+        loadTemplates();
+        loadServerHistory();
+      } else {
+        resetSession();
+      }
+    });
   }
 
   /* ---------------------------------------------------------------- */
@@ -708,6 +887,325 @@ if(user)enter();
     while (out.length && out[out.length - 1].role !== 'user') out.pop();
     return out.slice(-CONFIG.MAX_MESSAGES);
   }
+
+  /* ---------------------------------------------------------------- */
+  /* Server-side histories (Firestore through /api/history)             */
+  /* ---------------------------------------------------------------- */
+
+  var nativeOpenConv = typeof window.openConv === 'function' ? window.openConv : null;
+
+  function historyNote(text) {
+    var note = document.createElement('div');
+    note.className = 'none';
+    note.textContent = text;
+    return note;
+  }
+
+  function renderHist() {
+    var host = $('hist');
+    if (!host) return;
+    host.innerHTML = '';
+    if (session.historyLoading) {
+      host.appendChild(historyNote('Chargement…'));
+      return;
+    }
+    var items = session.historyEnabled && !CONFIG.MOCK
+      ? session.history
+      : (convs || []).map(function (c) {
+        return { id: c.id, title: c.title, local: true };
+      });
+    if (!items || !items.length) {
+      host.appendChild(historyNote('Aucun contrat pour l’instant'));
+      return;
+    }
+    items.forEach(function (item) {
+      var row = document.createElement('div');
+      row.className = 'hi' + (String(item.id) === String(cur) ? ' on' : '');
+      row.setAttribute('role', 'listitem');
+
+      var open = document.createElement('button');
+      open.textContent = item.title || 'Contrat';
+      if (item.updated_at) {
+        open.title = 'Modifié le ' + new Date(item.updated_at).toLocaleString('fr-FR');
+      }
+      open.onclick = function () { openConversation(item.id); };
+      if (String(item.id) === String(cur)) open.setAttribute('aria-current', 'true');
+
+      var remove = document.createElement('button');
+      remove.className = 'del';
+      remove.textContent = '×';
+      remove.setAttribute('aria-label', 'Supprimer ' + (item.title || 'ce contrat'));
+      remove.onclick = function (event) {
+        event.stopPropagation();
+        if (item.local) {
+          convs = (convs || []).filter(function (c) { return String(c.id) !== String(item.id); });
+          if (String(cur) === String(item.id)) newConv(); else renderHist();
+          return;
+        }
+        void deleteServerConversation(item.id, item.title || 'ce contrat');
+      };
+
+      row.appendChild(open);
+      row.appendChild(remove);
+      host.appendChild(row);
+    });
+  }
+  window.renderHist = renderHist;
+
+  function openConversation(id) {
+    var known = session.historyEnabled && !CONFIG.MOCK
+      ? (session.history || []).filter(function (x) { return String(x.id) === String(id); })[0]
+      : null;
+    if (!known) {
+      if (nativeOpenConv) nativeOpenConv(id);
+      return;
+    }
+    void openServerConversation(id);
+  }
+  window.openConv = openConversation;
+
+  function newConv() {
+    cur = null;
+    doc = null;
+    var messages = $('msgs');
+    if (messages) messages.innerHTML = '';
+    render();
+    if ($('dlWord')) $('dlWord').disabled = true;
+    if ($('dlPdf')) $('dlPdf').disabled = true;
+    if ($('ttl')) $('ttl').textContent = 'Nouveau contrat';
+    view('home');
+    renderHist();
+    closeSide();
+    if ($('hin')) $('hin').focus();
+  }
+  window.newConv = newConv;
+
+  /**
+   * Authenticated fetch for /api/history. Refreshes the ID token once on 401
+   * (contract §8.7), then signs out if the session is still rejected.
+   */
+  async function fetchHistory(path, options) {
+    var opts = options || {};
+    var init = {
+      method: opts.method || 'GET',
+      headers: await authHeaders(opts.headers || {}),
+      body: opts.body
+    };
+    var response;
+    try { response = await fetch(CONFIG.API_BASE + path, init); } catch (e) { return null; }
+
+    if (response.status === 401) {
+      var token = await idToken(true);
+      if (token) {
+        init.headers = Object.assign({}, init.headers, { Authorization: 'Bearer ' + token });
+        try { response = await fetch(CONFIG.API_BASE + path, init); } catch (e) { return null; }
+      }
+    }
+    if (response.status === 401) {
+      toast('Votre session a expiré. Reconnectez-vous.');
+      signOutUser();
+    }
+    return response;
+  }
+
+  async function loadServerHistory() {
+    if (!session.user) return;
+    session.historyLoading = true;
+    renderHist();
+    var response = await fetchHistory('/api/history');
+    session.historyLoading = false;
+    if (!response) { renderHist(); return; }
+    if (response.status === 404) {
+      session.historyEnabled = false;
+      renderHist();
+      return;
+    }
+    if (!response.ok) { renderHist(); return; }
+    try {
+      var payload = await response.json();
+      session.history = Array.isArray(payload.items) ? payload.items : [];
+      session.historyEnabled = true;
+    } catch (e) { /* keep the current list */ }
+    renderHist();
+  }
+
+  function applyServerConversation(data) {
+    var parsed = markdownToDoc(data.markdown || '');
+    parsed.title = data.title || parsed.title || 'Contrat';
+    parsed.version = data.version || 1;
+    parsed.contractType = data.contract_type || null;
+    parsed.markdown = data.markdown || '';
+    parsed.placeholders = 0;
+    parsed.issues = [];
+
+    cur = data.id;
+    doc = parsed;
+    convs = (convs || []).filter(function (c) { return String(c.id) !== String(data.id); });
+    var conversation = {
+      id: data.id,
+      title: parsed.title,
+      doc: parsed,
+      msgs: (data.messages || []).map(function (m) {
+        return { id: uid(), role: m.role, content: m.content, status: 'done' };
+      })
+    };
+    convs.unshift(conversation);
+
+    var messages = $('msgs');
+    if (messages) messages.innerHTML = '';
+    conversation.msgs.forEach(function (m) {
+      msg(m.role === 'user' ? 'you' : 'ai', m.content, false);
+    });
+    if ($('ttl')) $('ttl').textContent = parsed.title;
+    if ($('dlWord')) $('dlWord').disabled = !parsed.markdown;
+    if ($('dlPdf')) $('dlPdf').disabled = !parsed.markdown;
+    view('app');
+    render(true);
+    renderHist();
+    closeSide();
+  }
+
+  async function openServerConversation(id) {
+    var response = await fetchHistory('/api/history/' + encodeURIComponent(id));
+    if (!response) { toast('Impossible de charger ce contrat. Vérifiez votre réseau.'); return; }
+    if (response.status === 404) {
+      toast('Ce contrat n’existe plus.');
+      session.history = session.history.filter(function (x) { return String(x.id) !== String(id); });
+      renderHist();
+      return;
+    }
+    if (!response.ok) { toast('Impossible de charger ce contrat. Réessayez.'); return; }
+    var data;
+    try { data = await response.json(); } catch (e) { toast('Impossible de charger ce contrat. Réessayez.'); return; }
+    applyServerConversation(data);
+  }
+
+  async function deleteServerConversation(id, title) {
+    if (!window.confirm('Supprimer « ' + title + ' » ? Cette action est définitive.')) return;
+    var response = await fetchHistory('/api/history/' + encodeURIComponent(id), { method: 'DELETE' });
+    if (!response) { toast('La suppression a échoué. Vérifiez votre réseau.'); return; }
+    if (response.status !== 204 && response.status !== 404) {
+      toast('La suppression a échoué. Réessayez.');
+      return;
+    }
+    session.history = (session.history || []).filter(function (x) { return String(x.id) !== String(id); });
+    convs = (convs || []).filter(function (c) { return String(c.id) !== String(id); });
+    if (String(cur) === String(id)) newConv(); else renderHist();
+    toast('Contrat supprimé.');
+  }
+
+  function snapshotMessages(conversation) {
+    var out = [];
+    ((conversation && conversation.msgs) || []).forEach(function (m) {
+      if (!m || (m.role !== 'user' && m.role !== 'assistant')) return;
+      var content = String(m.content || '').trim();
+      if (!content) return;
+      content = content.slice(0, 8000);
+      var last = out[out.length - 1];
+      if (last && last.role === m.role) {
+        last.content = (last.content + '\n' + content).slice(0, 8000);
+        return;
+      }
+      out.push({ role: m.role, content: content });
+    });
+    return out.slice(-CONFIG.MAX_MESSAGES);
+  }
+
+  function conversationMarkdown(conversation) {
+    if (conversation && String(cur) === String(conversation.id) && doc) return docToMarkdown(doc);
+    if (conversation && conversation.doc) return docToMarkdown(conversation.doc);
+    return '';
+  }
+
+  function upsertHistoryItem(item) {
+    if (!item || !item.id) return;
+    session.history = [item]
+      .concat((session.history || []).filter(function (x) { return String(x.id) !== String(item.id); }))
+      .sort(function (a, b) {
+        return String(b.updated_at || '').localeCompare(String(a.updated_at || ''));
+      })
+      .slice(0, 50);
+    renderHist();
+  }
+
+  async function saveCurrentConversation() {
+    if (CONFIG.MOCK || !session.user || !session.historyEnabled) return;
+    var conversation = curConv();
+    if (!conversation) return;
+
+    var markdown = conversationMarkdown(conversation);
+    var messages = snapshotMessages(conversation);
+    if (!markdown && !messages.length) return;
+    if (!conversation.id || String(conversation.id).length < 8) conversation.id = uid();
+    if (!cur) cur = conversation.id;
+
+    var title = String((conversation.doc && conversation.doc.title) || conversation.title || 'Contrat')
+      .trim().slice(0, 200) || 'Contrat';
+    var version = Number((conversation.doc && conversation.doc.version) || (doc && doc.version) || 1);
+    var body = {
+      title: title,
+      contract_type: (conversation.doc && conversation.doc.contractType)
+        || (doc && doc.contractType)
+        || null,
+      markdown: markdown,
+      version: Math.max(1, Math.min(1000000, version || 1)),
+      messages: messages
+    };
+
+    if (session.saving) { session.saveAgain = true; return; }
+    session.saving = true;
+    try {
+      var response = await fetchHistory('/api/history/' + encodeURIComponent(conversation.id), {
+        method: 'PUT',
+        body: JSON.stringify(body)
+      });
+      if (!response) return;
+      if (response.status === 404) {
+        session.historyEnabled = false;
+        renderHist();
+        return;
+      }
+      if (response.status === 503) {
+        if (!session.storageWarningShown) {
+          session.storageWarningShown = true;
+          toast('Vos contrats seront enregistrés dès que le stockage sera disponible.');
+        }
+        return;
+      }
+      if (response.status === 413) {
+        toast('Le contrat est trop long pour être sauvegardé.');
+        return;
+      }
+      if (!response.ok) return;
+      var payload = null;
+      try { payload = await response.json(); } catch (e) { /* no server timestamp */ }
+      conversation.title = title;
+      conversation.updated_at = payload && payload.updated_at ? payload.updated_at : new Date().toISOString();
+      upsertHistoryItem({
+        id: conversation.id,
+        title: title,
+        contract_type: body.contract_type,
+        updated_at: conversation.updated_at
+      });
+    } finally {
+      session.saving = false;
+      if (session.saveAgain) {
+        session.saveAgain = false;
+        scheduleSave(250);
+      }
+    }
+  }
+
+  function scheduleSave(delay) {
+    if (CONFIG.MOCK || !session.user || !session.historyEnabled) return;
+    clearTimeout(session.saveTimer);
+    session.saveTimer = setTimeout(function () {
+      void saveCurrentConversation();
+    }, typeof delay === 'number' ? delay : 900);
+  }
+
+  // Called by the prototype's persist() after a manual document edit.
+  window.lexPersist = function () { scheduleSave(); };
 
   /* ---------------------------------------------------------------- */
   /* Décodage SSE                                                       */
@@ -1227,7 +1725,7 @@ if(user)enter();
   function errorText(code) {
     var messages = {
       bad_request: 'La demande n’a pas pu être traitée. Reformulez ou rechargez la page.',
-      unauthorized: 'Code d’accès invalide.',
+      unauthorized: 'Votre session a expiré. Reconnectez-vous.',
       payload_too_large: 'Le document ou le message est trop long.',
       rate_limited: 'Trop de demandes. Réessayez dans quelques instants.',
       llm_unavailable: 'Le service de rédaction est momentanément indisponible. Réessayez.',
@@ -1258,7 +1756,12 @@ if(user)enter();
     readDoc();
 
     var c = curConv();
-    if (!c) { c = { id: Date.now(), title: text.slice(0, 40), doc: null, msgs: [] }; convs.unshift(c); cur = c.id; }
+    if (!c) {
+      c = { id: uid(), title: text.slice(0, 40), doc: null, msgs: [] };
+      convs.unshift(c);
+      cur = c.id;
+      upsertHistoryItem({ id: c.id, title: c.title, updated_at: new Date().toISOString() });
+    }
     view('app'); renderHist();
     ['hin', 'cin'].forEach(function (i) { $(i).value = ''; $(i).style.height = 'auto'; });
 
@@ -1303,7 +1806,7 @@ if(user)enter();
     try {
       response = await fetch(CONFIG.API_BASE + '/api/chat', {
         method: 'POST',
-        headers: headers({ 'X-Request-Id': uid() }),
+        headers: await authHeaders({ 'X-Request-Id': uid() }),
         body: JSON.stringify(body)
       });
     } catch (e) {
@@ -1311,15 +1814,25 @@ if(user)enter();
       return;
     }
 
-    if (response.status === 401 && askAccessCode()) {
-      try {
-        response = await fetch(CONFIG.API_BASE + '/api/chat', {
-          method: 'POST',
-          headers: headers({ 'X-Request-Id': uid() }),
-          body: JSON.stringify(body)
-        });
-      } catch (e) {
-        finishWithError(message, { code: 'network', message: 'Connexion impossible. Vérifiez votre réseau.', retryable: true });
+    if (response.status === 401) {
+      // Refresh the ID token once, then give up and sign out (contract §8.7).
+      var refreshed = await idToken(true);
+      if (refreshed) {
+        try {
+          response = await fetch(CONFIG.API_BASE + '/api/chat', {
+            method: 'POST',
+            headers: await authHeaders({ 'X-Request-Id': uid() }),
+            body: JSON.stringify(body)
+          });
+        } catch (e) {
+          finishWithError(message, { code: 'network', message: 'Connexion impossible. Vérifiez votre réseau.', retryable: true });
+          return;
+        }
+      }
+      if (response.status === 401) {
+        finishWithError(message, { code: 'unauthorized', message: 'Votre session a expiré. Reconnectez-vous.', retryable: false });
+        toast('Votre session a expiré. Reconnectez-vous.');
+        signOutUser();
         return;
       }
     }
@@ -1596,7 +2109,7 @@ if(user)enter();
     var events;
 
     if (lower.indexOf('limite') !== -1) {
-      var error = await fetch(CONFIG.API_BASE + '/api/chat', { method: 'POST', headers: headers(), body: '{}' });
+      var error = await fetch(CONFIG.API_BASE + '/api/chat', { method: 'POST', headers: await authHeaders(), body: '{}' });
       void error;
       message.status = 'error';
       message.error = { code: 'rate_limited', message: 'Trop de demandes. Réessayez dans quelques instants.', retryable: true };
@@ -1798,7 +2311,7 @@ if(user)enter();
     try {
       var res = await fetch(CONFIG.API_BASE + '/api/export/docx', {
         method: 'POST',
-        headers: headers(),
+        headers: await authHeaders(),
         body: JSON.stringify({ markdown: markdown, title: doc.title || 'Contrat' })
       });
       if (!res.ok) {
@@ -1827,7 +2340,7 @@ if(user)enter();
   async function loadTemplates() {
     var list;
     try {
-      var res = await fetch(CONFIG.API_BASE + '/api/templates', { headers: headers() });
+      var res = await fetch(CONFIG.API_BASE + '/api/templates', { headers: await authHeaders() });
       if (!res.ok) return;
       var payload = await res.json();
       list = (payload.templates || []).filter(function (t) { return t.status === 'ready'; });
@@ -1890,7 +2403,7 @@ if(user)enter();
     var pdf = $('dlPdf');
     if (pdf) pdf.onclick = exportPdf;
 
-    if (!CONFIG.MOCK) loadTemplates();
+    initAuth();
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);

@@ -3,6 +3,12 @@
 **Statut : note de conception. Les décisions de conformité relèvent d'un
 conseil juridique spécialisé, pas de cet audit technique.**
 
+**Relecture juridique** : effectuée et attestée par Alex, propriétaire du
+projet, le 23/10/2026, sur la base des documents officiels du référentiel
+(`reference/TOUTES LES INFOS LEGALES.txt`). Cette attestation porte sur le
+contenu des modèles de contrats ; elle ne remplace pas un avis de conformité
+sur le traitement des données personnelles décrit ci-dessous.
+
 Cette note décrit ce que l'application transmet à OpenRouter, ce qu'elle
 conserve dans Firebase/Firestore, pourquoi, et les mécanismes techniques en
 place. Elle ne constitue pas un avis sur la conformité réglementaire.

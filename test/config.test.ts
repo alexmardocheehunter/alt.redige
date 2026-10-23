@@ -9,7 +9,10 @@ describe('config', () => {
     expect(config.baseUrl).toBe('https://openrouter.ai/api/v1');
     expect(config.models).toEqual([
       'dots-studio/dots-3-note-preview:free',
+      'nvidia/nemotron-3-ultra-550b-a55b:free',
+      'nvidia/nemotron-3.5-lightning:free',
       'nvidia/nemotron-3.5-super-vl:free',
+      'google/gemma-4-31b-it:free',
     ]);
     expect(config.model).toBe('dots-studio/dots-3-note-preview:free');
     expect(config.safetyModel).toBe('nvidia/nemotron-3.5-content-safety:free');

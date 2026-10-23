@@ -2,11 +2,12 @@
  * Vérification de production — utilisable comme porte avant déploiement.
  *
  * Deux volets :
- *  1. **configuration** : tout ce qui est refusé en production (code d'accès,
- *     modèles gratuits, mode de sécurité) est signalé ici, avec la correction ;
+ *  1. **configuration** : mode d'authentification, politique « modèles
+ *     gratuits uniquement », gardien de sécurité et limites ; les écarts
+ *     importants sont signalés avec la correction ;
  *  2. **sondes réelles** : chaque modèle de la chaîne et le gardien de sécurité
  *     sont appelés (un jeton), puis le serveur en cours d'exécution est
- *     interrogé (santé, catalogue, refus sans code d'accès, export Word).
+ *     interrogé (santé, catalogue, refus sans authentification, export Word).
  *
  * Aucun contenu de contrat ni de message n'est affiché ou journalisé : les
  * sondes n'envoient qu'un mot.
@@ -14,6 +15,7 @@
  * Usage :
  *   npm run verif-prod
  *   npm run verif-prod -- --url https://lexcanvas.exemple.ci
+ *   npm run verif-prod -- --url https://lexcanvas.exemple.ci --token <idToken>
  *   npm run verif-prod -- --sans-serveur
  */
 import { loadConfig, ConfigError, type AppConfig } from '../src/config.js';
@@ -36,6 +38,8 @@ const args = process.argv.slice(2);
 const urlIndex = args.indexOf('--url');
 const baseUrl = urlIndex === -1 ? 'http://localhost:3123' : args[urlIndex + 1] ?? '';
 const skipServer = args.includes('--sans-serveur');
+const tokenIndex = args.indexOf('--token');
+const bearerToken = tokenIndex === -1 ? '' : args[tokenIndex + 1] ?? '';
 
 let config: AppConfig;
 try {
@@ -58,30 +62,43 @@ check(
   'NODE_ENV',
   config.nodeEnv === 'production',
   config.nodeEnv === 'production'
-    ? 'production (HSTS actif, code d’accès exigé)'
+    ? 'production (HSTS actif)'
     : `« ${config.nodeEnv} » — à passer à production sur le serveur de production`,
   false,
 );
 
 const code = config.accessCode ?? '';
+const codeRequired = config.authMode === 'code';
 check(
   'ACCESS_CODE',
-  code.length >= 16,
+  !codeRequired || code.length >= 16,
   code.length === 0
-    ? 'absent : le quota du fournisseur serait ouvert à quiconque atteint le port'
+    ? codeRequired
+      ? 'absent : le quota du fournisseur serait ouvert à quiconque atteint le port'
+      : `absent — AUTH_MODE=${config.authMode} : le jeton Firebase est exigé`
     : code.length >= 16
       ? `défini (${code.length} caractères)`
       : `trop court (${code.length} caractères) : utilisez 32 caractères aléatoires`,
+  codeRequired,
 );
 
-const free = config.models.filter((model) => model.endsWith(':free'));
 check(
-  'Modèles payants',
-  free.length === 0,
-  free.length === 0
-    ? config.models.join(' → ')
-    : `${free.join(', ')} : les modèles gratuits d’OpenRouter sont limités en débit `
-      + '(erreurs 429). Utilisez les jumeaux payants — voir .env.example.',
+  'Authentification',
+  config.authMode !== 'code',
+  `AUTH_MODE=${config.authMode}${
+    config.authMode === 'code' ? ' — code partagé, pas d’identité individuelle' : ' — identité Firebase'
+  }`,
+  false,
+);
+
+const paid = config.models.filter((model) => !model.endsWith(':free'));
+check(
+  'Politique modèles',
+  paid.length === 0,
+  paid.length === 0
+    ? `chaîne 100 % gratuite (${config.models.length} modèles) — débit limité, bascule indispensable`
+    : `modèles payants détectés (${paid.join(', ')}) alors que la politique est « gratuit uniquement »`,
+  false,
 );
 
 check(
@@ -229,33 +246,46 @@ if (!skipServer && baseUrl) {
   console.log(`[${healthOk ? '  ok  ' : 'attention'}] GET /api/health        ${health.status} ${health.body.slice(0, 90)}`);
   check('Serveur joignable', healthOk, healthOk ? baseUrl : `aucune réponse de ${baseUrl} (serveur arrêté ?)`, false);
 
+  const authHeaders: Record<string, string> = bearerToken
+    ? { Authorization: `Bearer ${bearerToken}` }
+    : code
+      ? { 'X-Access-Code': code }
+      : {};
+  const hasAuth = Object.keys(authHeaders).length > 0;
+
   if (healthOk) {
-    const templates = await get('/api/templates', code ? { 'X-Access-Code': code } : {});
+    const templates = await get('/api/templates', authHeaders);
     const count = (templates.body.match(/"id":/g) ?? []).length;
     console.log(`[${templates.status === 200 ? '  ok  ' : 'attention'}] GET /api/templates     ${templates.status} ${count} modèle(s) de contrat`);
 
-    if (code) {
+    if (hasAuth) {
       const refused = await get('/api/templates');
       const refusedOk = refused.status === 401;
-      console.log(`[${refusedOk ? '  ok  ' : ' ÉCHEC '}] sans code d’accès       ${refused.status} ${refused.body.slice(0, 70)}`);
-      check('Refus sans code d’accès', refusedOk, refusedOk ? '401 attendu' : 'le code d’accès n’est pas exigé', true);
+      console.log(`[${refusedOk ? '  ok  ' : ' ÉCHEC '}] sans authentification ${refused.status} ${refused.body.slice(0, 70)}`);
+      check('Refus sans authentification', refusedOk, refusedOk ? '401 attendu' : 'l’authentification n’est pas exigée', true);
+    } else {
+      const message = 'aucun code ni jeton fourni : utilisez --token <idToken> pour les sondes authentifiées';
+      console.log(`[attention] sondes authentifiées ${message}`);
+      check('Sondes authentifiées', false, message, false);
     }
 
-    const markdown = '# Contrat de vérification\n\n## Article 1 – Objet\n\nVérification technique.\n';
-    try {
-      const response = await fetch(`${baseUrl}/api/export/docx`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(code ? { 'X-Access-Code': code } : {}) },
-        body: JSON.stringify({ markdown, title: 'Contrat de vérification', version: 1 }),
-        signal: AbortSignal.timeout(30_000),
-      });
-      const bytes = Buffer.from(await response.arrayBuffer());
-      const isDocx = response.status === 200 && bytes[0] === 0x50 && bytes[1] === 0x4b;
-      console.log(`[${isDocx ? '  ok  ' : ' ÉCHEC '}] POST /api/export/docx  ${response.status} ${bytes.length} octets${isDocx ? ' (.docx valide)' : ''}`);
-      check('Export Word', isDocx, isDocx ? 'fichier .docx produit' : 'l’export n’a pas produit de .docx valide');
-    } catch (error) {
-      console.log(`[ ÉCHEC ] POST /api/export/docx  ${error instanceof Error ? error.message : String(error)}`);
-      check('Export Word', false, 'export injoignable');
+    if (hasAuth) {
+      const markdown = '# Contrat de vérification\n\n## Article 1 – Objet\n\nVérification technique.\n';
+      try {
+        const response = await fetch(`${baseUrl}/api/export/docx`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...authHeaders },
+          body: JSON.stringify({ markdown, title: 'Contrat de vérification', version: 1 }),
+          signal: AbortSignal.timeout(30_000),
+        });
+        const bytes = Buffer.from(await response.arrayBuffer());
+        const isDocx = response.status === 200 && bytes[0] === 0x50 && bytes[1] === 0x4b;
+        console.log(`[${isDocx ? '  ok  ' : ' ÉCHEC '}] POST /api/export/docx  ${response.status} ${bytes.length} octets${isDocx ? ' (.docx valide)' : ''}`);
+        check('Export Word', isDocx, isDocx ? 'fichier .docx produit' : 'l’export n’a pas produit de .docx valide');
+      } catch (error) {
+        console.log(`[ ÉCHEC ] POST /api/export/docx  ${error instanceof Error ? error.message : String(error)}`);
+        check('Export Word', false, 'export injoignable');
+      }
     }
   }
 }

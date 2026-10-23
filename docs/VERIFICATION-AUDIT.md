@@ -1,5 +1,12 @@
 # LexCanvas — Vérification et correction de l'audit backend
 
+> **Mise à jour du 23/10/2026** : la relecture juridique des modèles (point J1)
+> a été terminée et attestée par Alex sur la base des documents officiels
+> (`docs/KNOWN-ISSUES.md`). La politique de modèles est « gratuit uniquement » :
+> les recommandations de crédit et de jumeaux payants de ce snapshot ne
+> s'appliquent plus. Les autres constats techniques restent un snapshot
+> historique.
+
 **Document produit par l'audit indépendant.** Il vérifie chaque constat de
 l'audit initial, le corrige quand il est confirmé, et liste ce qui reste à
 faire.

@@ -28,6 +28,22 @@ function freePort(): Promise<number> {
   });
 }
 
+const sleep = (ms: number) => new Promise((resolveSleep) => setTimeout(resolveSleep, ms));
+
+/** Attend qu'une condition devienne vraie (démarrage tsx plus lent en parallèle). */
+async function waitFor(check: () => Promise<boolean> | boolean, timeoutMs = 20_000): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      if (await check()) return true;
+    } catch {
+      // le serveur n'écoute pas encore
+    }
+    await sleep(250);
+  }
+  return false;
+}
+
 describe('C4 — démarrage du serveur', () => {
   it('annonce l’URL quand il démarre', async () => {
     const port = await freePort();
@@ -38,11 +54,13 @@ describe('C4 — démarrage du serveur', () => {
     });
 
     try {
-      await new Promise((r) => setTimeout(r, 6000));
-      const res = await fetch(`http://127.0.0.1:${port}/api/health`);
-      expect(res.status).toBe(200);
-      const body = await res.json() as { ok: boolean };
-      expect(body.ok).toBe(true);
+      const ready = await waitFor(async () => {
+        const res = await fetch(`http://127.0.0.1:${port}/api/health`);
+        if (res.status !== 200) return false;
+        const body = await res.json() as { ok: boolean };
+        return body.ok === true;
+      });
+      expect(ready).toBe(true);
       expect(output()).toContain(`http://localhost:${port}`);
     } finally {
       child.kill();
@@ -62,8 +80,8 @@ describe('C4 — démarrage du serveur', () => {
     });
 
     try {
-      await new Promise((r) => setTimeout(r, 6000));
-      expect(output()).toContain('déjà utilisé');
+      const explained = await waitFor(() => output().includes('déjà utilisé'));
+      expect(explained).toBe(true);
       expect(output()).toContain('PORT');
     } finally {
       child.kill();

@@ -36,8 +36,8 @@ service. Le frontend s'en servira uniquement pour l'authentification Firebase.
 | `npm run verif-firebase` | **FIRESTORE OK** — écriture, relecture et suppression vérifiées le 22/10/2026 |
 | Authentification Firebase | **codée et vérifiée** — `npm run verif-auth` → `AUTH OK` (23/10/2026) |
 | Historiques | **codés et vérifiés de bout en bout** — `npm run verif-history` → `HISTORIQUES OK` (23/10/2026) |
-| TTL Firestore | **en attente** — l'offre Spark refuse la politique TTL (`403 billing disabled`) ; purge planifiée via `npm run purge-history` en attendant Blaze |
-| Frontend Google | **à brancher** — `public/index.html` utilise encore le code partagé |
+| TTL Firestore | **activé côté facturation, en attente d'IAM** - Blaze est actif ; `npm run setup-ttl` renvoie `403` tant que le compte de service n'a pas `roles/datastore.owner`. La purge planifiée `npm run purge-history` reste le repli opérationnel. |
+| Frontend Google | **branché** - `public/index.html` utilise Firebase JS 10.12.2 (`signInWithPopup`), envoie l'ID token en `Authorization: Bearer` et synchronise les historiques via `/api/history`. |
 
 > **Région** : `europe-west1` avait été choisie, mais créer une deuxième base
 > exige l'offre payante (`403 — billing required`). La base existante est en
@@ -72,11 +72,11 @@ HISTORY_RETENTION_DAYS=90
 HISTORY_MAX_PER_USER=100
 ```
 
-`AUTH_MODE=hybrid` permet à l'ancien front (code partagé) de continuer à
-fonctionner pendant que le nouveau front se connecte avec Google. Pour exiger
-Google partout, passer à `AUTH_MODE=firebase` et retirer `ACCESS_CODE`.
-`HISTORY_ENABLED=1` exige `AUTH_MODE=firebase` ou `hybrid` : un historique doit
-être rattaché à un `uid`.
+Le frontend livré se connecte avec Google : la configuration cible est
+`AUTH_MODE=firebase` (le code partagé est alors ignoré). `AUTH_MODE=hybrid`
+reste disponible pour une transition si un ancien client envoie encore
+`X-Access-Code`. `HISTORY_ENABLED=1` exige `AUTH_MODE=firebase` ou `hybrid` :
+un historique doit être rattaché à un `uid`.
 
 ### 2.3 Vérifier
 
@@ -178,9 +178,21 @@ chat**, mais conserve des snapshots pour les utilisateurs authentifiés.
 
 ### 6.1 Activer la politique TTL
 
-**Prérequis : offre Blaze (facturation activée).** Sur l'offre Spark, Google
-répond `403 — Project altredige has billing disabled. Please enable it.` Le
-script `npm run setup-ttl` le détecte et renvoie vers la purge planifiée.
+**Prérequis 1 : offre Blaze.** Elle est **activée** (23/10/2026). Sur l'offre
+Spark, Google répond `403 — Project altredige has billing disabled.`
+
+**Prérequis 2 : permission IAM.** `npm run setup-ttl` appelle l'API Admin
+Firestore avec le compte de service. Tant que celui-ci n'a pas
+`roles/datastore.owner`, l'API répond `403 The caller does not have permission`.
+Accorder le rôle **temporairement**, lancer le script, puis le retirer :
+
+```bash
+# Console Google Cloud → IAM → compte de service
+#   firebase-adminsdk-fbsvc@altredige.iam.gserviceaccount.com
+# Ajouter : Cloud Datastore Owner (roles/datastore.owner)
+npm run setup-ttl          # doit afficher TTL ACTIVÉ (état ACTIVE)
+# Puis retirer le rôle (la politique TTL reste configurée).
+```
 
 La politique TTL s'applique au groupe de collections `histories`, champ
 `expires_at` :
@@ -194,24 +206,14 @@ gcloud firestore fields ttls update expires_at \
 
 Sans `gcloud`, la même opération se fait dans la console Firebase :
 **Firestore → TTL → Créer une politique**, collection `histories`, champ
-`expires_at`, ou avec `npm run setup-ttl` (API Admin REST + compte de service).
+`expires_at`. Ne pas laisser `roles/datastore.owner` sur le compte d'exécution
+du serveur.
 
-Une fois la facturation activée :
+### 6.2 Purger sans TTL (repli opérationnel)
 
-```bash
-npm run setup-ttl          # doit afficher TTL ACTIVÉ (état ACTIVE)
-```
-
-Si l'API répond alors `The caller does not have permission`, accorder
-temporairement `roles/datastore.owner` au compte de service, relancer, puis
-retirer le rôle (la politique TTL reste configurée). Ne pas laisser ce rôle
-d'administration sur le compte d'exécution du serveur.
-
-### 6.2 Purger sans TTL (offre Spark)
-
-La conservation de 90 jours reste appliquée : un document dont `expires_at`
-est passé est traité comme absent, puis supprimé à la lecture. Pour nettoyer
-aussi les comptes inactifs, planifier la purge :
+Tant que le TTL n'est pas actif, la conservation de 90 jours reste appliquée :
+un document dont `expires_at` est passé est traité comme absent, puis supprimé
+à la lecture. Pour nettoyer aussi les comptes inactifs, planifier la purge :
 
 ```bash
 npm run purge-history -- --dry-run   # compte sans supprimer
@@ -247,5 +249,7 @@ La première construction peut prendre quelques minutes ; tant qu'il est
 - **Pas de fournisseur de messagerie** : Google est le seul fournisseur prévu
   pour la V1. Le backend accepterait techniquement tout ID token Firebase
   valide ; la restriction à Google se fait dans la console Firebase.
-- **Frontend Google non branché** : `public/index.html` utilise encore
-  `X-Access-Code`. Le contrat §2.1 et §8 décrit l'intégration attendue.
+- **Frontend Google branché** : `public/index.html` initialise Firebase JS
+  (compat 10.12.2) et `public/app-api.js` gère `signInWithPopup`, l'ID token
+  `Authorization: Bearer` et les historiques `/api/history` (liste, ouverture,
+  sauvegarde, suppression). Le mode `?mock=1` fonctionne sans connexion.

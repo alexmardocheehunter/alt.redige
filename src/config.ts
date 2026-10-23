@@ -11,14 +11,19 @@ const positiveInt = (fallback: number, max: number) =>
   z.coerce.number().int().min(1).max(max).default(fallback);
 
 /**
- * Chaîne de bascule par défaut (développement). Elle n'est PAS prévue pour la
- * production : les variantes `:free` d'OpenRouter sont limitées en débit et
- * **peuvent être retirées du catalogue sans préavis** — constaté le 22/10/2026
- * avec `minimax/minimax-m3.1-flash:free`. La production doit fixer `LLM_MODELS`
- * sur les jumeaux payants (voir `.env.example`), et `npm run verif-prod` sonde
- * chaque modèle de la chaîne avant déploiement.
+ * Chaîne de bascule par défaut : uniquement des modèles gratuits OpenRouter,
+ * conformément à la décision produit (aucun crédit payant). Tous acceptent les
+ * appels d'outils et disposent d'un large contexte. Les variantes `:free`
+ * restent limitées en débit et peuvent être retirées du catalogue sans
+ * préavis — `npm run verif-prod` sonde chaque modèle avant déploiement.
  */
-const DEFAULT_MODELS = ['dots-studio/dots-3-note-preview:free', 'nvidia/nemotron-3.5-super-vl:free'];
+const DEFAULT_MODELS = [
+  'dots-studio/dots-3-note-preview:free',
+  'nvidia/nemotron-3-ultra-550b-a55b:free',
+  'nvidia/nemotron-3.5-lightning:free',
+  'nvidia/nemotron-3.5-super-vl:free',
+  'google/gemma-4-31b-it:free'
+];
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 
@@ -35,7 +40,7 @@ const schema = z.object({
   LLM_MODELS: z
     .string()
     .min(1)
-    .default('dots-studio/dots-3-note-preview:free,nvidia/nemotron-3.5-super-vl:free'),
+    .default('dots-studio/dots-3-note-preview:free,nvidia/nemotron-3-ultra-550b-a55b:free,nvidia/nemotron-3.5-lightning:free,nvidia/nemotron-3.5-super-vl:free,google/gemma-4-31b-it:free'),
 
   // Gardien de sécurité : hors bascule, appelé séparément.
   LLM_SAFETY_MODEL: z.string().min(1).default('nvidia/nemotron-3.5-content-safety:free'),

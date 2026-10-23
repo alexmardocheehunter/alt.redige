@@ -3,6 +3,12 @@
 Ce document décrit ce que le serveur attend du frontend, et ce qu'il faut
 vérifier avant de fusionner un `public/index.html`.
 
+> **Mise à jour du 23/10/2026** : le frontend est branché (`public/app-api.js`
+> injecté). L'authentification factice a été remplacée par Google
+> (`signInWithPopup`), les appels portent `Authorization: Bearer <idToken>` et
+> les contrats sont synchronisés via `/api/history`. Les constats ci-dessous
+> décrivent l'état du 21/10/2026 et restent utiles comme grille de contrôle.
+
 **État au 21/10/2026 :** le fichier `public/index.html` est une **maquette**
 livrée par l'humain (35 Ko, « alt.redige »). Elle **n'appelle pas le
 backend** : aucun `fetch`, aucun `/api/`, aucun événement SSE ; elle appelle

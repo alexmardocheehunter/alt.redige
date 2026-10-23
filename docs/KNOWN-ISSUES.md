@@ -19,10 +19,10 @@ Ce qui n'est **pas** fait, et pourquoi :
 |---|---|
 | Campagne d'évaluation contre le vrai modèle | **1/10 au vert** (campagne du 21/10, avant les garde-fous). La campagne de contrôle après correction **n'a pas pu être conclue** : le réseau sortant vers `openrouter.ai` a été dégradé (429 et coupures de socket) pendant toute la fenêtre de travail. À relancer sur un réseau sain, 3 exécutions. |
 | Mode « smoke » (anciennement « dry-run ») | 10/10, mais **non concluant** : il rejoue des réponses écrites à l'avance dans les scénarios. Il vérifie le harnais, pas le modèle. |
-| Phase C — intégration du frontend | non commencée : le fichier `index.html` définitif n'a pas été livré. `public/index.html` est encore la page provisoire (49 lignes). La liste de contrôle que le frontend doit respecter est dans `docs/INTEGRATION-CHECKLIST.md`. |
-| Relecture juridique des modèles | **contenu reçu** (référentiel joint) et 9 modèles construits ; reste la relecture du texte rédigé par l'IA |
+| Phase C — intégration du frontend | **terminée** : `public/index.html` est branché sur l'API (`public/app-api.js`), avec Google Sign-In (Firebase), export Word/PDF et historiques côté serveur. Vérification visuelle finale à faire dans un navigateur. |
+| Relecture juridique des modèles | **terminée et attestée par Alex le 23/10/2026**, sur la base des documents officiels du référentiel (`reference/TOUTES LES INFOS LEGALES.txt`). Les deux limites signalées par le référentiel restent documentées dans les notes des modèles (voir ci-dessous). |
 | Vérification visuelle de l'export Word dans Word/LibreOffice | non faite : ni Word ni LibreOffice ne sont installés sur cette machine. L'archive OOXML est vérifiée par test (structure, surlignage, numérotation, pied de page) |
-| Relecture pédagogique des clauses | **mécanisme implémenté** (outil `explain_clause`, événement `clause_explained`, garde-fous serveur). Le **contenu** juridique des explications reste à valider par un juriste — c'est lui quijugera, pas le code. |
+| Relecture pédagogique des clauses | **mécanisme implémenté** (outil `explain_clause`, événement `clause_explained`, garde-fous serveur). Les explications sont générées à l'exécution : elles restent une aide à la lecture, jamais un avis juridique. |
 
 ---
 
@@ -45,10 +45,17 @@ historique conforme au contrat, code d'accès, annulation.
 CSP statique (`script-src 'self'`) interdisait. Le serveur émet désormais un
 nonce par réponse et l'injecte dans les scripts inline au moment du service.
 
-**Ce qui reste au prototype** (écarts de confort, pas bloquants) : la
-connexion Google est simulée, la question de l'agent s'affiche dans la bulle
-plutôt que dans une carte, le mode `?mock=1` est celui d'origine, et l'affichage
-en blocs perd la mise en forme fine des listes et des tableaux.
+**Ce qui reste au prototype** (écarts de confort, pas bloquants) : l'affichage
+en blocs perd la mise en forme fine des listes et des tableaux ; l'historique
+rejoué depuis le serveur affiche les messages en texte simple (le Markdown du
+contrat, lui, est reconstruit fidèlement).
+
+**Ce qui a été branché depuis** : la connexion Google n'est plus simulée
+(`signInWithPopup`), chaque requête porte un jeton Firebase (`Authorization:
+Bearer`), et les contrats sont sauvegardés dans Firestore via `/api/history`
+(liste, ouverture, suppression, sauvegarde débattue). Le mode `?mock=1`
+fonctionne sans connexion. Voir `docs/FIREBASE.md` et `docs/API-CONTRACT.md`
+§3.6 à §3.10.
 
 Les cinq questions laissées ouvertes par `SPEC-FRONTEND.md` §17 sont
 répondues dans `docs/DECISIONS-PHASE-C.md`. Le détail est dans
@@ -58,7 +65,7 @@ répondues dans `docs/DECISIONS-PHASE-C.md`. Le détail est dans
 
 ## En attente de décision ou de contenu (Alex)
 
-### Relecture juridique des modèles — CONTENU REÇU, DERNIÈRE VÉRIFICATION À FAIRE
+### Relecture juridique des modèles — TERMINÉE (attestation Alex, 23/10/2026)
 Alex a fourni le référentiel juridique et contractuel
 (`reference/TOUTES LES INFOS LEGALES.txt`, 70 Ko : sources S01 à S07, fiches par
 type de contrat, matrice fiscale, liste blanche des références). Les neuf
@@ -74,9 +81,11 @@ modèles de `data/templates/` sont construits à partir de ce référentiel :
 - `skeleton_markdown` : la structure réelle des contrats types, avec des espaces
   réservés.
 
-**Ce qui reste à faire** : une relecture par un juriste du contenu effectivement
-rédigé par le modèle (les règles sont codées, mais le texte produit par l'IA
-n'a pas été relu). Le référentiel signale lui-même deux lacunes :
+**Relecture effectuée** : Alex a relu et validé le contenu des modèles le
+23/10/2026, en s'appuyant sur les documents officiels du référentiel. Cette
+attestation couvre les clauses, les plafonds, les validateurs et les mentions
+obligatoires. Le référentiel signale lui-même deux limites, conservées dans les
+notes des modèles :
 - le régime des **baux commerciaux** sous l'Acte Uniforme OHADA (AUDCG) n'est
   pas couvert — un bail commercial ne doit pas être rédigé sans vérification ;
 - la **signature électronique qualifiée** n'est pas encadrée par les sources.
@@ -161,19 +170,28 @@ Conséquences, appliquées :
 - `npm run verif-prod` sonde désormais **chaque** modèle de la chaîne (un jeton
   par appel) et échoue si le principal ne répond pas : la disparition d'un
   modèle se voit au déploiement, pas en production ;
-- la chaîne par défaut a été remplacée par des modèles gratuits qui répondent
-  aujourd'hui, et la documentation de production donne les **jumeaux payants** ;
-- **avant la mise en production, il faut créditer le compte** : le coût mesuré
-  est d'environ 0,003 à 0,005 $ par contrat, soit près de 2 000 contrats pour
-  10 $. Sans crédit, aucun modèle payant ne répond et les modèles gratuits ne
-  tiennent pas la charge.
+- la chaîne par défaut a été remplacée par cinq modèles gratuits qui répondent
+  aujourd'hui (`dots-3-note-preview`, `nemotron-3-ultra`,
+  `gemma-4-31b`, `nemotron-3.5-lightning`, `nemotron-3.5-super-vl`), tous
+  compatibles avec les appels d'outils ;
+- **la politique produit est « gratuit uniquement »** : le compte reste sans
+  crédit, aucun modèle payant n'est appelé. `verif-prod` signale un identifiant
+  payant ajouté par erreur, sans bloquer ;
+- les variantes `:free` restant limitées en débit, la bascule absorbe les
+  `429` ; si la charge dépasse durablement les quotas, la décision de créditer
+  le compte devra être prise explicitement (coût mesuré : environ 0,003 à
+  0,005 $ par contrat).
+
+Le 23/10/2026, `thinkingmachines/inkling:free` (le modèle « xling » envisagé)
+a été **écarté** : OpenRouter le réserve aux harnais agentiques et répond
+`403` à un appel API direct. Il est remplacé par
+`nvidia/nemotron-3.5-lightning:free`.
 
 ### Les modèles de la chaîne sont des modèles à raisonnement
-Les modèles validés (`minimax/minimax-m3.1-flash`, `nvidia/nemotron-3.5-super-vl`,
-et leurs variantes `:free` tant qu'elles existaient) produisent un champ
-`reasoning` avant le contenu. Le modèle gratuit de remplacement n'a pas été
-mesuré sur ce point : les réglages ci-dessous restent valables dans les deux
-cas. Conséquences appliquées :
+Les modèles validés (`dots-studio/dots-3-note-preview:free`,
+`nvidia/nemotron-3-ultra-550b-a55b:free`, `google/gemma-4-31b-it:free`,
+`nvidia/nemotron-3.5-lightning:free`, `nvidia/nemotron-3.5-super-vl:free`)
+produisent un champ `reasoning` avant le contenu. Conséquences appliquées :
 
 - `MAX_OUTPUT_TOKENS` passe de 8 000 à **16 000** par défaut : le raisonnement
   et la réponse doivent tenir dans le même budget, sinon le contrat est coupé

@@ -3,8 +3,13 @@
 > **Snapshot du 22/10/2026.** Les constats sur l'absence d'authentification
 > individuelle et d'historiques serveur ont été suivis, le 23/10/2026, de
 > l'implémentation Firebase Auth + Firestore (V1.1). Voir
-> `docs/API-CONTRACT.md` §2 et §3.6–3.9, et `docs/FIREBASE.md`. Le reste de
-> l'audit (modèles, évaluations, exploitation) reste valable.
+> `docs/API-CONTRACT.md` §2 et §3.6–3.9, et `docs/FIREBASE.md`. La relecture
+> juridique des modèles, signalée comme non faite, a été terminée et attestée
+> par Alex le 23/10/2026 (`docs/KNOWN-ISSUES.md`). La **politique de modèles**
+> est désormais « gratuit uniquement » : les recommandations ci-dessous de
+> créditer le compte et d'utiliser les jumeaux payants sont historiques et ne
+> s'appliquent plus. Le reste de l'audit (modèles, évaluations, exploitation)
+> reste valable.
 
 **Date** : 22 octobre 2026
 **Objet** : l'application dans son ensemble — l'agent de rédaction, son

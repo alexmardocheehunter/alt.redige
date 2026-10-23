@@ -5,6 +5,13 @@
 mise en conformité du backend avec `AGENT-PROTOCOL.md` et
 `docs/INTEGRATION-CHECKLIST.md`.
 
+> **Mise à jour du 23/10/2026** — la connexion Google est désormais réelle
+> (Firebase Auth + `Authorization: Bearer`), les contrats sont sauvegardés dans
+> Firestore via `/api/history`, et la relecture juridique des modèles a été
+> terminée et attestée par Alex sur la base des documents officiels. Les points
+> 1 et 2 de la section 7 sont donc clos ; les vérifications visuelles dans un
+> navigateur restent à faire avant déploiement.
+
 ---
 
 ## 1. En résumé
@@ -188,7 +195,7 @@ répondues dans `docs/DECISIONS-PHASE-C.md`. En résumé :
 | `npm run typecheck` | sans erreur |
 | `npm run build` | sans erreur, `dist/server.js` démarre |
 | `GET /` en navigateur | page rendue, script inline exécuté, **zéro erreur console** |
-| `GET /api/health` | `{ok:true, contract_version:"1.0", model:"minimax/minimax-m3.1-flash:free"}` |
+| `GET /api/health` | `{ok:true, contract_version:"1.0", model:"dots-studio/dots-3-note-preview:free"}` |
 | `GET /api/templates` | 9 modèles `ready` |
 | `POST /api/chat` (SSE) | flux complet conforme, enveloppe `seq`/`t` comprise |
 | `POST /api/export/docx` | `.docx` valide |
@@ -201,10 +208,10 @@ répondues dans `docs/DECISIONS-PHASE-C.md`. En résumé :
 1. **Livrer le front v2** : il remplacera le prototype. Le branchement
    `public/app-api.js` sera alors à réécrire contre le vrai front (`?mock=1`
    complet, rendu Markdown natif) — c'est un travail de front, pas de backend.
-2. **Relecture juridique** du texte que l'IA produira : les règles sont
-   codées, pas les réponses. Cela vaut aussi pour le **contenu** des
-   explications de clause : le mécanisme est en place, mais les mots employés
-   par le modèle doivent être validés par un juriste.
+2. **Relecture juridique** du texte que l'IA produira : **terminée et attestée
+   par Alex le 23/10/2026**, sur la base des documents officiels du référentiel
+   (`docs/KNOWN-ISSUES.md`). Les explications de clause sont générées à
+   l'exécution et restent une aide à la lecture, jamais un avis juridique.
 3. **Calibrer le filtre de sécurité** sur un échantillon réel, puis passer
    `SAFETY_MODE=block`.
 4. **Informations de conformité à l'utilisateur** (transfert vers un

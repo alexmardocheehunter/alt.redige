@@ -39,7 +39,7 @@ Les fichiers de `reference/` sont des **originaux** : copie-les, n'édite pas l'
 1. **Le contrat d'API ne se modifie qu'avec l'accord d'Alex.** Si un changement s'impose, modifie d'abord `docs/API-CONTRACT.md`, signale-le à Alex en une phrase, puis le code. Le front est écrit contre la version actuelle.
 2. **Serveur sans état pour le chat.** Aucune session de conversation côté serveur : le client renvoie historique et document. Depuis la V1.1 (validée par Alex le 23/10/2026), des **snapshots d'historiques optionnels** peuvent être conservés dans Firestore pour les utilisateurs connectés avec Google ; ils restent supprimables et ne sont jamais utilisés pour reconstruire une conversation.
 3. **Jamais de contenu de contrat ou de message dans les logs.** Ce sont des données personnelles.
-4. **Aucune règle juridique inventée.** `legal_notes` et `validators` des modèles restent vides jusqu'à ce qu'Alex fournisse du contenu validé par un juriste.
+4. **Aucune règle juridique inventée.** `legal_notes` et `validators` des modèles proviennent exclusivement du référentiel officiel fourni par Alex. La relecture juridique a été effectuée et attestée par Alex le 23/10/2026 ; les limites signalées par le référentiel restent documentées dans les modèles.
 5. **Tout ou rien sur le document.** Un flux interrompu ne laisse jamais un demi-document (voir contrat, règles côté client).
 6. **Annulation propagée** : fermeture de la connexion client ⇒ interruption de l'appel au LLM.
 7. **Ne réécris pas `export-docx.mjs`.** Étends-le.
@@ -75,7 +75,7 @@ Travaille dans cet ordre. À la fin de chaque jalon : tests au vert, commit, ré
 |---|---|---|
 | **B1** | Squelette : Hono, `config.ts` (zod), `GET /api/health`, `GET /` servant `public/index.html` provisoire, middlewares (requestId, auth `ACCESS_CODE`, limite de corps, rate limit). | `curl /api/health` répond ; sans bon code d'accès `/api/chat` répond 401 si `ACCESS_CODE` est défini. |
 | **B2** | `doc/edit.ts` et `doc/validate.ts` avec tests unitaires. | Edits atomiques (cas `not_found`, `not_unique`, tout-ou-rien) ; `validate(sample-bail.md)` ⇒ 8 placeholders, 0 issue. |
-| **B3** | Modèles et prompt : `templates.ts`, `data/templates/bail-habitation.json` (depuis l'exemple), `prompts/system.fr.md`, `GET /api/templates`. | `/api/templates` liste le bail ; le prompt se génère avec le catalogue. Le fichier exemple est en `"status": "draft"` : passe-le à `"ready"` pour le développement (sinon le front ne l'affiche pas) et note dans `docs/KNOWN-ISSUES.md` que la relecture juridique est en attente. |
+| **B3** | Modèles et prompt : `templates.ts`, `data/templates/bail-habitation.json` (depuis l'exemple), `prompts/system.fr.md`, `GET /api/templates`. | `/api/templates` liste le bail ; le prompt se génère avec le catalogue. Le fichier exemple est en `"status": "draft"` : passe-le à `"ready"` pour le développement (sinon le front ne l'affiche pas). La relecture juridique a été terminée et attestée par Alex le 23/10/2026 (`docs/KNOWN-ISSUES.md`). |
 | **B4** | `/api/chat` : boucle agentique, 3 outils, SSE conforme au contrat, annulation, erreurs. | Un `curl -N` reproduit le flux de l'exemple (contrat §6) ; coupure de connexion ⇒ appel LLM interrompu (test). |
 | **B5** | `/api/export/docx` autour de `export-docx.mjs`, pied de page optionnel, nom de fichier. | Le `.docx` du contrat généré à B4 s'ouvre dans Word sans avertissement. |
 | **B6** | Évaluations (`npm run eval`, 10 scénarios de `SPEC-BACKEND.md` §8). | Scénarios verts ou échecs documentés dans `docs/KNOWN-ISSUES.md`. |
@@ -132,7 +132,7 @@ Quand Alex te remet `index.html` :
    - Accents ou « » cassés : vérifier `charset=utf-8` partout.
 5. Teste : coupure réseau en cours de génération (le front doit restaurer le document précédent) ; double clic rapide sur « Envoyer » ; rechargement en plein flux ; document de 20 000 caractères ; 401 avec `ACCESS_CODE` et 401 avec un jeton Google expiré (le front doit rafraîchir une fois puis déconnecter).
 6. Rédige `docs/INTEGRATION-REPORT.md` : ce qui passe, ce qui échoue, ce qui a été corrigé et où.
-7. **Avant la mise en production** : lance `npm run verif-prod` (voir `docs/EXPLOITATION.md` §5.1). Le script vérifie la configuration et sonde réellement chaque modèle de la chaîne ; il refuse de valider avec des modèles `:free` ou si le modèle principal ne répond pas. Avec `AUTH_MODE=code`, `ACCESS_CODE` reste obligatoire ; avec `firebase`, il ne l'est plus.
+7. **Avant la mise en production** : lance `npm run verif-prod` (voir `docs/EXPLOITATION.md` §5.1). Le script vérifie la configuration, applique la politique « modèles gratuits uniquement » et sonde réellement chaque modèle de la chaîne ; il échoue si le modèle principal ne répond pas. Avec `AUTH_MODE=firebase`, `ACCESS_CODE` n'est pas exigé ; ajoute `--token <idToken>` pour les sondes authentifiées (catalogue, export Word).
 
 ## 10. Quand demander à Alex
 
