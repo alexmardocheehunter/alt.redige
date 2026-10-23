@@ -12,9 +12,9 @@ Public : l'agent de code qui construit le backend. Lire d'abord `README.md`, pui
 | LLM | **OpenRouter** via son API compatible OpenAI, en `fetch` natif (aucun SDK). Modèles dans `LLM_MODELS` (ordre de bascule) | Choix d'Alex : trois modèles OpenRouter, le premier qui répond l'emporte. L'API OpenAI-compatible évite une dépendance supplémentaire ; `src/llm.ts` isole le fournisseur |
 | Modèles | Rédaction (développement) : `dots-studio/dots-3-note-preview:free` puis `nvidia/nemotron-3.5-super-vl:free`. Production : jumeaux payants `minimax/minimax-m3.1-flash` et `nvidia/nemotron-3.5-super-vl` (`EXPLOITATION.md` §5.1). Sécurité : `nvidia/nemotron-3.5-content-safety:free`, **hors bascule** | Le modèle de sécurité est un classifieur : il ne supporte pas les appels d'outils, il ne peut donc pas rédiger. Il filtre les entrées utilisateur et le contrat produit. Les variantes gratuites sont instables : retrait constaté le 22/10/2026 |
 | Jetons | `MAX_OUTPUT_TOKENS` = 16 000 par défaut | Les deux modèles de rédaction sont des **modèles à raisonnement** : une partie du budget part en `reasoning`, avant le contenu. Un budget trop faible coupe le contrat (`truncated`). Le champ `reasoning` n'est jamais relayé au client |
-| État | **Aucun état serveur** : le client renvoie historique + document | Déploiement trivial, pas de base de données pour la V1 |
-| Persistance | `localStorage` côté front uniquement | Suffisant pour le challenge |
-| PDF | Côté navigateur (`window.print()`) | Pas d'endpoint PDF en V1.0 |
+| État | **Sans état pour le chat** : le client renvoie historique + document. **Snapshots optionnels** pour les utilisateurs authentifiés (Firestore) | Déploiement simple, pas de conversation serveur ; les historiques sont un confort réservé aux comptes Google |
+| Persistance | `localStorage` côté front ; Firestore côté serveur si `HISTORY_ENABLED=1` | Le document reste dans le navigateur ; le snapshot serveur est explicite et supprimable |
+| PDF | Côté navigateur (`window.print()`) | Pas d'endpoint PDF en V1.1 |
 | Hébergement | Hôte Node avec connexions longues (Railway, Render, Fly, VPS). **Pas de fonctions serverless à timeout court** | Un contrat en streaming peut durer 60 à 90 s |
 
 Isole l'appel au fournisseur dans `src/llm.ts` (une seule fonction de streaming). Changer de fournisseur ne doit toucher que ce fichier.
@@ -27,7 +27,7 @@ lexcanvas/
 ├── README.md
 ├── package.json
 ├── tsconfig.json
-├── .env.example                  # ANTHROPIC_API_KEY, LLM_MODEL, PORT, ACCESS_CODE, ...
+├── .env.example                  # OPENROUTER_API_KEY, AUTH_MODE, FIREBASE_*, HISTORY_*, ...
 ├── docs/                         # API-CONTRACT.md, SPEC-BACKEND.md, SPEC-FRONTEND.md
 ├── reference/                    # fichiers fournis, ne pas modifier (voir README)
 ├── public/
@@ -37,11 +37,15 @@ lexcanvas/
 ├── prompts/
 │   └── system.fr.md              # copie de reference/system-prompt.fr.md, avec {{CATALOGUE}}
 ├── src/
-│   ├── server.ts                 # app Hono, routes, fichiers statiques, middlewares
+│   ├── server.ts                 # démarrage HTTP, arrêt propre
+│   ├── app.ts                    # application Hono, middlewares, montage des routes
 │   ├── config.ts                 # lecture et validation des variables d'environnement (zod)
+│   ├── firebase.ts               # initialisation Firebase Admin (auth + Firestore)
 │   ├── routes/chat.ts            # POST /api/chat (SSE)
 │   ├── routes/export.ts          # POST /api/export/docx
+│   ├── routes/history.ts         # GET/PUT/DELETE /api/history
 │   ├── routes/meta.ts            # GET /api/health, GET /api/templates
+│   ├── history/                  # contrat de stockage + adaptateur Firestore
 │   ├── agent/loop.ts             # boucle agentique (section 4)
 │   ├── agent/tools.ts            # définitions + exécution des 3 outils
 │   ├── agent/prompt.ts           # assemblage prompt système + catalogue + contexte document
@@ -49,7 +53,7 @@ lexcanvas/
 │   ├── doc/validate.ts           # placeholders + conformité au sous-ensemble + articles requis
 │   ├── export/docx.ts            # enveloppe TypeScript autour de reference/export-docx.mjs
 │   ├── llm.ts                    # client Anthropic, retries, annulation
-│   ├── middleware/               # auth (ACCESS_CODE), rateLimit, bodyLimit, requestId
+│   ├── middleware/               # auth (code/Firebase), rateLimit, bodyLimit, requestId, CSP
 │   └── templates.ts              # chargement et indexation de data/templates/*.json
 ├── evals/
 │   ├── scenarios/*.json          # scénarios de conversation (section 8)
@@ -72,11 +76,18 @@ Copie `reference/export-docx.mjs` vers `src/export/export-docx.mjs` (ou importe-
 | `LLM_SAFETY_MODEL` | `nvidia/nemotron-3.5-content-safety:free` | Gardien de sécurité, hors bascule |
 | `SAFETY_CHECK` | `1` | `0` désactive le filtre de sécurité |
 | `PORT` | `3000` | Port d'écoute |
-| `ACCESS_CODE` | (vide) | Si défini, exigé en en-tête `X-Access-Code` |
+| `ACCESS_CODE` | (vide) | Code partagé `X-Access-Code` (modes `code` et `hybrid`) |
+| `AUTH_MODE` | `code` | `code`, `firebase` ou `hybrid` (API-CONTRACT.md §2) |
+| `FIREBASE_PROJECT_ID` | (vide) | Projet Firebase, obligatoire pour `firebase`/`hybrid` et les historiques |
+| `FIREBASE_SERVICE_ACCOUNT` | (vide) | Chemin du JSON du compte de service ; sinon identifiants par défaut |
+| `HISTORY_ENABLED` | `0` | Monte les routes `/api/history` (exige `firebase` ou `hybrid`) |
+| `HISTORY_RETENTION_DAYS` | `90` | Durée de conservation des snapshots |
+| `HISTORY_MAX_PER_USER` | `100` | Plafond par utilisateur |
+| `RATE_HISTORY_PER_MIN` | `60` | Limite des routes d'historique par `uid` |
 | `MAX_STEPS` | `6` | Itérations maximales de la boucle agentique |
-| `MAX_OUTPUT_TOKENS` | `8000` | Plafond de jetons par appel au modèle |
-| `REQUEST_TIMEOUT_MS` | `120000` | Durée maximale d'un flux |
-| `RATE_CHAT_PER_HOUR` / `RATE_EXPORT_PER_MIN` | `30` / `10` | Limites par IP |
+| `MAX_OUTPUT_TOKENS` | `16000` | Plafond de jetons par appel au modèle |
+| `REQUEST_TIMEOUT_MS` | `240000` | Durée maximale d'un flux |
+| `RATE_CHAT_PER_HOUR` / `RATE_EXPORT_PER_MIN` | `30` / `10` | Limites par identité (ou IP sans identité) |
 | `MAX_BODY_BYTES` | `1048576` | Corps de requête maximum |
 | `LOG_LEVEL` | `info` | Niveau de logs |
 
@@ -205,15 +216,16 @@ Scénarios minimum (10) :
 
 ## 9. Sécurité et exploitation
 
-- **Auth** : `ACCESS_CODE` optionnel (comparaison à temps constant).
-- **Limites** : taille de corps 1 Mo, `rateLimit` en mémoire par IP (fenêtre glissante), `MAX_OUTPUT_TOKENS`, `REQUEST_TIMEOUT_MS`. Derrière un proxy, lis l'IP depuis `X-Forwarded-For` uniquement si `TRUST_PROXY=1`.
+- **Auth** : `AUTH_MODE` = `code` (code partagé, comparaison à temps constant), `firebase` (ID token vérifié par le SDK Admin) ou `hybrid` (les deux). Le code partagé ne donne jamais accès aux historiques.
+- **Limites** : taille de corps 1 Mo, `rateLimit` en mémoire par identité (ou par IP sans identité), `MAX_OUTPUT_TOKENS`, `REQUEST_TIMEOUT_MS`. Derrière un proxy, lis l'IP depuis `X-Forwarded-For` uniquement si `TRUST_PROXY=1`.
+- **Historiques** : Firestore `users/{uid}/histories`, règles client `deny all`, TTL 90 jours, plafond 100, suppression idempotente.
 - **CORS** : même origine uniquement (le front est servi par le serveur). Variable `ALLOWED_ORIGIN` seulement si besoin d'un front séparé en développement.
 - **Journaux** : `request_id`, route, durée, statut, jetons, nombre d'étapes, codes d'erreur. **Jamais** le contenu des messages ni des contrats : ce sont des données personnelles (identités, adresses, pièces).
 - **En-têtes** : `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`. SSE sans compression.
 - **Arrêt propre** : sur `SIGTERM`, refuser les nouveaux flux et laisser terminer les flux en cours (30 s max).
 - **Disponibilité** : `GET /api/health` ne dépend pas du fournisseur LLM.
 
-## 10. Critères d'acceptation globaux (version 1.0)
+## 10. Critères d'acceptation globaux (version 1.1)
 
 - Un `curl -N` sur `/api/chat` reproduit le flux de l'exemple du contrat (section 6).
 - Un contrat de bail complet se génère en streaming, puis une modification (« préavis de 3 mois ») touche exactement une clause.

@@ -16,15 +16,18 @@ function buildPolicy(nonce: string): string {
   return [
     "default-src 'self'",
     // The nonce authorises the inline script of the page; 'self' keeps the
-    // external files (none today) allowed.
-    `script-src 'self' 'nonce-${nonce}'`,
+    // external files (none today) allowed. The Firebase JS SDK and the Google
+    // sign-in helper are loaded from these two origins when the frontend
+    // enables Google authentication.
+    `script-src 'self' 'nonce-${nonce}' https://www.gstatic.com https://apis.google.com`,
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data:",
-    "connect-src 'self'",
+    "img-src 'self' data: https://*.googleusercontent.com",
+    "connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com",
+    "frame-src 'self' https://*.firebaseapp.com https://accounts.google.com",
     "object-src 'none'",
     "frame-ancestors 'none'",
     "base-uri 'self'",
-    "form-action 'self'",
+    "form-action 'self' https://accounts.google.com",
   ].join('; ');
 }
 

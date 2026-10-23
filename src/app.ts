@@ -14,14 +14,18 @@ import { createLogger, type Logger } from './logger.js';
 import { createOpenRouterClient, type LlmClient } from './llm.js';
 import { requestId } from './middleware/requestId.js';
 import { requestLogger } from './middleware/requestLogger.js';
-import { auth, createVerifier } from './middleware/auth.js';
+import { auth, createVerifier, FirebaseTokenVerifier, type AccessVerifier } from './middleware/auth.js';
 import { applyNonce, contentSecurityPolicy } from './middleware/csp.js';
 import { rateLimit } from './middleware/rateLimit.js';
 import type { AppEnv } from './types.js';
 import { TemplateStore } from './templates.js';
+import { initFirebase } from './firebase.js';
+import { FirestoreHistoryStore } from './history/firestore.js';
+import type { HistoryStore } from './history/store.js';
 import { metaRoutes } from './routes/meta.js';
 import { chatRoutes } from './routes/chat.js';
 import { exportRoutes } from './routes/export.js';
+import { historyRoutes } from './routes/history.js';
 
 export interface AppDeps {
   config: AppConfig;
@@ -32,6 +36,10 @@ export interface AppDeps {
   client?: LlmClient;
   /** Test hook: observes the tool calls (used by the evaluations). */
   onToolCall?: (name: string, input: unknown) => void;
+  /** Injected by the tests; built from AUTH_MODE otherwise. */
+  verifier?: AccessVerifier;
+  /** Injected by the tests; a Firestore store is built when histories are enabled. */
+  historyStore?: HistoryStore;
 }
 
 const PUBLIC_INDEX = resolve(process.cwd(), 'public', 'index.html');
@@ -55,8 +63,42 @@ export function readIndexHtml(): Buffer | null {
   }
 }
 
-export function createApp({ config, logger, templates, client, onToolCall }: AppDeps): Hono<AppEnv> {
+export function createApp({
+  config,
+  logger,
+  templates,
+  client,
+  onToolCall,
+  verifier,
+  historyStore,
+}: AppDeps): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
+
+  // Firebase is initialised only when the current configuration needs it, so
+  // the tests and the historical `AUTH_MODE=code` mode never touch credentials.
+  const needsFirebaseAuth = !verifier && config.authMode !== 'code';
+  const needsFirestore = !historyStore && config.historyEnabled;
+  const firebase = needsFirebaseAuth || needsFirestore ? initFirebase(config) : null;
+
+  let accessVerifier: AccessVerifier;
+  if (verifier) {
+    accessVerifier = verifier;
+  } else if (config.authMode === 'code') {
+    accessVerifier = createVerifier({ mode: 'code', accessCode: config.accessCode });
+  } else {
+    if (!firebase) throw new Error('Firebase n’est pas initialisé.');
+    const firebaseVerifier = new FirebaseTokenVerifier((token) => firebase.auth.verifyIdToken(token));
+    accessVerifier = config.authMode === 'firebase'
+      ? createVerifier({ mode: 'firebase', firebase: firebaseVerifier })
+      : createVerifier({ mode: 'hybrid', firebase: firebaseVerifier, accessCode: config.accessCode });
+  }
+
+  const store: HistoryStore | null = historyStore ?? (config.historyEnabled && firebase
+    ? new FirestoreHistoryStore(firebase.db, {
+      retentionDays: config.historyRetentionDays,
+      maxPerUser: config.historyMaxPerUser,
+    })
+    : null);
 
   let templateStore = templates;
   if (!templateStore) {
@@ -95,13 +137,13 @@ export function createApp({ config, logger, templates, client, onToolCall }: App
   if (config.allowedOrigin) {
     app.use('/api/*', cors({
       origin: config.allowedOrigin,
-      allowHeaders: ['Content-Type', 'X-Access-Code', 'X-Request-Id'],
-      allowMethods: ['GET', 'POST', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'X-Access-Code', 'X-Request-Id', 'Authorization'],
+      allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
       maxAge: 600,
     }));
   }
 
-  app.use('/api/*', auth(createVerifier(config.accessCode)));
+  app.use('/api/*', auth(accessVerifier));
 
   app.use('/api/*', bodyLimit({
     maxSize: config.maxBodyBytes,
@@ -132,7 +174,7 @@ export function createApp({ config, logger, templates, client, onToolCall }: App
     const requestIdValue = c.get('requestId') ?? '-';
     logger.info('not_found', { request_id: requestIdValue, path: c.req.path });
     if (c.req.path.startsWith('/api/')) {
-      return c.json(errorBody('bad_request', 'Ressource introuvable.'), 404);
+      return c.json(errorBody('not_found', 'Ressource introuvable.'), 404);
     }
     return c.text('Page introuvable.', 404, { 'Content-Type': 'text/plain; charset=utf-8' });
   });
@@ -169,6 +211,11 @@ export function createApp({ config, logger, templates, client, onToolCall }: App
   }));
 
   app.route('/', exportRoutes({ config, logger }));
+
+  if (config.historyEnabled) {
+    if (!store) throw new Error('Le stockage des historiques n’est pas initialisé.');
+    app.route('/', historyRoutes({ config, logger, store }));
+  }
 
   app.get('/favicon.ico', (c) => c.body(null, 204));
 

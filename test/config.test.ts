@@ -22,6 +22,13 @@ describe('config', () => {
     expect(config.rateExportPerMin).toBe(10);
     expect(config.maxBodyBytes).toBe(1048576);
     expect(config.accessCode).toBeNull();
+    expect(config.authMode).toBe('code');
+    expect(config.firebaseProjectId).toBeNull();
+    expect(config.firebaseServiceAccount).toBeNull();
+    expect(config.historyEnabled).toBe(false);
+    expect(config.historyRetentionDays).toBe(90);
+    expect(config.historyMaxPerUser).toBe(100);
+    expect(config.rateHistoryPerMin).toBe(60);
     expect(config.trustProxy).toBe(false);
   });
 
@@ -67,7 +74,7 @@ describe('config', () => {
     expect(loadConfig({ OPENROUTER_API_KEY: 'k', SAFETY_CHECK: '1' }).safetyCheck).toBe(true);
   });
 
-  it('exige ACCESS_CODE en production', () => {
+  it('exige ACCESS_CODE en production avec le mode code', () => {
     expect(() => loadConfig({ OPENROUTER_API_KEY: 'k', NODE_ENV: 'production' })).toThrow(ConfigError);
     const config = loadConfig({
       OPENROUTER_API_KEY: 'k',
@@ -75,6 +82,42 @@ describe('config', () => {
       ACCESS_CODE: 'un-code-de-production',
     });
     expect(config.accessCode).toBe('un-code-de-production');
+  });
+
+  it('accepte le mode firebase en production sans ACCESS_CODE', () => {
+    const config = loadConfig({
+      OPENROUTER_API_KEY: 'k',
+      NODE_ENV: 'production',
+      AUTH_MODE: 'firebase',
+      FIREBASE_PROJECT_ID: 'altredige',
+    });
+    expect(config.authMode).toBe('firebase');
+    expect(config.accessCode).toBeNull();
+  });
+
+  it('exige un projet Firebase pour les modes firebase et hybrid', () => {
+    expect(() => loadConfig({ OPENROUTER_API_KEY: 'k', AUTH_MODE: 'firebase' })).toThrow(ConfigError);
+    expect(() => loadConfig({ OPENROUTER_API_KEY: 'k', AUTH_MODE: 'hybrid' })).toThrow(ConfigError);
+    const config = loadConfig({
+      OPENROUTER_API_KEY: 'k',
+      AUTH_MODE: 'hybrid',
+      FIREBASE_PROJECT_ID: 'altredige',
+    });
+    expect(config.authMode).toBe('hybrid');
+  });
+
+  it('refuse les historiques avec un code partagé', () => {
+    expect(() => loadConfig({
+      OPENROUTER_API_KEY: 'k',
+      HISTORY_ENABLED: '1',
+    })).toThrow(ConfigError);
+    const config = loadConfig({
+      OPENROUTER_API_KEY: 'k',
+      AUTH_MODE: 'firebase',
+      FIREBASE_PROJECT_ID: 'altredige',
+      HISTORY_ENABLED: '1',
+    });
+    expect(config.historyEnabled).toBe(true);
   });
 
   it('documente toutes les variables reconnues dans .env.example', () => {

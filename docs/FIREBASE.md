@@ -1,25 +1,31 @@
-# Firebase — Firestore pour les historiques
+# Firebase — authentification Google et historiques
 
 ## 1. Ce qui est en place
 
 | Élément | Rôle |
 |---|---|
-| `firebase-admin` (dépendance) | SDK **serveur** : c'est lui, et lui seul, qui parlera à Firestore |
+| `firebase-admin` (dépendance) | SDK **serveur** : vérification des ID tokens et accès Firestore |
+| `src/firebase.ts` | initialisation unique (compte de service ou identifiants par défaut) |
+| `src/middleware/auth.ts` | `FirebaseTokenVerifier`, `HybridVerifier`, mode `AUTH_MODE` |
+| `src/history/` | contrat de stockage + adaptateur Firestore |
+| `src/routes/history.ts` | `GET/PUT/DELETE /api/history` (API-CONTRACT.md §3.6–3.9) |
 | `firebase.json` | déclare les règles et les index Firestore |
 | `firestore.rules` | **tout est refusé côté navigateur** ; le SDK Admin contourne ces règles |
-| `firestore.indexes.json` | aucun index composite nécessaire pour le modèle retenu |
+| `firestore.indexes.json` | index de groupe de collections sur `histories.expires_at` (pour la purge) ; aucun index composite applicatif |
 | `.firebaserc` | projet par défaut : `altredige` |
 | `npm run verif-firebase` | écrit, relit et supprime `_health/verif` : prouve l'accès réel |
+| `npm run verif-auth` | crée un jeton custom, l'échange via l'API web et le vérifie avec le SDK Admin |
+| `npm run verif-history` | écrit, lit, liste et supprime un historique contre un serveur réel |
 | Projet Firebase | `altredige` (compte CLI vérifié le 22/10/2026) |
 | Base Firestore | `(default)`, **eur3** (multi-région UE), Native, créée le 22/10/2026 |
 | Règles Firestore | **déployées le 22/10/2026** : `allow read, write: if false` |
 
-La configuration web fournie ( `apiKey`, `appId`, `measurementId`… ) est
+La configuration web fournie (`apiKey`, `appId`, `measurementId`…) est
 **publique par nature** et **ne donne aucun accès à Firestore**. Le backend ne
 l'utilise pas et elle n'est pas versionnée : le serveur passe par un compte de
-service.
+service. Le frontend s'en servira uniquement pour l'authentification Firebase.
 
-## 2. État au 22/10/2026
+## 2. État au 23/10/2026
 
 | Étape | État |
 |---|---|
@@ -28,6 +34,10 @@ service.
 | Règles Firestore | **déployées** — compilation et release réussies |
 | Compte de service du backend | **fait** — clé créée, stockée hors du dépôt |
 | `npm run verif-firebase` | **FIRESTORE OK** — écriture, relecture et suppression vérifiées le 22/10/2026 |
+| Authentification Firebase | **codée et vérifiée** — `npm run verif-auth` → `AUTH OK` (23/10/2026) |
+| Historiques | **codés et vérifiés de bout en bout** — `npm run verif-history` → `HISTORIQUES OK` (23/10/2026) |
+| TTL Firestore | **en attente** — l'offre Spark refuse la politique TTL (`403 billing disabled`) ; purge planifiée via `npm run purge-history` en attendant Blaze |
+| Frontend Google | **à brancher** — `public/index.html` utilise encore le code partagé |
 
 > **Région** : `europe-west1` avait été choisie, mais créer une deuxième base
 > exige l'offre payante (`403 — billing required`). La base existante est en
@@ -54,95 +64,188 @@ doute, le révoquer dans la console et en générer un autre.
 Dans `.env` (et sur le serveur de production) :
 
 ```dotenv
+AUTH_MODE=hybrid                 # code | firebase | hybrid
 FIREBASE_PROJECT_ID=altredige
 FIREBASE_SERVICE_ACCOUNT=C:\OASIS\secrets\altredige-firebase-adminsdk.json
+HISTORY_ENABLED=1
+HISTORY_RETENTION_DAYS=90
+HISTORY_MAX_PER_USER=100
 ```
+
+`AUTH_MODE=hybrid` permet à l'ancien front (code partagé) de continuer à
+fonctionner pendant que le nouveau front se connecte avec Google. Pour exiger
+Google partout, passer à `AUTH_MODE=firebase` et retirer `ACCESS_CODE`.
+`HISTORY_ENABLED=1` exige `AUTH_MODE=firebase` ou `hybrid` : un historique doit
+être rattaché à un `uid`.
 
 ### 2.3 Vérifier
 
 ```bash
 npm run verif-firebase
+npm run verif-auth
+npm run verif-history     # serveur en cours d'exécution, HISTORY_ENABLED=1
 ```
 
-Le script écrit un document technique, le relit, le supprime, et affiche
-`FIRESTORE OK`. Il ne touche à aucune donnée métier. Vérifié le 22/10/2026.
+`verif-firebase` écrit un document technique, le relit, le supprime, et affiche
+`FIRESTORE OK`. Il ne touche à aucune donnée métier.
 
-## 3. Décisions prises (22/10/2026)
+`verif-auth` exige `FIREBASE_WEB_API_KEY` dans `.env` (clé web publique du
+projet, utilisée uniquement par le script). Il crée un jeton custom pour un
+utilisateur de test, l'échange contre un ID token via
+`accounts:signInWithCustomToken`, le vérifie côté Admin, puis supprime
+l'utilisateur de test. Aucun jeton n'est affiché ni journalisé.
+
+`verif-history` fait la même authentification, puis appelle réellement
+`PUT`, `GET /api/history`, `GET /api/history/:id`, `DELETE` et vérifie le
+`404`. Il nettoie le document et l'utilisateur de test. Variables :
+`HISTORY_TEST_URL` (défaut `http://localhost:3123`) et `FIREBASE_WEB_API_KEY`.
+
+## 3. Décisions prises (22–23/10/2026)
 
 | Sujet | Décision |
 |---|---|
-| Identité des historiques | **attendre Google Auth** : aucune route d'historique avant l'authentification individuelle ; le front garde `localStorage` en attendant |
-| Conservation | **90 jours** après la dernière modification (TTL Firestore + suppression manuelle) |
+| Identité des historiques | **`uid` Firebase** vérifié côté serveur ; le code partagé n'a pas accès aux historiques |
+| Conservation | **90 jours** après la dernière modification (purge planifiée, TTL si Blaze, suppression manuelle) |
 | Région Firestore | **eur3** (multi-région UE) — base existante ; `europe-west1` exigerait l'offre payante pour une seconde base |
+| Mode d'authentification | `code` par défaut (compatibilité), `firebase` pour la production Google, `hybrid` pour la transition |
+| Plafond | 100 historiques par utilisateur |
 
-Conséquence : Firestore est **prêt** (base, règles et compte de service
-vérifié) mais **aucune donnée n'y est écrite** tant que Google Auth n'est pas
-branché. Le contrat d'API reste donc inchangé : le serveur demeure sans état.
-
-## 4. Modèle de données prévu (après Google Auth)
+## 4. Modèle de données
 
 ```
 users/{uid}/histories/{historyId}
     title          string, 200 caractères max
-    contract_type  string
+    contract_type  string | null, 64 caractères max
     markdown       string, 200 Ko max
     version        number
     messages       tableau de { role, content }, 30 max
     created_at     timestamp
     updated_at     timestamp
-    expires_at     timestamp  (TTL Firestore, 90 jours)
+    expires_at     timestamp  (purge après 90 jours)
 ```
 
 - `uid` = identité Firebase issue du jeton Google vérifié par le SDK Admin.
+  L'`uid` est validé (`^[A-Za-z0-9_-]{1,128}$`) avant de servir de chemin.
 - L'isolation est structurelle : chaque utilisateur a sa sous-collection.
-- Pas d'index composite : `orderBy('updated_at', 'desc')` dans une
-  sous-collection utilise l'index automatique.
-- Plafond : 100 historiques par utilisateur (les plus anciens sont supprimés).
+- Pas d'index composite applicatif : `orderBy('updated_at', 'desc')` dans une
+  sous-collection utilise l'index automatique. L'index de groupe de collections
+  sur `expires_at` ne sert qu'à la purge globale.
+- Plafond : 100 historiques par utilisateur (les plus anciens sont supprimés à
+  la création du 101e).
+- La lecture filtre et purge les documents expirés même si le TTL n'a pas encore
+  agi : le TTL Firestore peut mettre jusqu'à 24 h.
 - Suppression du compte = suppression récursive de `users/{uid}`.
-- **TTL à activer** le jour du branchement, sur le champ `expires_at` du groupe
-  de collections `histories` (console Firestore → TTL, ou
-  `gcloud firestore fields ttls update expires_at --collection-group=histories --enable-ttl`).
-  Tant que le TTL n'est pas activé, `expires_at` est écrit mais rien n'est purgé.
+- **Purge** : politique TTL sur `expires_at` si l'offre Blaze est active ;
+  sinon `npm run purge-history` (à planifier) et purge opportuniste à la
+  lecture. Voir §6.1 et §6.2.
 
-
-## 5. API prévue (après Google Auth)
+## 5. API
 
 | Méthode | Route | Réponse |
 |---|---|---|
 | `GET` | `/api/history` | `{ items: [{ id, title, contract_type, version, created_at, updated_at }] }`, tri décroissant, 50 max |
-| `GET` | `/api/history/:id` | le document complet + `messages` ; `404` si inconnu |
-| `PUT` | `/api/history/:id` | upsert ; `200 { id, updated_at }` ; limites ci-dessus |
+| `GET` | `/api/history/:id` | le document complet + `messages` ; `404` si inconnu, expiré ou appartenant à un autre utilisateur |
+| `PUT` | `/api/history/:id` | upsert ; `200 { id, updated_at }` ; limites du contrat |
 | `DELETE` | `/api/history/:id` | `204`, idempotent |
 
-Toutes passeront par l'authentification Firebase : le front envoie le jeton
+Toutes passent par l'authentification Firebase : le front envoie le jeton
 d'identité Google (`Authorization: Bearer <idToken>`), le serveur le vérifie
-avec le SDK Admin et utilise `uid` comme clé. Les routes ne seront montées
-qu'une fois ce vérificateur en place.
+avec le SDK Admin et utilise `uid` comme clé. Les routes ne sont montées que si
+`HISTORY_ENABLED=1` ; sinon elles répondent `404 not_found`.
 
-Le contrat actuel affirme le contraire — « le serveur est sans état, le document
-vit dans le navigateur » (`API-CONTRACT.md`, §1). Ces routes ne seront donc
-implémentées qu'après validation explicite et mise à jour du contrat.
+Les quatre routes sont documentées dans `API-CONTRACT.md` §3.6 à §3.9. Le
+contrat est passé en version `1.1` ; le serveur reste **sans état pour le
+chat**, mais conserve des snapshots pour les utilisateurs authentifiés.
 
 ## 6. Sécurité et conformité
 
 - Firestore n'est **jamais** exposé au navigateur : règles `allow read, write: if false`.
+  Le front utilise Firebase **Auth** uniquement, pas Firestore.
 - La clé de compte de service n'entre ni dans Git, ni dans un journal, ni dans
   une réponse HTTP.
+- Les jetons Firebase et les codes partagés ne sont jamais journalisés. Les
+  erreurs de vérification sont journalisées sous forme de code (`auth/id-token-expired`,
+  etc.), sans le jeton.
 - Les documents contiennent des données personnelles (noms, adresses, loyers) :
-  la note `NOTE-CONFORMITE-DONNEES.md` devra dire où elles sont stockées, combien
-  de temps, et comment les supprimer.
-- Purge automatique par TTL sur `expires_at` ; suppression manuelle via
-  `DELETE /api/history/:id`.
+  voir `NOTE-CONFORMITE-DONNEES.md` pour la localisation, la durée et la
+  suppression.
+- Purge : TTL automatique si l'offre Blaze est active ; sinon
+  `npm run purge-history` (planifié) et purge opportuniste à la lecture ;
+  suppression manuelle via `DELETE /api/history/:id`.
 - Aucun contenu de contrat dans les journaux, comme partout ailleurs.
+- Les requêtes d'historique sont limitées par `uid` (`RATE_HISTORY_PER_MIN`,
+  60/min par défaut).
+
+### 6.1 Activer la politique TTL
+
+**Prérequis : offre Blaze (facturation activée).** Sur l'offre Spark, Google
+répond `403 — Project altredige has billing disabled. Please enable it.` Le
+script `npm run setup-ttl` le détecte et renvoie vers la purge planifiée.
+
+La politique TTL s'applique au groupe de collections `histories`, champ
+`expires_at` :
+
+```bash
+gcloud firestore fields ttls update expires_at \
+  --collection-group=histories \
+  --enable-ttl \
+  --project=altredige
+```
+
+Sans `gcloud`, la même opération se fait dans la console Firebase :
+**Firestore → TTL → Créer une politique**, collection `histories`, champ
+`expires_at`, ou avec `npm run setup-ttl` (API Admin REST + compte de service).
+
+Une fois la facturation activée :
+
+```bash
+npm run setup-ttl          # doit afficher TTL ACTIVÉ (état ACTIVE)
+```
+
+Si l'API répond alors `The caller does not have permission`, accorder
+temporairement `roles/datastore.owner` au compte de service, relancer, puis
+retirer le rôle (la politique TTL reste configurée). Ne pas laisser ce rôle
+d'administration sur le compte d'exécution du serveur.
+
+### 6.2 Purger sans TTL (offre Spark)
+
+La conservation de 90 jours reste appliquée : un document dont `expires_at`
+est passé est traité comme absent, puis supprimé à la lecture. Pour nettoyer
+aussi les comptes inactifs, planifier la purge :
+
+```bash
+npm run purge-history -- --dry-run   # compte sans supprimer
+npm run purge-history                # supprime par lots de 500
+```
+
+Planification quotidienne (exemple Linux) :
+
+```cron
+15 3 * * * cd /opt/lexcanvas && npm run purge-history >> /var/log/lexcanvas-purge.log 2>&1
+```
+
+Sur Windows, créer une tâche planifiée quotidienne qui exécute
+`npm run purge-history` dans le dossier du projet. Le script ne lit ni
+n'affiche aucun contenu de contrat.
+
+L'index `histories.expires_at` (groupe de collections, ascendant) est déclaré
+dans `firestore.indexes.json` et se déploie avec :
+
+```bash
+firebase deploy --only firestore:indexes --project altredige
+```
+
+La première construction peut prendre quelques minutes ; tant qu'il est
+`CREATING`, la requête de purge répond `FAILED_PRECONDITION`.
 
 ## 7. Ce qui n'est pas fait, volontairement
 
 - **Pas de Crashlytics** : le lien fourni documente l'assistance IA pour les
   plantages d'applications mobiles/web. Le backend LexCanvas n'en a pas besoin.
-- **Pas de SDK web Firebase** : il exposerait Firestore au navigateur, alors que
-  l'authentification n'est pas encore individuelle.
-- **Pas encore de routes d'historique** : le contrat est normatif et affirme le
-  contraire ; la mise à jour du contrat précède le code.
-- **Pas d'authentification Google** : elle se branchera sur `AccessVerifier`
-  (`src/middleware/auth.ts`) ; les historiques passeront alors de `deviceHash`
-  à `uid`.
+- **Pas de SDK Firestore dans le navigateur** : le front utilise Firebase Auth,
+  jamais Firestore directement. Les règles restent donc `deny all`.
+- **Pas de fournisseur de messagerie** : Google est le seul fournisseur prévu
+  pour la V1. Le backend accepterait techniquement tout ID token Firebase
+  valide ; la restriction à Google se fait dans la console Firebase.
+- **Frontend Google non branché** : `public/index.html` utilise encore
+  `X-Access-Code`. Le contrat §2.1 et §8 décrit l'intégration attendue.

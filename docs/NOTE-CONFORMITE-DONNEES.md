@@ -1,17 +1,17 @@
-# LexCanvas — Note de conception : données transmises au fournisseur de modèle
+# LexCanvas — Note de conception : données personnelles et fournisseurs
 
 **Statut : note de conception. Les décisions de conformité relèvent d'un
 conseil juridique spécialisé, pas de cet audit technique.**
 
-Cette note décrit ce que l'application transmet à OpenRouter, pourquoi, et
-les mécanismes techniques déjà en place. Elle ne constitue pas un avis sur la
-conformité réglementaire.
+Cette note décrit ce que l'application transmet à OpenRouter, ce qu'elle
+conserve dans Firebase/Firestore, pourquoi, et les mécanismes techniques en
+place. Elle ne constitue pas un avis sur la conformité réglementaire.
 
 ---
 
-## 1. Ce qui est transmis
+## 1. Ce qui est transmis au fournisseur de modèle
 
-À chaque appel de `POST /api/chat`, le serveur envoie au fournisseur :
+À chaque appel de `POST /api/chat`, le serveur envoie à OpenRouter :
 
 | Élément | Volume | Origine |
 |---|---|---|
@@ -29,11 +29,11 @@ part donc jusqu'à 6 fois.
 ## 2. Les données en cause
 
 Un contrat contient des **données à caractère personnel** : nom et prénom des
-parties, adresses, numéros de pièce d'identité, montants,banques, lieux de
+parties, adresses, numéros de pièce d'identité, montants, banques, lieux de
 travail. Ce sont des données que l'utilisateur ne confie pas volontiers à un
 tiers.
 
-## 3. Mesures techniques déjà en place
+## 3. Mesures techniques en place pour l'appel au modèle
 
 | Mesure | Où | Effet |
 |---|---|---|
@@ -44,34 +44,82 @@ tiers.
 | Plafond d'étapes | `MAX_STEPS` (6) | Borne la boucle. |
 | Aucun contenu dans les journaux | `src/logger.ts` (liste de clés interdites) | Les journaux ne contiennent ni message, ni contrat, ni réponse du fournisseur. |
 | Part du modèle par type | `data/templates/*.json` | Seuls les modèles du catalogue sont transmis. |
+| Aucun jeton dans les journaux | `src/middleware/auth.ts` | Les codes d'erreur Firebase sont journalisés, jamais le jeton ni l'`uid`. |
 
-## 4. Points ouverts — décision humaine
+## 4. Authentification Google et données de compte
+
+Depuis le 23/10/2026, le backend sait vérifier un **ID token Firebase** obtenu
+après une connexion Google (`AUTH_MODE=firebase` ou `hybrid`). Le serveur :
+
+- vérifie la signature et l'expiration avec le SDK Admin Firebase ;
+- utilise l'`uid` Firebase comme identité (quota, historiques) ;
+- **ne reçoit pas et ne stocke pas le mot de passe Google** ;
+- ne journalise ni le jeton, ni l'adresse e-mail, ni le nom du compte ;
+- ne stocke pas l'adresse e-mail dans Firestore.
+
+Le fournisseur d'identité est Google/Firebase. Les données de connexion
+(compte Google, adresse e-mail, journaux de connexion) sont traitées par Google
+selon ses propres conditions ; une information utilisateur et, le cas échéant,
+un accord de sous-traitance doivent être formalisés.
+
+## 5. Historiques côté serveur (optionnels)
+
+Ils ne sont actifs que si **`HISTORY_ENABLED=1`** et si l'utilisateur est
+authentifié individuellement. Sans compte Google, aucun historique n'est écrit :
+le document reste dans le navigateur (`localStorage`).
+
+| Élément stocké | Détail |
+|---|---|
+| Clé | `uid` Firebase (identifiant pseudonyme) |
+| Contenu | titre, type de contrat, Markdown du contrat, messages de la conversation, version |
+| Horodatages | `created_at`, `updated_at`, `expires_at` |
+| Emplacement | Firestore `users/{uid}/histories/{historyId}`, base `(default)` en `eur3` (multi-région européenne) |
+| Accès | SDK Admin uniquement ; règles Firestore `allow read, write: if false` pour le navigateur |
+| Conservation | 90 jours après la dernière écriture (`HISTORY_RETENTION_DAYS`) |
+| Purge | Filtrage et suppression à la lecture ; `npm run purge-history` planifié (quotidien) ; TTL Firestore si l'offre Blaze est active ; suppression immédiate via `DELETE /api/history/:id` |
+| Plafond | 100 documents par utilisateur (`HISTORY_MAX_PER_USER`) ; le plus ancien est supprimé à la création du 101e |
+| Suppression du compte | suppression récursive de `users/{uid}` à prévoir lors de la suppression du compte Firebase |
+
+Les routes d'historique sont décrites dans `API-CONTRACT.md` §3.6 à §3.9.
+Elles refusent le code partagé : un historique est toujours rattaché à un
+compte.
+
+## 6. Points ouverts — décision humaine
 
 1. **Base légale et information de l'utilisateur.** Le transfert vers un
    fournisseur situé hors de l'UEMOA/CEDEAO doit être justifié et porté à la
-   connaissance de l'utilisateur. Aucun écran d'information n'existe
-   aujourd'hui (le frontend n'est pas livré).
+   connaissance de l'utilisateur. Le frontend n'est pas encore livré ; l'écran
+   d'information et la politique de confidentialité restent à rédiger et à
+   valider.
 2. **Conservation chez le fournisseur.** Durée de conservation des requêtes,
    usage à des fins d'amélioration du modèle, sous-traitance en cascade :
-   à vérifier avec OpenRouter, et à|report dans l'information utilisateur.
+   à vérifier avec OpenRouter, et à reporter dans l'information utilisateur.
 3. **Minimisation.** Faut-il anonymiser les parties avant l'envoi (remplacer
    les noms par des jetons) ? C'est techniquement faisable côté serveur
    (réécriture du contexte) mais cela dégrade la qualité de la rédaction, et
    cela n'a pas été fait.
-4. **Authentification par compte.** Tant qu'il n'y a pas d'identité
-   individuelle (`ACCESS_CODE` est un secret partagé), il n'existe ni quota
-   par utilisateur, ni journal nominatif, ni révocation unitaire. Le
-   passage à un jeton d'identité (Firebase ou équivalent) est la voie
-   retenue ; l'interface `AccessVerifier` de `src/middleware/auth.ts` existe
-   pour ça.
-5. **Durée de conservation côté serveur.** Le serveur ne conserve rien
-   (stateless) : l'historique et le document restent dans le navigateur
-   (`localStorage` selon la spécification frontend). C'est un point positif
-   pour la confidentialité, mais cela déplace la responsabilité de la
-   conservation vers le client — à formaliser.
+4. **Authentification par compte.** L'infrastructure est prête (`AUTH_MODE`,
+   `FirebaseTokenVerifier`, `uid`). Tant que le frontend utilise seulement le
+   code partagé, il n'existe ni quota par utilisateur, ni historique nominatif,
+   ni révocation unitaire. Le passage du front à Google est la prochaine étape.
+5. **Durée de conservation côté serveur.** Elle est fixée à 90 jours pour les
+   historiques. Cette durée doit être justifiée, affichée à l'utilisateur, et
+   alignée sur la politique de confidentialité. La suppression à la demande et
+   la suppression du compte doivent être testées de bout en bout. La purge
+   physique dépend soit de la politique TTL Firestore (offre Blaze), soit d'un
+   script `npm run purge-history` planifié ; sur l'offre Spark actuelle, c'est
+   ce script qui doit être planifié, car le TTL est refusé faute de facturation.
+6. **Droits des personnes.** Accès, rectification, effacement, portabilité :
+   les routes actuelles couvrent la consultation et l'effacement des
+   historiques, pas l'export structuré ni la suppression du compte Firebase.
+7. **Localisation et sous-traitants.** Firestore est en `eur3`, mais Google
+   peut traiter certaines métadonnées hors de l'UE selon ses conditions. Une
+   analyse des transferts et des garanties appropriées reste nécessaire.
 
-## 5. Ce qui n'a pas été fait
+## 7. Ce qui n'a pas été fait
 
 - Aucun chiffrement supplémentaire avant envoi (le transport est en TLS).
 - Aucune journalisation du contenu — c'est délibéré.
 - Aucune analyse d'impact : hors périmètre d'un audit technique.
+- Aucune procédure automatisée de suppression du compte Firebase ni d'export
+  des données personnelles.

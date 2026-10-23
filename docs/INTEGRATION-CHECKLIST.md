@@ -58,14 +58,18 @@ Requête :
 - `messages` : 1 à 30 messages, alternance `user` / `assistant`, le dernier
   est `user`, chaque `content` ≤ 8 000 caractères.
 - `document` : `null` ou le document courant (≤ 200 000 octets). C'est le
-  client qui détient l'état : le serveur est sans état.
+  client qui détient l'état de la conversation ; le serveur n'en garde pas de
+  copie pour le chat. Les snapshots d'historiques (V1.1) sont optionnels et
+  réservés aux comptes Google.
 - `contract_type` : identifiant de `/api/templates`, ou `null`.
 - `answers` : réponses structurées aux questions du tour précédent
   (`AGENT-PROTOCOL.md` §8). **Facultatif** : le texte de `messages` reste
   toujours porteur de l'information.
 
-Si `ACCESS_CODE` est défini, l'en-tête `X-Access-Code` est obligatoire sur
-toutes les routes `/api/*` sauf `/api/health`.
+Si `ACCESS_CODE` est défini et que `AUTH_MODE` vaut `code` ou `hybrid`, l'en-tête
+`X-Access-Code` est accepté sur les routes `/api/*` sauf `/api/health`. En mode
+`firebase` (ou en `hybrid` avec Google), le front envoie
+`Authorization: Bearer <idToken>`.
 
 En-têtes de réponse à respecter :
 

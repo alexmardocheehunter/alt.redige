@@ -18,12 +18,17 @@
     "eval": "tsx evals/run.ts",
     "calibrage": "tsx scripts/calibrage-securite.ts",
     "verif-prod": "tsx scripts/verif-prod.ts",
-    "verif-firebase": "tsx scripts/verif-firebase.ts"
+    "verif-firebase": "tsx scripts/verif-firebase.ts",
+    "verif-auth": "tsx scripts/verif-auth.ts",
+    "verif-history": "tsx scripts/verif-history.ts",
+    "setup-ttl": "tsx scripts/setup-firestore-ttl.ts",
+    "purge-history": "tsx scripts/purge-history.ts"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.5",
     "docx": "^9.13.0",
     "firebase-admin": "^14.5.0",
+    "google-auth-library": "^11.3.1",
     "hono": "^4.13.13",
     "mdast-util-from-markdown": "^2.0.2",
     "mdast-util-gfm-table": "^2.0.0",

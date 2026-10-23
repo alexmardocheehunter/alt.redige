@@ -5,8 +5,10 @@
 export type ErrorCode =
   | 'bad_request'
   | 'unauthorized'
+  | 'not_found'
   | 'payload_too_large'
   | 'rate_limited'
+  | 'storage_unavailable'
   | 'llm_unavailable'
   | 'llm_error'
   | 'truncated'
@@ -25,8 +27,10 @@ export type ErrorCode =
 const STATUS_BY_CODE: Record<ErrorCode, number> = {
   bad_request: 400,
   unauthorized: 401,
+  not_found: 404,
   payload_too_large: 413,
   rate_limited: 429,
+  storage_unavailable: 503,
   llm_unavailable: 503,
   llm_error: 502,
   truncated: 400,
@@ -37,8 +41,10 @@ const STATUS_BY_CODE: Record<ErrorCode, number> = {
 const RETRYABLE: Record<ErrorCode, boolean> = {
   bad_request: false,
   unauthorized: false,
+  not_found: false,
   payload_too_large: false,
   rate_limited: true,
+  storage_unavailable: true,
   llm_unavailable: true,
   llm_error: true,
   truncated: true,
@@ -48,9 +54,11 @@ const RETRYABLE: Record<ErrorCode, boolean> = {
 
 const DEFAULT_MESSAGE: Record<ErrorCode, string> = {
   bad_request: "La demande n'a pas pu être traitée. Reformulez ou rechargez la page.",
-  unauthorized: 'Code d’accès invalide.',
+  unauthorized: 'Authentification requise ou invalide.',
+  not_found: 'Ressource introuvable.',
   payload_too_large: 'Le document ou le message est trop long.',
   rate_limited: 'Trop de demandes. Réessayez dans quelques instants.',
+  storage_unavailable: 'Le stockage des historiques est momentanément indisponible. Réessayez.',
   llm_unavailable: 'Le service de rédaction est momentanément indisponible. Réessayez.',
   llm_error: 'La rédaction n’a pas pu aboutir. Réessayez ou simplifiez votre demande.',
   truncated:

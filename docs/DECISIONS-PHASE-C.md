@@ -1,5 +1,11 @@
 # LexCanvas — Décisions de la phase C
 
+> **Archive V1.0.** Ces décisions décrivent le branchement du front historique.
+> Le 23/10/2026, Alex a validé l'ajout de Google Authentication et des
+> historiques Firestore (V1.1) : voir `docs/API-CONTRACT.md` §2 et §3.6–3.9,
+> et `docs/FIREBASE.md`. Les sections ci-dessous sur l'authentification par
+> code partagé ne sont plus la cible de production.
+
 Réponses aux cinq questions laissées ouvertes par `SPEC-FRONTEND.md` §17
 (*« Décisions à trancher avant branchement (pour le dev backend) »*), et choix
 complémentaires posés par le branchement du frontend livré.

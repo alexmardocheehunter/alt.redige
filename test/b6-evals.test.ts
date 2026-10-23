@@ -33,16 +33,33 @@ describe('B6 — évaluations', () => {
   });
 
   it('exécute tous les scénarios sur le modèle scripté (mode hors ligne)', async () => {
-    const scenarios = loadScenarios();
-    const report: string[] = [];
-    for (const scenario of scenarios) {
-      const result = await runScenario(scenario, { dryRun: true, logger });
-      const failures = result.checks.filter((check) => !check.ok);
-      for (const failure of failures) {
-        report.push(`${scenario.id} — ${failure.name}: ${failure.detail ?? ''}`);
+    // Les évaluations hors ligne ne doivent pas dépendre du `.env` local :
+    // on force le mode historique ouvert et on désactive Firestore.
+    const previous = {
+      AUTH_MODE: process.env.AUTH_MODE,
+      ACCESS_CODE: process.env.ACCESS_CODE,
+      HISTORY_ENABLED: process.env.HISTORY_ENABLED,
+    };
+    process.env.AUTH_MODE = 'code';
+    delete process.env.ACCESS_CODE;
+    process.env.HISTORY_ENABLED = '0';
+    try {
+      const scenarios = loadScenarios();
+      const report: string[] = [];
+      for (const scenario of scenarios) {
+        const result = await runScenario(scenario, { dryRun: true, logger });
+        const failures = result.checks.filter((check) => !check.ok);
+        for (const failure of failures) {
+          report.push(`${scenario.id} — ${failure.name}: ${failure.detail ?? ''}`);
+        }
+        if (result.error) report.push(`${scenario.id} — erreur: ${result.error}`);
       }
-      if (result.error) report.push(`${scenario.id} — erreur: ${result.error}`);
+      expect(report).toEqual([]);
+    } finally {
+      for (const [key, value] of Object.entries(previous)) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
     }
-    expect(report).toEqual([]);
   }, 60_000);
 });

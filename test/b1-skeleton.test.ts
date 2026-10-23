@@ -10,7 +10,7 @@ describe('B1 — squelette', () => {
     const body = await readJson(res);
     expect(body).toEqual({
       ok: true,
-      contract_version: '1.0',
+      contract_version: '1.1',
       model: 'minimax/minimax-m3.1-flash:free',
     });
   });
@@ -62,7 +62,7 @@ describe('B1 — squelette', () => {
     const res = await app.request('/api/inconnu');
     expect(res.status).toBe(404);
     const body = await readJson(res);
-    expect(body.error.code).toBe('bad_request');
+    expect(body.error.code).toBe('not_found');
   });
 });
 

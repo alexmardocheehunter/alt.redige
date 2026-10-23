@@ -37,13 +37,13 @@ Les fichiers de `reference/` sont des **originaux** : copie-les, n'édite pas l'
 ## 4. Règles non négociables
 
 1. **Le contrat d'API ne se modifie qu'avec l'accord d'Alex.** Si un changement s'impose, modifie d'abord `docs/API-CONTRACT.md`, signale-le à Alex en une phrase, puis le code. Le front est écrit contre la version actuelle.
-2. **Serveur sans état.** Pas de base de données, pas de session. Le client renvoie historique et document.
+2. **Serveur sans état pour le chat.** Aucune session de conversation côté serveur : le client renvoie historique et document. Depuis la V1.1 (validée par Alex le 23/10/2026), des **snapshots d'historiques optionnels** peuvent être conservés dans Firestore pour les utilisateurs connectés avec Google ; ils restent supprimables et ne sont jamais utilisés pour reconstruire une conversation.
 3. **Jamais de contenu de contrat ou de message dans les logs.** Ce sont des données personnelles.
 4. **Aucune règle juridique inventée.** `legal_notes` et `validators` des modèles restent vides jusqu'à ce qu'Alex fournisse du contenu validé par un juriste.
 5. **Tout ou rien sur le document.** Un flux interrompu ne laisse jamais un demi-document (voir contrat, règles côté client).
 6. **Annulation propagée** : fermeture de la connexion client ⇒ interruption de l'appel au LLM.
 7. **Ne réécris pas `export-docx.mjs`.** Étends-le.
-8. **Pas de dépendance lourde** (pas de navigateur headless, pas de base de données) sans l'accord d'Alex.
+8. **Pas de dépendance lourde sans l'accord d'Alex.** Firestore/Firebase Admin est le stockage validé pour les historiques (V1.1) ; toute autre base ou tout navigateur headless reste hors périmètre.
 9. **Réponses d'erreur et libellés utilisateur en français**, sans détail technique.
 10. Si une instruction de ces documents te semble contradictoire, applique le contrat d'API, note le point dans `docs/KNOWN-ISSUES.md` et continue.
 
@@ -130,9 +130,9 @@ Quand Alex te remet `index.html` :
    - Le front fait quelque chose que le contrat ne prévoit pas : corrige le **front** minimalement, ou signale-le à Alex.
    - Flux SSE saccadé ou bloqué : en-têtes `Cache-Control: no-cache, no-transform` et `X-Accel-Buffering: no`, pas de compression, vérifier le proxy.
    - Accents ou « » cassés : vérifier `charset=utf-8` partout.
-5. Teste : coupure réseau en cours de génération (le front doit restaurer le document précédent) ; double clic rapide sur « Envoyer » ; rechargement en plein flux ; document de 20 000 caractères ; 401 avec `ACCESS_CODE`.
+5. Teste : coupure réseau en cours de génération (le front doit restaurer le document précédent) ; double clic rapide sur « Envoyer » ; rechargement en plein flux ; document de 20 000 caractères ; 401 avec `ACCESS_CODE` et 401 avec un jeton Google expiré (le front doit rafraîchir une fois puis déconnecter).
 6. Rédige `docs/INTEGRATION-REPORT.md` : ce qui passe, ce qui échoue, ce qui a été corrigé et où.
-7. **Avant la mise en production** : lance `npm run verif-prod` (voir `docs/EXPLOITATION.md` §5.1). Le script vérifie la configuration et sonde réellement chaque modèle de la chaîne ; il refuse de valider sans `ACCESS_CODE`, avec des modèles `:free` ou si le modèle principal ne répond pas.
+7. **Avant la mise en production** : lance `npm run verif-prod` (voir `docs/EXPLOITATION.md` §5.1). Le script vérifie la configuration et sonde réellement chaque modèle de la chaîne ; il refuse de valider avec des modèles `:free` ou si le modèle principal ne répond pas. Avec `AUTH_MODE=code`, `ACCESS_CODE` reste obligatoire ; avec `firebase`, il ne l'est plus.
 
 ## 10. Quand demander à Alex
 
@@ -144,7 +144,9 @@ Décide seul pour tout ce qui est technique et réversible. Pose une question, c
 
 ## 11. Hors périmètre de la version 1.0
 
-Ne le construis pas, même si c'est tentant : audit d'un contrat importé (upload `.docx`, commentaires et modifications suivies), comptes utilisateurs et paiement, base de données, historique côté serveur, PDF généré côté serveur, multi-langue, tests de charge. Ces points sont notés pour une version 2.
+Ne le construis pas, même si c'est tentant : audit d'un contrat importé (upload `.docx`, commentaires et modifications suivies), paiement, PDF généré côté serveur, multi-langue, tests de charge. Ces points sont notés pour une version 2.
+
+**Ajouts validés par Alex le 23/10/2026 (V1.1)** : comptes utilisateurs Google (Firebase Authentication) et historiques de contrats côté serveur (Firestore), réservés aux comptes authentifiés. Voir `docs/API-CONTRACT.md` §2 et §3.6–3.9, `docs/FIREBASE.md`.
 
 ## 12. Définition de « terminé » (version 1.0)
 

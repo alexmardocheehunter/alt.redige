@@ -49,6 +49,20 @@ const schema = z.object({
 
   PORT: z.coerce.number().int().min(0).max(65535).default(3000),
   ACCESS_CODE: z.string().min(1).optional(),
+  /**
+   * `code` : code partagé `X-Access-Code` (mode historique).
+   * `firebase` : jeton d'identité Firebase obligatoire (`Authorization: Bearer`).
+   * `hybrid` : jeton Firebase ou code partagé, pour la transition du frontend.
+   */
+  AUTH_MODE: z.enum(['code', 'firebase', 'hybrid']).default('code'),
+  FIREBASE_PROJECT_ID: z.string().min(1).optional(),
+  /** Chemin du fichier JSON du compte de service. Sinon, identifiants par défaut. */
+  FIREBASE_SERVICE_ACCOUNT: z.string().min(1).optional(),
+  /** Historiques de contrats dans Firestore (réservés aux comptes Firebase). */
+  HISTORY_ENABLED: z.enum(['0', '1']).default('0'),
+  HISTORY_RETENTION_DAYS: positiveInt(90, 3650),
+  HISTORY_MAX_PER_USER: positiveInt(100, 1000),
+  RATE_HISTORY_PER_MIN: positiveInt(60, 100000),
   MAX_STEPS: positiveInt(6, 20),
   MAX_OUTPUT_TOKENS: positiveInt(16000, 64000),
   REQUEST_TIMEOUT_MS: positiveInt(240000, 600000),
@@ -94,6 +108,13 @@ export interface AppConfig {
   safetyMode: 'off' | 'advisory' | 'block';
   port: number;
   accessCode: string | null;
+  authMode: 'code' | 'firebase' | 'hybrid';
+  firebaseProjectId: string | null;
+  firebaseServiceAccount: string | null;
+  historyEnabled: boolean;
+  historyRetentionDays: number;
+  historyMaxPerUser: number;
+  rateHistoryPerMin: number;
   maxSteps: number;
   maxOutputTokens: number;
   requestTimeoutMs: number;
@@ -140,6 +161,13 @@ function toAppConfig(raw: RawConfig): AppConfig {
     safetyMode: raw.SAFETY_MODE,
     port: raw.PORT,
     accessCode: raw.ACCESS_CODE ?? null,
+    authMode: raw.AUTH_MODE,
+    firebaseProjectId: raw.FIREBASE_PROJECT_ID ?? null,
+    firebaseServiceAccount: raw.FIREBASE_SERVICE_ACCOUNT ?? null,
+    historyEnabled: raw.HISTORY_ENABLED === '1',
+    historyRetentionDays: raw.HISTORY_RETENTION_DAYS,
+    historyMaxPerUser: raw.HISTORY_MAX_PER_USER,
+    rateHistoryPerMin: raw.RATE_HISTORY_PER_MIN,
     maxSteps: raw.MAX_STEPS,
     maxOutputTokens: raw.MAX_OUTPUT_TOKENS,
     requestTimeoutMs: raw.REQUEST_TIMEOUT_MS,
@@ -173,16 +201,31 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   }
   const config = toAppConfig(result.data);
 
-  // En production, aucune requête ne doit être servie sans authentification :
-  // le serveur héberge la clé du fournisseur de modèle.
-  if (config.nodeEnv === 'production' && !config.accessCode) {
+  if (config.authMode !== 'code' && !config.firebaseProjectId) {
     throw new ConfigError(
-      'ACCESS_CODE est obligatoire en production : sans mécanisme d’authentification, '
-      + 'le quota du fournisseur de modèle est à la disposition de quiconque atteint le port.',
+      'FIREBASE_PROJECT_ID est obligatoire avec AUTH_MODE=firebase ou AUTH_MODE=hybrid.',
+    );
+  }
+
+  if (config.historyEnabled && config.authMode === 'code') {
+    throw new ConfigError(
+      'HISTORY_ENABLED=1 exige AUTH_MODE=firebase ou AUTH_MODE=hybrid : '
+      + 'un historique doit être rattaché à un compte Firebase (uid).',
+    );
+  }
+
+  // En production, aucune requête ne doit être servie sans authentification :
+  // le serveur héberge la clé du fournisseur de modèle. Le mode `firebase` est
+  // sûr sans ACCESS_CODE ; le mode `hybrid` avec un code est également couvert.
+  if (config.nodeEnv === 'production' && config.authMode === 'code' && !config.accessCode) {
+    throw new ConfigError(
+      'ACCESS_CODE est obligatoire en production avec AUTH_MODE=code : sans mécanisme '
+      + 'd’authentification, le quota du fournisseur de modèle est à la disposition de '
+      + 'quiconque atteint le port.',
     );
   }
 
   return config;
 }
 
-export const CONTRACT_VERSION = '1.0';
+export const CONTRACT_VERSION = '1.1';

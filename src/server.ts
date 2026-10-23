@@ -21,7 +21,16 @@ function main(): void {
   }
 
   const logger = createLogger(config.logLevel, { service: 'lexcanvas' });
-  const app = createApp({ config, logger });
+  let app: ReturnType<typeof createApp>;
+  try {
+    app = createApp({ config, logger });
+  } catch (error) {
+    if (error instanceof ConfigError) {
+      console.error(`ERREUR DE CONFIGURATION — ${error.message}`);
+      process.exit(1);
+    }
+    throw error;
+  }
 
   const server = serve({
     fetch: app.fetch,
@@ -34,6 +43,8 @@ function main(): void {
       models: config.models.join(','),
       safety_model: config.safetyModel,
       safety_check: config.safetyCheck,
+      auth_mode: config.authMode,
+      history_enabled: config.historyEnabled,
     });
     console.log(`\nLexCanvas est en ligne : http://localhost:${info.port}\n`);
   });
