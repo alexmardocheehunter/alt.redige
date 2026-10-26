@@ -70,13 +70,16 @@ describe('C6 — interface agent v2', () => {
     expect(source).toContain('mockStream');
     expect(source).toContain('mockBanner');
     expect(source).toContain('MODE SIMULÉ');
+    expect(source).toContain('exitMock');
+    expect(source).toContain('Passer en mode réel');
     for (const scenario of ['question', 'formulaire', 'reflexion', 'retry', 'confirmer', 'préavis', 'erreur', 'limite', 'lent']) {
       expect(source).toContain(scenario);
     }
   });
 
-  it('a le mode simulé actif sans toucher au reste', () => {
-    expect(source).toContain('MOCK: new URLSearchParams(location.search).has(\'mock\')');
+  it('n’active le mode simulé que sur demande explicite', () => {
+    expect(source).toContain("MOCK: new URLSearchParams(location.search).get('mock') === '1'");
+    expect(source).not.toContain("new URLSearchParams(location.search).has('mock')");
   });
 
   it('l’injection est idempotente et le bloc est à jour', () => {

@@ -22,7 +22,7 @@
 
   var CONFIG = {
     API_BASE: '',
-    MOCK: new URLSearchParams(location.search).has('mock'),
+    MOCK: new URLSearchParams(location.search).get('mock') === '1',
     STORAGE_KEY: 'altredige:convs',
     MAX_MESSAGES: 30,
     THINKING_SHOW_MS: 400,
@@ -321,7 +321,19 @@
     if (fbUser) enterApp(fbUser);
   };
 
+  function exitMock() {
+    var url = new URL(location.href);
+    url.searchParams.delete('mock');
+    // `replace` évite que le bouton Retour ramène l'utilisateur dans la démo.
+    location.replace(url.pathname + url.search + url.hash);
+  }
+  window.exitMock = exitMock;
+
   function signOutUser() {
+    if (CONFIG.MOCK) {
+      exitMock();
+      return;
+    }
     var auth = firebaseAuth();
     if (auth) auth.signOut().catch(function () { /* local state is cleared below */ });
     resetSession();
@@ -814,7 +826,8 @@
       '.legalnotice{margin:8px 0;padding:8px 10px;border-radius:10px;font-size:11.5px;color:var(--mut);border:1px solid var(--line);background:var(--panel)}',
 
       /* --- bandeau mode simulé --- */
-      '#mockBanner{position:fixed;top:0;left:0;right:0;z-index:50;background:#b45309;color:#fff;font-size:12px;text-align:center;padding:3px}',
+      '#mockBanner{position:fixed;top:0;left:0;right:0;z-index:50;background:#b45309;color:#fff;font-size:12px;text-align:center;padding:3px 8px;display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}',
+      '#mockBanner button{font:inherit;font-weight:600;background:#fff;color:#7c2d12;border:0;border-radius:5px;padding:2px 9px;cursor:pointer}',
 
       /* --- impression --- */
       '@media print{body *{visibility:hidden}#paper,#paper *{visibility:visible}#paper{position:absolute;left:0;top:0;width:100%;box-shadow:none;border:0}.side,.chat,.bar,.rz,.toast,.skip,#agentStatus,.activity{display:none!important}#shell,#content,#app,.desk,.stage{display:block!important;height:auto!important;overflow:visible!important}@page{size:A4;margin:2.5cm}#paper p{text-align:justify}#paper h2{break-after:avoid}}'
@@ -824,8 +837,13 @@
 
   function installMockBanner() {
     if ($('mockBanner')) return;
-    var banner = el('div', '', 'MODE SIMULÉ');
+    var banner = el('div');
     banner.id = 'mockBanner';
+    banner.appendChild(document.createTextNode('MODE SIMULÉ — réponses de démonstration. '));
+    var exit = el('button', '', 'Passer en mode réel');
+    exit.type = 'button';
+    exit.onclick = exitMock;
+    banner.appendChild(exit);
     document.body.appendChild(banner);
   }
 

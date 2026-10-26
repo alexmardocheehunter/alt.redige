@@ -124,6 +124,7 @@ Quand Alex te remet `index.html` :
 
 1. Copie-le dans `public/index.html` (sans le modifier). Lance le serveur, ouvre `/?mock=1` : le mode simulé doit encore fonctionner, c'est ta preuve que le front respecte le contrat.
 2. Ouvre `/` (sans `?mock=1`) et parcours le scénario réel : demande vague → questions ; réponse → contrat en streaming ; « préavis 3 mois » → modification ciblée ; export Word ; impression PDF.
+   > Le mode simulé n'est actif que si l'URL contient exactement `?mock=1`. Le bandeau orange « MODE SIMULÉ » propose **Passer en mode réel** (ou ouvre simplement `/`). Sans ce paramètre, les messages partent vers `/api/chat` et le LLM.
 3. Compare le front aux critères d'acceptation de `docs/SPEC-FRONTEND.md` §9, point par point.
 4. **Écarts probables et leur traitement** :
    - Le front attend un événement ou un champ que le serveur n'émet pas : **corrige le serveur** pour qu'il suive le contrat, pas l'inverse.
