@@ -31,6 +31,14 @@ describe('C1 — le frontend est installé et servi', () => {
     expect(policy).toMatch(/script-src 'self' 'nonce-[^']+'/);
   });
 
+  it('autorise la popup Google à rendre la session à la page', async () => {
+    const app = testApp();
+    const res = await app.request('/');
+    // `same-origin` couperait `window.opener` : Firebase recevrait le consentement
+    // Google mais ne pourrait jamais transmettre la session à l'application.
+    expect(res.headers.get('cross-origin-opener-policy')).toBe('same-origin-allow-popups');
+  });
+
   it('le nonce de la réponse autorise le script inline de la page', async () => {
     const app = testApp();
     const res = await app.request('/');

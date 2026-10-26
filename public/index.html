@@ -736,7 +736,10 @@ theme(getS('altredige.theme')||'auto');render();
 
   function authErrorMessage(error) {
     var code = error && error.code ? String(error.code) : '';
-    if (code.indexOf('popup-closed-by-user') !== -1 || code.indexOf('cancelled-popup-request') !== -1) return '';
+    if (code.indexOf('popup-closed-by-user') !== -1) {
+      return 'La fenêtre Google s’est fermée avant la fin de la connexion. Réessayez.';
+    }
+    if (code.indexOf('cancelled-popup-request') !== -1) return '';
     if (code.indexOf('popup-blocked') !== -1) {
       return 'Le navigateur a bloqué la fenêtre Google. Autorisez les fenêtres puis réessayez.';
     }

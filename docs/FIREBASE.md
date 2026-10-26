@@ -253,3 +253,9 @@ La première construction peut prendre quelques minutes ; tant qu'il est
   (compat 10.12.2) et `public/app-api.js` gère `signInWithPopup`, l'ID token
   `Authorization: Bearer` et les historiques `/api/history` (liste, ouverture,
   sauvegarde, suppression). Le mode `?mock=1` fonctionne sans connexion.
+
+> **Popup Google et COOP** : la page doit répondre
+> `Cross-Origin-Opener-Policy: same-origin-allow-popups`. Avec `same-origin`,
+> le popup se ferme après le consentement Google mais Firebase ne peut pas
+> rendre la session à la page : l'utilisateur attend une à deux minutes et
+> revient à l'écran de connexion. Le test C1 verrouille cet en-tête.

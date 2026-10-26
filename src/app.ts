@@ -119,6 +119,11 @@ export function createApp({
     xContentTypeOptions: 'nosniff',
     referrerPolicy: 'no-referrer',
     xFrameOptions: 'DENY',
+    // Firebase signInWithPopup receives its result through the popup's
+    // `window.opener`. The default `same-origin` COOP severs that link, so the
+    // popup closes after Google consent but the page never gets the session.
+    // `same-origin-allow-popups` keeps isolation while allowing OAuth popups.
+    crossOriginOpenerPolicy: 'same-origin-allow-popups',
     // HSTS en production uniquement : en développement le serveur est en HTTP
     // et l'en-tête n'aurait aucun effet, en production il évite qu'une
     // première visite en clair ne soit détournée.
