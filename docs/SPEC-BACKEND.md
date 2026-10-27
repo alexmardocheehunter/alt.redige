@@ -219,7 +219,7 @@ Scénarios minimum (10) :
 - **Auth** : `AUTH_MODE` = `code` (code partagé, comparaison à temps constant), `firebase` (ID token vérifié par le SDK Admin) ou `hybrid` (les deux). Le code partagé ne donne jamais accès aux historiques.
 - **Limites** : taille de corps 1 Mo, `rateLimit` en mémoire par identité (ou par IP sans identité), `MAX_OUTPUT_TOKENS`, `REQUEST_TIMEOUT_MS`. Derrière un proxy, lis l'IP depuis `X-Forwarded-For` uniquement si `TRUST_PROXY=1`.
 - **Historiques** : Firestore `users/{uid}/histories`, règles client `deny all`, TTL 90 jours, plafond 100, suppression idempotente.
-- **CORS** : même origine uniquement (le front est servi par le serveur). Variable `ALLOWED_ORIGIN` seulement si besoin d'un front séparé en développement.
+- **CORS** : même origine par défaut (le front est servi par le serveur). `ALLOWED_ORIGIN` autorise une liste d'origines séparées par des virgules. En production, Firebase Hosting sert la page et le navigateur appelle Cloud Run directement pour `/api/*` (le CDN de Hosting bufferise le SSE) : les deux domaines Hosting sont donc dans `ALLOWED_ORIGIN`, et `PUBLIC_API_BASE` fournit l'URL absolue injectée dans la page.
 - **Journaux** : `request_id`, route, durée, statut, jetons, nombre d'étapes, codes d'erreur. **Jamais** le contenu des messages ni des contrats : ce sont des données personnelles (identités, adresses, pièces).
 - **En-têtes** : `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`. SSE sans compression.
 - **Arrêt propre** : sur `SIGTERM`, refuser les nouveaux flux et laisser terminer les flux en cours (30 s max).
