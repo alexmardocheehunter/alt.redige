@@ -715,6 +715,28 @@ theme(getS('altredige.theme')||'auto');render();
     return window.firebase && window.auth ? window.auth : null;
   }
 
+  function prepareGoogleProvider() {
+    if (!window.firebase || !window.firebase.auth || !window.firebase.auth.GoogleAuthProvider) return;
+    // The delivered page forces the Google account chooser on every sign-in.
+    // Rebuild the provider without that hint so Google can reuse the active
+    // account; the Firebase session itself is restored automatically later.
+    window.provider = new window.firebase.auth.GoogleAuthProvider();
+  }
+
+  function enableLocalPersistence(auth) {
+    try {
+      if (!auth || typeof auth.setPersistence !== 'function') return Promise.resolve();
+      // Keep the Firebase session in IndexedDB/localStorage so a reload or a
+      // browser restart resumes the same account without a new Google popup.
+      return auth.setPersistence('local').catch(function () {
+        // Private browsing or blocked storage can refuse persistence; the SDK
+        // keeps its current mode and the sign-in flow still works.
+      });
+    } catch (e) {
+      return Promise.resolve();
+    }
+  }
+
   function currentFirebaseUser() {
     var auth = firebaseAuth();
     return auth ? auth.currentUser : null;
@@ -872,14 +894,17 @@ theme(getS('altredige.theme')||'auto');render();
       }
       return;
     }
-    auth.onAuthStateChanged(function (fbUser) {
-      if (fbUser) {
-        enterApp(fbUser);
-        loadTemplates();
-        loadServerHistory();
-      } else {
-        resetSession();
-      }
+    prepareGoogleProvider();
+    enableLocalPersistence(auth).then(function () {
+      auth.onAuthStateChanged(function (fbUser) {
+        if (fbUser) {
+          enterApp(fbUser);
+          loadTemplates();
+          loadServerHistory();
+        } else {
+          resetSession();
+        }
+      });
     });
   }
 
