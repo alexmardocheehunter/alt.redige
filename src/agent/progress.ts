@@ -48,6 +48,8 @@ const LABELS: Record<string, string> = {
   compute_date: 'Je calcule la date',
   list_placeholders: 'Je vérifie les champs',
   suggest_next_actions: 'Je prépare la suite',
+  get_company_profile: 'Je relis le profil d’entreprise',
+  save_company_profile: 'J’enregistre le profil d’entreprise',
   ask_user: 'Je prépare une question',
 };
 

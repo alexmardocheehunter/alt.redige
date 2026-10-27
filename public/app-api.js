@@ -48,6 +48,25 @@
     mobileView: 'chat'
   };
 
+  /**
+   * Profils d'entreprise.
+   *
+   * En mode réel, les valeurs restent sur le serveur : le front ne garde que
+   * l'identifiant sélectionné et la liste renvoyée par GET. En mode simulé,
+   * la même liste est conservée dans localStorage pour tester l'écran.
+   */
+  var company = {
+    profiles: [],
+    selectedId: null,
+    available: true,
+    loaded: false,
+    loading: false,
+    error: false,
+    editDraft: null,
+    editIsNew: false,
+    mockKey: 'altredige:company-profiles:v1'
+  };
+
   var PLACEHOLDER_RE = /\[À COMPLÉTER[^\]]*\]/g;
   var manualVersionTimer = null;
   var manualEditPending = false;
@@ -629,6 +648,14 @@
     session.saving = false;
     session.saveAgain = false;
     session.storageWarningShown = false;
+    company.profiles = [];
+    company.selectedId = null;
+    company.available = true;
+    company.loaded = false;
+    company.loading = false;
+    company.error = false;
+    company.editDraft = null;
+    company.editIsNew = false;
     user = null;
     convs = [];
     cur = null;
@@ -637,6 +664,8 @@
     if (messages) messages.innerHTML = '';
     render();
     renderHist();
+    renderCompanyPicker();
+    renderCompanySettings();
     if ($('dlWord')) $('dlWord').disabled = true;
     if ($('dlPdf')) $('dlPdf').disabled = true;
     if ($('ttl')) $('ttl').textContent = 'Nouveau contrat';
@@ -661,6 +690,7 @@
     if ($('login')) $('login').hidden = true;
     if ($('shell')) $('shell').hidden = false;
     newConv();
+    void loadCompanyProfiles();
   }
   window.enter = function () {
     var fbUser = currentFirebaseUser();
@@ -835,10 +865,757 @@
     syncHistoryButtons();
     view('home');
     renderHist();
+    renderCompanyPicker();
     closeSide();
     if ($('hin')) $('hin').focus();
   }
   window.newConv = newConv;
+
+  /* ---------------------------------------------------------------- */
+  /* Profils d'entreprise (API-CONTRACT.md §3.10)                       */
+  /* ---------------------------------------------------------------- */
+
+  var COMPANY_FIELD_DEFS = [
+    { key: 'label', text: 'Nom du profil', placeholder: 'Ex. Ma société', max: 80 },
+    { key: 'legal_name', text: 'Raison sociale', placeholder: 'Ex. Exemple SARL', max: 200 },
+    { key: 'legal_form', text: 'Forme juridique', placeholder: 'SARL, SAS, EI…', max: 80 },
+    { key: 'capital', text: 'Capital social', placeholder: 'Ex. 1 000 000 FCFA', max: 80 },
+    { key: 'rccm', text: 'RCCM', placeholder: 'Numéro d’immatriculation', max: 80 },
+    { key: 'tax_id', text: 'Compte contribuable', placeholder: 'Identifiant fiscal', max: 80 },
+    { key: 'address', text: 'Adresse du siège', placeholder: 'Rue, quartier, commune', max: 300 },
+    { key: 'city', text: 'Ville', placeholder: 'Ex. Abidjan', max: 100 },
+    { key: 'postal_box', text: 'Boîte postale', placeholder: 'Ex. 01 BP 0000 Abidjan 01', max: 100 },
+    { key: 'representative_first_name', text: 'Prénom du représentant', max: 100 },
+    { key: 'representative_last_name', text: 'Nom du représentant', max: 100 },
+    { key: 'representative_role', text: 'Qualité du représentant', placeholder: 'Ex. Gérante', max: 120 },
+    { key: 'phone', text: 'Téléphone', placeholder: '+225…', max: 50 },
+    { key: 'email', text: 'Courriel', placeholder: 'contact@exemple.ci', max: 200 },
+    { key: 'signature_place', text: 'Lieu de signature habituel', placeholder: 'Ex. Abidjan', max: 120 }
+  ];
+
+  var COMPANY_FORM_GROUPS = [
+    { title: 'Identité de l’entreprise', keys: ['label', 'legal_name', 'legal_form', 'capital', 'rccm', 'tax_id'] },
+    { title: 'Adresse et signature', keys: ['address', 'city', 'postal_box', 'signature_place'] },
+    { title: 'Représentant et contact', keys: ['representative_first_name', 'representative_last_name', 'representative_role', 'phone', 'email'] }
+  ];
+
+  var COMPANY_TEXT_KEYS = COMPANY_FIELD_DEFS.map(function (field) { return field.key; });
+
+  function companyFieldDef(key) {
+    return COMPANY_FIELD_DEFS.filter(function (field) { return field.key === key; })[0];
+  }
+
+  function emptyCompanyDraft() {
+    var draft = {
+      id: uid(),
+      is_default: false,
+      created_at: null,
+      updated_at: null,
+      logo: ''
+    };
+    COMPANY_TEXT_KEYS.forEach(function (key) { draft[key] = ''; });
+    return draft;
+  }
+
+  function cloneCompanyProfile(profile) {
+    var copy = emptyCompanyDraft();
+    Object.keys(profile || {}).forEach(function (key) { copy[key] = profile[key]; });
+    return copy;
+  }
+
+  function normalizeCompanyProfile(raw) {
+    var profile = emptyCompanyDraft();
+    if (raw && typeof raw === 'object') {
+      Object.keys(profile).forEach(function (key) {
+        if (key === 'is_default') profile[key] = raw[key] === true;
+        else if (raw[key] !== undefined && raw[key] !== null) profile[key] = String(raw[key]);
+      });
+    }
+    if (!/^[A-Za-z0-9_-]{8,64}$/.test(profile.id)) profile.id = uid();
+    return profile;
+  }
+
+  function companyProfileName(profile) {
+    return String((profile && (profile.label || profile.legal_name)) || 'Mon entreprise').trim();
+  }
+
+  function companyProfileById(id) {
+    return (company.profiles || []).filter(function (profile) {
+      return String(profile.id) === String(id);
+    })[0] || null;
+  }
+
+  function companyDefaultProfile() {
+    return (company.profiles || []).filter(function (profile) { return profile.is_default; })[0]
+      || (company.profiles || [])[0]
+      || null;
+  }
+
+  function sortCompanyProfiles(list) {
+    return list.slice().sort(function (a, b) {
+      if (!!a.is_default !== !!b.is_default) return a.is_default ? -1 : 1;
+      return String(b.updated_at || '').localeCompare(String(a.updated_at || ''));
+    });
+  }
+
+  function ensureCompanySelection() {
+    var selected = companyProfileById(company.selectedId);
+    if (!selected) {
+      var preferred = companyDefaultProfile();
+      company.selectedId = preferred ? preferred.id : null;
+    }
+  }
+
+  function upsertCompanyLocal(profile) {
+    var list = (company.profiles || []).filter(function (item) {
+      return String(item.id) !== String(profile.id);
+    });
+    if (profile.is_default) {
+      list = list.map(function (item) {
+        var copy = cloneCompanyProfile(item);
+        copy.is_default = false;
+        return copy;
+      });
+    }
+    list.push(normalizeCompanyProfile(profile));
+    if (!list.some(function (item) { return item.is_default; }) && list.length) {
+      list[0].is_default = true;
+    }
+    company.profiles = sortCompanyProfiles(list);
+    ensureCompanySelection();
+  }
+
+  function readMockCompanyProfiles() {
+    var raw = getS(company.mockKey);
+    if (!raw) return [];
+    try {
+      var parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      var list = parsed.map(normalizeCompanyProfile);
+      if (list.length && !list.some(function (profile) { return profile.is_default; })) {
+        list[0].is_default = true;
+      }
+      return sortCompanyProfiles(list);
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function writeMockCompanyProfiles(list) {
+    try { store(company.mockKey, JSON.stringify(list)); } catch (e) { /* stockage indisponible */ }
+  }
+
+  function refreshCompanyViews() {
+    renderCompanyPicker();
+    renderCompanySettings();
+  }
+
+  async function loadCompanyProfiles() {
+    if (!session.user || company.loading) return;
+    company.loading = true;
+    company.error = false;
+    refreshCompanyViews();
+
+    if (CONFIG.MOCK) {
+      company.profiles = readMockCompanyProfiles();
+      company.loaded = true;
+      company.available = true;
+      company.loading = false;
+      ensureCompanySelection();
+      refreshCompanyViews();
+      return;
+    }
+
+    var response = await fetchHistory('/api/company-profiles');
+    company.loading = false;
+    if (!response) {
+      company.error = true;
+      company.loaded = true;
+      refreshCompanyViews();
+      return;
+    }
+    if (response.status === 404) {
+      company.available = false;
+      company.loaded = true;
+      company.profiles = [];
+      company.selectedId = null;
+      refreshCompanyViews();
+      return;
+    }
+    if (!response.ok) {
+      company.error = true;
+      company.loaded = true;
+      refreshCompanyViews();
+      return;
+    }
+    try {
+      var payload = await response.json();
+      company.profiles = sortCompanyProfiles(
+        (Array.isArray(payload.items) ? payload.items : []).map(normalizeCompanyProfile)
+      );
+      company.available = true;
+      company.loaded = true;
+      ensureCompanySelection();
+    } catch (e) {
+      company.error = true;
+      company.loaded = true;
+    }
+    refreshCompanyViews();
+  }
+
+  function companyPickerHost() {
+    var home = $('home');
+    if (!home) return null;
+    var host = $('companyPicker');
+    if (host) return host;
+    host = el('div', 'company-picker');
+    host.id = 'companyPicker';
+    var intro = home.querySelector('p');
+    if (intro && intro.parentNode === home) home.insertBefore(host, intro.nextSibling);
+    else home.insertBefore(host, home.firstChild);
+    return host;
+  }
+
+  function renderCompanyPicker() {
+    var host = companyPickerHost();
+    if (!host) return;
+    host.innerHTML = '';
+    if (!session.user || !company.available) {
+      host.hidden = true;
+      return;
+    }
+    host.hidden = false;
+
+    var label = el('span', 'company-picker-label', 'Entreprise');
+    label.id = 'companyPickerLabel';
+    host.appendChild(label);
+
+    if (company.loading || !company.loaded) {
+      host.appendChild(el('span', 'company-picker-note', 'Chargement du profil…'));
+      return;
+    }
+    if (!company.profiles.length) {
+      host.appendChild(el('span', 'company-picker-note', 'Aucun profil d’entreprise'));
+      var create = el('button', 'btn company-picker-manage', 'Configurer');
+      create.type = 'button';
+      create.onclick = function () { openCompanySettings(true); };
+      host.appendChild(create);
+      return;
+    }
+
+    var select = el('select', 'company-picker-select');
+    select.id = 'companySelect';
+    select.setAttribute('aria-labelledby', 'companyPickerLabel');
+    company.profiles.forEach(function (profile) {
+      var option = el('option', '', companyProfileName(profile) + (profile.is_default ? ' (par défaut)' : ''));
+      option.value = profile.id;
+      select.appendChild(option);
+    });
+    select.value = company.selectedId || '';
+    select.onchange = function () { company.selectedId = select.value || null; };
+    host.appendChild(select);
+
+    var manage = el('button', 'btn company-picker-manage', 'Gérer');
+    manage.type = 'button';
+    manage.onclick = function () { openCompanySettings(false); };
+    host.appendChild(manage);
+  }
+
+  function openCompanySettings(create) {
+    if (typeof window.openSet === 'function') window.openSet();
+    if (!company.loaded && !CONFIG.MOCK) void loadCompanyProfiles();
+    renderCompanySettings();
+    if (create) {
+      if (company.profiles.length >= 5) {
+        toast('Vous avez atteint la limite de cinq profils d’entreprise.');
+      } else {
+        startCompanyForm(null);
+      }
+    }
+    var section = $('companySettings');
+    if (section && section.scrollIntoView) {
+      setTimeout(function () { section.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, 30);
+    }
+  }
+
+  function installCompanySettings() {
+    if ($('companySettings')) return;
+    var card = document.querySelector('#set .card');
+    if (!card) return;
+    var section = el('section', 'company-settings');
+    section.id = 'companySettings';
+    section.setAttribute('aria-labelledby', 'companySettingsTitle');
+    var out = $('out2');
+    var connectionRow = out && out.closest ? out.closest('.row') : null;
+    if (connectionRow && connectionRow.parentNode === card) card.insertBefore(section, connectionRow);
+    else card.appendChild(section);
+
+    var settingsButton = $('mset');
+    if (settingsButton) {
+      settingsButton.addEventListener('click', function () {
+        if (!company.loaded && !CONFIG.MOCK) void loadCompanyProfiles();
+        renderCompanySettings();
+      });
+    }
+    renderCompanySettings();
+  }
+
+  function companyAddButton(disabled) {
+    var button = el('button', 'btn main', 'Nouveau profil');
+    button.type = 'button';
+    button.disabled = !!disabled;
+    button.onclick = function () {
+      if (company.profiles.length >= 5) {
+        toast('Vous avez atteint la limite de cinq profils d’entreprise.');
+        return;
+      }
+      startCompanyForm(null);
+    };
+    return button;
+  }
+
+  function renderCompanySettings() {
+    var section = $('companySettings');
+    if (!section) return;
+    section.innerHTML = '';
+
+    var head = el('div', 'company-settings-head');
+    var titleBox = el('div');
+    var title = el('h3', '', 'Mon entreprise');
+    title.id = 'companySettingsTitle';
+    titleBox.appendChild(title);
+    titleBox.appendChild(el('p', 'company-settings-intro',
+      'Ces informations servent à préremplir vos contrats. Elles restent sur votre compte Google.'));
+    head.appendChild(titleBox);
+    if (company.available) head.appendChild(companyAddButton(company.loading || company.profiles.length >= 5));
+    section.appendChild(head);
+
+    if (!company.available) {
+      section.appendChild(el('p', 'company-settings-note',
+        'Les profils d’entreprise sont disponibles avec la connexion Google et le stockage sécurisé.'));
+      return;
+    }
+    if (company.loading) {
+      section.appendChild(el('p', 'company-settings-note', 'Chargement de vos profils…'));
+      return;
+    }
+    if (company.error) {
+      var retryBox = el('div', 'company-settings-note');
+      retryBox.appendChild(el('span', '', 'Impossible de charger vos profils. '));
+      var retry = el('button', 'btn', 'Réessayer');
+      retry.type = 'button';
+      retry.onclick = function () { company.loaded = false; void loadCompanyProfiles(); };
+      retryBox.appendChild(retry);
+      section.appendChild(retryBox);
+      return;
+    }
+
+    if (!company.profiles.length && !company.editDraft) {
+      section.appendChild(el('p', 'company-settings-note',
+        'Aucun profil enregistré. Créez-en un pour préremplir votre raison sociale, votre adresse et votre représentant.'));
+    } else {
+      var list = el('div', 'company-profile-list');
+      list.id = 'companyProfileList';
+      company.profiles.forEach(function (profile) {
+        var row = el('div', 'company-profile-row');
+        if (String(profile.id) === String(company.selectedId)) row.classList.add('selected');
+
+        var main = el('div', 'company-profile-main');
+        var name = el('strong', '', companyProfileName(profile));
+        main.appendChild(name);
+        if (profile.is_default) main.appendChild(el('span', 'company-badge', 'Par défaut'));
+        var details = [profile.legal_form, profile.city].filter(Boolean).join(' · ');
+        if (details) main.appendChild(el('small', '', details));
+        row.appendChild(main);
+
+        var actions = el('div', 'company-profile-actions');
+        var use = el('button', 'btn', String(profile.id) === String(company.selectedId) ? 'Sélectionné' : 'Utiliser');
+        use.type = 'button';
+        use.disabled = String(profile.id) === String(company.selectedId);
+        use.onclick = function () {
+          company.selectedId = profile.id;
+          refreshCompanyViews();
+        };
+        actions.appendChild(use);
+
+        if (!profile.is_default) {
+          var makeDefault = el('button', 'btn', 'Par défaut');
+          makeDefault.type = 'button';
+          makeDefault.onclick = function () { void setDefaultCompanyProfile(profile); };
+          actions.appendChild(makeDefault);
+        }
+
+        var edit = el('button', 'btn', 'Modifier');
+        edit.type = 'button';
+        edit.onclick = function () { startCompanyForm(profile); };
+        actions.appendChild(edit);
+
+        var remove = el('button', 'btn danger', 'Supprimer');
+        remove.type = 'button';
+        remove.onclick = function () { void confirmDeleteCompanyProfile(profile); };
+        actions.appendChild(remove);
+        row.appendChild(actions);
+        list.appendChild(row);
+      });
+      section.appendChild(list);
+    }
+
+    if (company.editDraft) section.appendChild(renderCompanyForm());
+    else if (company.profiles.length) {
+      var editHint = el('p', 'company-settings-note',
+        'Modifier un profil ne change aucun contrat déjà rédigé : les valeurs sont copiées à la création.');
+      section.appendChild(editHint);
+    }
+
+    var footer = el('div', 'company-settings-actions');
+    var exportButton = el('button', 'btn', 'Exporter mes profils');
+    exportButton.type = 'button';
+    exportButton.disabled = !company.profiles.length;
+    exportButton.onclick = exportCompanyProfiles;
+    footer.appendChild(exportButton);
+
+    var deleteAll = el('button', 'btn danger', 'Supprimer tous mes profils');
+    deleteAll.type = 'button';
+    deleteAll.disabled = !company.profiles.length;
+    deleteAll.onclick = function () { void confirmDeleteAllCompanyProfiles(); };
+    footer.appendChild(deleteAll);
+    section.appendChild(footer);
+
+    section.appendChild(el('p', 'company-settings-note company-settings-privacy',
+      'N’enregistrez pas les données personnelles des autres parties (salarié, locataire, client, stagiaire). '
+      + 'Vous pouvez exporter ou supprimer ces profils à tout moment.'));
+  }
+
+  function startCompanyForm(profile) {
+    if (!profile && company.profiles.length >= 5) {
+      toast('Vous avez atteint la limite de cinq profils d’entreprise.');
+      return;
+    }
+    company.editDraft = profile ? cloneCompanyProfile(profile) : emptyCompanyDraft();
+    company.editIsNew = !profile;
+    renderCompanySettings();
+    var first = document.querySelector('#companySettings .company-field-input');
+    if (first) setTimeout(function () { first.focus(); }, 30);
+  }
+
+  function cancelCompanyForm() {
+    company.editDraft = null;
+    company.editIsNew = false;
+    renderCompanySettings();
+  }
+
+  function updateCompanyLogoPreview(host, draft) {
+    host.innerHTML = '';
+    if (draft.logo) {
+      var image = el('img', 'company-logo-preview');
+      image.alt = 'Logo de l’entreprise';
+      image.src = draft.logo;
+      host.appendChild(image);
+      var remove = el('button', 'btn danger', 'Retirer le logo');
+      remove.type = 'button';
+      remove.onclick = function () {
+        draft.logo = '';
+        updateCompanyLogoPreview(host, draft);
+      };
+      host.appendChild(remove);
+    } else {
+      host.appendChild(el('span', 'company-settings-note', 'Aucun logo. Formats acceptés : PNG, JPEG, WEBP ou GIF.'));
+    }
+  }
+
+  function renderCompanyForm() {
+    var draft = company.editDraft;
+    var form = el('form', 'company-form');
+    form.id = 'companyForm';
+    form.noValidate = true;
+
+    var formHead = el('div', 'company-form-head');
+    formHead.appendChild(el('strong', '', company.editIsNew ? 'Nouveau profil' : 'Modifier le profil'));
+    var close = el('button', 'fields-x', '×');
+    close.type = 'button';
+    close.setAttribute('aria-label', 'Fermer le formulaire');
+    close.onclick = cancelCompanyForm;
+    formHead.appendChild(close);
+    form.appendChild(formHead);
+
+    COMPANY_FORM_GROUPS.forEach(function (group) {
+      var fieldset = el('fieldset', 'company-fieldset');
+      fieldset.appendChild(el('legend', '', group.title));
+      var grid = el('div', 'company-form-grid');
+      group.keys.forEach(function (key) {
+        var def = companyFieldDef(key);
+        if (!def) return;
+        var label = el('label', 'company-field');
+        label.appendChild(el('span', 'company-field-label', def.text));
+        var input = el('input', 'company-field-input');
+        input.type = 'text';
+        input.name = 'cp_' + key;
+        input.value = draft[key] || '';
+        input.maxLength = def.max;
+        input.autocomplete = 'off';
+        if (def.placeholder) input.placeholder = def.placeholder;
+        label.appendChild(input);
+        grid.appendChild(label);
+      });
+      fieldset.appendChild(grid);
+      form.appendChild(fieldset);
+    });
+
+    var logoFieldset = el('fieldset', 'company-fieldset');
+    logoFieldset.appendChild(el('legend', '', 'Logo (facultatif)'));
+    var logoHost = el('div', 'company-logo-row');
+    logoHost.id = 'companyLogoPreview';
+    updateCompanyLogoPreview(logoHost, draft);
+    var fileLabel = el('label', 'company-field company-logo-file');
+    fileLabel.appendChild(el('span', 'company-field-label', 'Choisir une image'));
+    var file = el('input');
+    file.type = 'file';
+    file.accept = 'image/png,image/jpeg,image/webp,image/gif';
+    file.onchange = function () {
+      var selected = file.files && file.files[0];
+      if (!selected) return;
+      if (selected.size > 85000) {
+        toast('L’image est trop lourde. Choisissez un logo de moins de 85 Ko.');
+        file.value = '';
+        return;
+      }
+      var reader = new FileReader();
+      reader.onload = function () {
+        var data = String(reader.result || '');
+        if (data.length > 120000) {
+          toast('Le logo dépasse la taille autorisée.');
+          return;
+        }
+        draft.logo = data;
+        updateCompanyLogoPreview(logoHost, draft);
+      };
+      reader.onerror = function () { toast('Impossible de lire cette image.'); };
+      reader.readAsDataURL(selected);
+    };
+    fileLabel.appendChild(file);
+    logoFieldset.appendChild(logoHost);
+    logoFieldset.appendChild(fileLabel);
+    form.appendChild(logoFieldset);
+
+    var defaultLabel = el('label', 'company-default-check');
+    var defaultInput = el('input');
+    defaultInput.type = 'checkbox';
+    defaultInput.name = 'cp_is_default';
+    defaultInput.checked = !!draft.is_default || !company.profiles.length;
+    defaultLabel.appendChild(defaultInput);
+    defaultLabel.appendChild(document.createTextNode(' Définir comme profil par défaut'));
+    form.appendChild(defaultLabel);
+
+    var actions = el('div', 'company-form-actions');
+    var cancel = el('button', 'btn', 'Annuler');
+    cancel.type = 'button';
+    cancel.onclick = cancelCompanyForm;
+    actions.appendChild(cancel);
+    var save = el('button', 'btn main', 'Enregistrer');
+    save.type = 'submit';
+    actions.appendChild(save);
+    form.appendChild(actions);
+
+    form.onsubmit = async function (event) {
+      event.preventDefault();
+      var values = {};
+      COMPANY_TEXT_KEYS.forEach(function (key) {
+        var input = form.querySelector('[name="cp_' + key + '"]');
+        values[key] = input ? String(input.value || '').trim() : '';
+      });
+      values.logo = draft.logo || '';
+      values.is_default = defaultInput.checked;
+      if (!COMPANY_TEXT_KEYS.some(function (key) { return values[key]; })) {
+        toast('Renseignez au moins un champ du profil.');
+        return;
+      }
+      save.disabled = true;
+      cancel.disabled = true;
+      try {
+        var saved = await saveCompanyProfileRequest(draft.id, values);
+        company.editDraft = null;
+        company.editIsNew = false;
+        upsertCompanyLocal(saved);
+        if (!company.selectedId) company.selectedId = saved.id;
+        toast('Profil d’entreprise enregistré.');
+        refreshCompanyViews();
+        void loadCompanyProfiles();
+      } catch (error) {
+        toast(error && error.message ? error.message : 'L’enregistrement du profil a échoué.');
+      } finally {
+        save.disabled = false;
+        cancel.disabled = false;
+      }
+    };
+
+    return form;
+  }
+
+  function companyPayloadFrom(profile) {
+    var payload = {};
+    COMPANY_TEXT_KEYS.forEach(function (key) { payload[key] = String(profile[key] || ''); });
+    payload.logo = String(profile.logo || '');
+    payload.is_default = profile.is_default === true;
+    return payload;
+  }
+
+  async function saveCompanyProfileRequest(id, values) {
+    if (CONFIG.MOCK) {
+      var list = readMockCompanyProfiles();
+      var index = -1;
+      list.forEach(function (item, i) { if (String(item.id) === String(id)) index = i; });
+      if (index < 0 && list.length >= 5) {
+        throw new Error('Vous avez atteint la limite de cinq profils d’entreprise.');
+      }
+      var now = new Date().toISOString();
+      var previous = index >= 0 ? list[index] : null;
+      var record = normalizeCompanyProfile(values);
+      record.id = id;
+      record.is_default = !!values.is_default;
+      record.created_at = previous ? previous.created_at : now;
+      record.updated_at = now;
+      if (previous && previous.is_default && !record.is_default) {
+        var otherDefault = list.some(function (item) {
+          return String(item.id) !== String(id) && item.is_default;
+        });
+        if (!otherDefault) record.is_default = true;
+      }
+      if (record.is_default) {
+        list = list.map(function (item) {
+          var copy = cloneCompanyProfile(item);
+          copy.is_default = false;
+          return copy;
+        });
+      }
+      if (index >= 0) list[index] = record;
+      else list.push(record);
+      if (!list.some(function (item) { return item.is_default; }) && list.length) list[0].is_default = true;
+      list = sortCompanyProfiles(list);
+      writeMockCompanyProfiles(list);
+      company.profiles = list;
+      ensureCompanySelection();
+      return record;
+    }
+
+    var response = await fetchHistory('/api/company-profiles/' + encodeURIComponent(id), {
+      method: 'PUT',
+      body: JSON.stringify(values)
+    });
+    if (!response) throw new Error('Connexion impossible. Vérifiez votre réseau.');
+    var payload = null;
+    try { payload = await response.json(); } catch (e) { /* corps illisible */ }
+    if (response.status === 404) {
+      company.available = false;
+      throw new Error('Le stockage des profils d’entreprise n’est pas disponible.');
+    }
+    if (!response.ok) {
+      throw new Error(payload && payload.error && payload.error.message
+        ? payload.error.message
+        : 'L’enregistrement du profil a échoué.');
+    }
+    if (!payload || !payload.profile) throw new Error('Réponse du serveur incomplète.');
+    return normalizeCompanyProfile(payload.profile);
+  }
+
+  async function setDefaultCompanyProfile(profile) {
+    try {
+      var payload = companyPayloadFrom(profile);
+      payload.is_default = true;
+      var saved = await saveCompanyProfileRequest(profile.id, payload);
+      upsertCompanyLocal(saved);
+      toast('Profil par défaut modifié.');
+      refreshCompanyViews();
+      void loadCompanyProfiles();
+    } catch (error) {
+      toast(error && error.message ? error.message : 'Impossible de modifier le profil par défaut.');
+    }
+  }
+
+  async function deleteCompanyProfileRequest(id) {
+    if (CONFIG.MOCK) {
+      var list = readMockCompanyProfiles().filter(function (item) { return String(item.id) !== String(id); });
+      if (list.length && !list.some(function (item) { return item.is_default; })) list[0].is_default = true;
+      list = sortCompanyProfiles(list);
+      writeMockCompanyProfiles(list);
+      company.profiles = list;
+      ensureCompanySelection();
+      return;
+    }
+    var response = await fetchHistory('/api/company-profiles/' + encodeURIComponent(id), { method: 'DELETE' });
+    if (!response) throw new Error('Connexion impossible. Vérifiez votre réseau.');
+    if (response.status === 404) {
+      company.available = false;
+      throw new Error('Le stockage des profils d’entreprise n’est pas disponible.');
+    }
+    if (response.status !== 204) throw new Error('La suppression du profil a échoué.');
+  }
+
+  async function confirmDeleteCompanyProfile(profile) {
+    if (!window.confirm('Supprimer le profil « ' + companyProfileName(profile) + ' » ? Les contrats existants ne sont pas modifiés.')) return;
+    try {
+      await deleteCompanyProfileRequest(profile.id);
+      toast('Profil supprimé.');
+      refreshCompanyViews();
+      void loadCompanyProfiles();
+    } catch (error) {
+      toast(error && error.message ? error.message : 'La suppression du profil a échoué.');
+    }
+  }
+
+  async function deleteAllCompanyProfilesRequest() {
+    if (CONFIG.MOCK) {
+      writeMockCompanyProfiles([]);
+      company.profiles = [];
+      company.selectedId = null;
+      return;
+    }
+    var response = await fetchHistory('/api/company-profiles', { method: 'DELETE' });
+    if (!response) throw new Error('Connexion impossible. Vérifiez votre réseau.');
+    if (response.status === 404) {
+      company.available = false;
+      throw new Error('Le stockage des profils d’entreprise n’est pas disponible.');
+    }
+    if (response.status !== 204) throw new Error('La suppression des profils a échoué.');
+  }
+
+  async function confirmDeleteAllCompanyProfiles() {
+    if (!company.profiles.length) return;
+    if (!window.confirm('Supprimer les ' + company.profiles.length + ' profils d’entreprise de ce compte ? Les contrats existants ne sont pas modifiés.')) return;
+    try {
+      await deleteAllCompanyProfilesRequest();
+      company.profiles = [];
+      company.selectedId = null;
+      toast('Profils d’entreprise supprimés.');
+      refreshCompanyViews();
+    } catch (error) {
+      toast(error && error.message ? error.message : 'La suppression des profils a échoué.');
+    }
+  }
+
+  function exportCompanyProfiles() {
+    if (!company.profiles.length) {
+      toast('Aucun profil à exporter.');
+      return;
+    }
+    var payload = {
+      version: 1,
+      exported_at: new Date().toISOString(),
+      items: company.profiles
+    };
+    try {
+      var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      var link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'lexcanvas-profils-entreprise-' + new Date().toISOString().slice(0, 10) + '.json';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(function () { URL.revokeObjectURL(link.href); }, 1000);
+      toast('Export téléchargé.');
+    } catch (error) {
+      toast('L’export a échoué. Réessayez.');
+    }
+  }
 
   /**
    * Authenticated fetch for /api/history. Refreshes the ID token once on 401
@@ -1268,6 +2045,48 @@
       '.field-input{font:inherit;font-size:13.5px;padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);min-height:42px}',
       '.field-input:focus{outline:2px solid rgba(120,100,70,.28);outline-offset:1px}',
       '.fields-actions{display:flex;justify-content:flex-end;gap:8px;padding-top:8px;position:sticky;bottom:0;background:var(--panel)}',
+
+      /* --- profils d'entreprise --- */
+      '#home .company-picker{width:min(640px,100%);display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;margin:-4px 0 0;color:var(--mut);font-size:12.5px}',
+      '#home .company-picker[hidden]{display:none!important}',
+      '.company-picker-label{font-weight:600;color:var(--ink)}',
+      '.company-picker-select{font:inherit;font-size:13px;padding:6px 28px 6px 10px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink);min-height:34px;max-width:280px}',
+      '.company-picker-manage{font-size:12.5px;padding:5px 10px}',
+      '.company-picker-note{color:var(--mut)}',
+      '#set .card{max-height:min(90vh,900px);overflow-y:auto;width:min(680px,100%)}',
+      '.company-settings{margin:12px 0 4px;padding:4px 0 12px;border-top:1px solid var(--line);text-align:left}',
+      '.company-settings-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding-top:12px}',
+      '.company-settings-head h3{font:400 18px Georgia,serif;margin:0 0 4px}',
+      '.company-settings-intro,.company-settings-note{color:var(--mut);font-size:12px;line-height:1.5;margin:3px 0}',
+      '.company-settings-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}',
+      '.company-settings-privacy{border-top:1px solid var(--line);padding-top:8px;margin-top:10px}',
+      '.company-profile-list{display:grid;gap:6px;margin:10px 0 4px}',
+      '.company-profile-row{display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid var(--line);border-radius:11px;padding:8px 9px}',
+      '.company-profile-row.selected{border-color:var(--mut);background:rgba(120,100,70,.05)}',
+      '.company-profile-main{min-width:0;display:grid;gap:1px}',
+      '.company-profile-main strong{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+      '.company-profile-main small{color:var(--mut);font-size:11px}',
+      '.company-badge{display:inline-block;width:fit-content;font-size:10px;border:1px solid var(--line);border-radius:999px;padding:1px 6px;color:var(--mut);margin-left:4px}',
+      '.company-profile-actions{display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end}',
+      '.company-profile-actions .btn{font-size:11px;padding:4px 7px;min-height:28px}',
+      '.btn.danger{color:#b33;border-color:#dfc3c3}',
+      '.btn.danger:hover{border-color:#b33}',
+      '.company-form{border-top:1px solid var(--line);margin-top:10px;padding-top:10px}',
+      '.company-form-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}',
+      '.company-fieldset{border:1px solid var(--line);border-radius:11px;padding:7px 9px 9px;margin:0 0 8px}',
+      '.company-fieldset legend{font-size:11px;font-weight:600;color:var(--mut);padding:0 5px}',
+      '.company-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}',
+      '.company-field{display:grid;gap:3px;min-width:0}',
+      '.company-field-label{font-size:11.5px;color:var(--ink)}',
+      '.company-field-input{font:inherit;font-size:12.5px;padding:7px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);min-height:36px;min-width:0}',
+      '.company-field-input:focus{outline:2px solid rgba(120,100,70,.28);outline-offset:1px}',
+      '.company-logo-row{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:7px}',
+      '.company-logo-preview{width:56px;height:56px;object-fit:contain;border:1px solid var(--line);border-radius:9px;background:var(--bg)}',
+      '.company-logo-file{font-size:12px}',
+      '.company-default-check{display:flex;align-items:center;gap:7px;font-size:12.5px;margin:7px 0}',
+      '.company-form-actions{display:flex;justify-content:flex-end;gap:7px;padding-top:5px}',
+      '.company-form-actions .btn{font-size:12.5px;padding:6px 11px}',
+      '@media (max-width:520px){.company-form-grid{grid-template-columns:1fr}.company-profile-row{align-items:flex-start;flex-direction:column}.company-profile-actions{justify-content:flex-start}}',
 
       /* --- P2 : navigation mobile Chat / Document --- */
       '#mobileTabs{display:none}',
@@ -2538,6 +3357,8 @@
       document: doc ? { markdown: docToMarkdown(doc), version: doc.version || 1 } : null,
       contract_type: (doc && doc.contractType) || null
     };
+    var chatProfile = company.selectedId || (companyDefaultProfile() && companyDefaultProfile().id);
+    if (chatProfile && company.available && company.profiles.length) body.company_profile_id = chatProfile;
     if (pendingAnswers) body.answers = pendingAnswers;
 
     var response;
@@ -2631,7 +3452,7 @@
         break;
 
       case 'tool_start':
-        message.activity.tools.push({ id: data.id, label: data.label || data.name, ok: true, done: false, ms: 0, startedAt: Date.now() });
+        message.activity.tools.push({ id: data.id, name: data.name, label: data.label || data.name, ok: true, done: false, ms: 0, startedAt: Date.now() });
         setState('working');
         refreshBubble(message);
         break;
@@ -2802,6 +3623,10 @@
     var count = steps.length || (message.activity.tools || []).length;
     message.activity.collapsedLabel = count + ' étape' + (count > 1 ? 's' : '')
       + ' · ' + Math.max(1, Math.round(message.activity.ms / 1000)) + ' s';
+    var savedProfile = (message.activity.tools || []).some(function (tool) {
+      return tool.name === 'save_company_profile' && tool.ok;
+    });
+    if (savedProfile) void loadCompanyProfiles();
     setState(message.question ? 'awaiting_input' : 'idle');
     refreshBubble(message);
     persist();
@@ -3364,6 +4189,7 @@
     installLegalNotice();
     installVersionHistory();
     installFieldFormShortcuts();
+    installCompanySettings();
     if (CONFIG.MOCK) installMockTools();
     if (CONFIG.MOCK) installMockBanner();
 

@@ -15,6 +15,8 @@ import { isAbortError, streamCompletion, type LlmClient, type LlmMessage, type L
 import type { Logger } from '../logger.js';
 import type { TemplateStore } from '../templates.js';
 import type { AgentEmit, AgentEventPayloads } from './events.js';
+import type { CompanyProfile, CompanyProfileStore } from '../company/store.js';
+import { companyProfilePromptText } from '../company/profile.js';
 import { extractPartialString, readPartialString } from './json-partial.js';
 import { buildSystemPrompt, buildUserContext, buildModelBlock } from './prompt.js';
 import { ChatGuard } from './chat-guard.js';
@@ -52,6 +54,12 @@ export interface RunAgentParams {
   messages: ChatMessage[];
   document: AgentDocument | null;
   contractType: string | null;
+  /** Profil sélectionné ou par défaut, résolu par la route. */
+  companyProfile?: CompanyProfile | null;
+  /** Outil de chat : lecture/écriture du profil de l'utilisateur. */
+  companyProfileStore?: CompanyProfileStore | null;
+  /** Identité individuelle (Firebase) ; `null` avec le code partagé. */
+  uid?: string | null;
   emit: AgentEmit;
   signal: AbortSignal;
   /** Identifiant de la requête, repris dans l'événement `done`. */
@@ -122,8 +130,9 @@ function readPlaceholders(content: string): number {
 export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> {
   const { client, config, logger, templates, messages, document, contractType, emit, signal } = params;
   const now = params.now ?? new Date();
+  const companyProfile = params.companyProfile ?? null;
 
-  const system = buildSystemPrompt(templates, { now });
+  const system = buildSystemPrompt(templates, { now, companyProfile });
   const tools = toolDefinitions(templates);
 
   const conversation: LlmMessage[] = [];
@@ -164,12 +173,17 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
   const userText = messages
     .filter((message) => message.role === 'user')
     .map((message) => message.content)
-    .join('\n');
+    .join('\n')
+    + (companyProfile ? `\n${companyProfilePromptText(companyProfile)}` : '');
 
   const toolContext: ToolContext = {
     workingDoc: document?.markdown ?? null,
     workingDocType: contractType,
     templates,
+    companyProfile,
+    companyProfileStore: params.companyProfileStore ?? null,
+    uid: params.uid ?? null,
+    lastUserText: lastMessage.content,
     emit: (event, data) => {
       if (event === 'canvas_start' || event === 'canvas_delta' || event === 'canvas_set') {
         canvasEventEmitted = true;

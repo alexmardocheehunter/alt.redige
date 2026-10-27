@@ -16,6 +16,8 @@ import type { TemplateStore } from '../templates.js';
 import type { AppEnv } from '../types.js';
 import { runAgent, type ChatMessage } from '../agent/loop.js';
 import type { AgentEmit, AgentEventName, AgentEventPayloads } from '../agent/events.js';
+import type { CompanyProfile, CompanyProfileStore } from '../company/store.js';
+import { isValidCompanyId } from '../company/profile.js';
 
 export const MAX_MESSAGES = 30;
 export const MAX_MESSAGE_LENGTH = 8000;
@@ -29,12 +31,16 @@ export interface ChatDeps {
   client: LlmClient;
   /** Test hook: observes the tool calls (used by the evaluations). */
   onToolCall?: (name: string, input: unknown) => void;
+  /** Profils d'entreprise ; `null` si Firestore n'est pas configuré. */
+  companyStore?: CompanyProfileStore | null;
 }
 
 interface ParsedBody {
   messages: ChatMessage[];
   document: { markdown: string; version: number } | null;
   contractType: string | null;
+  /** Profil d'entreprise sélectionné, facultatif (§3.10). */
+  companyProfileId: string | null;
   /** Réponses structurées aux questions posées au tour précédent (§8). */
   answers: Answer[];
 }
@@ -122,6 +128,15 @@ export function parseChatBody(raw: unknown): ParsedBody {
   }
   const contractType = typeof rawContractType === 'string' && rawContractType.length > 0 ? rawContractType : null;
 
+  let companyProfileId: string | null = null;
+  const rawCompanyProfileId = body.company_profile_id;
+  if (rawCompanyProfileId !== null && rawCompanyProfileId !== undefined) {
+    if (typeof rawCompanyProfileId !== 'string' || !isValidCompanyId(rawCompanyProfileId)) {
+      throw new AppError('bad_request', 'Profil d’entreprise invalide.');
+    }
+    companyProfileId = rawCompanyProfileId;
+  }
+
   // Réponses structurées aux questions du tour précédent (AGENT-PROTOCOL.md §8).
   // Elles sont facultatives : le texte des messages reste la source.
   const answers: Answer[] = [];
@@ -147,7 +162,7 @@ export function parseChatBody(raw: unknown): ParsedBody {
     }
   }
 
-  return { messages, document, contractType, answers };
+  return { messages, document, contractType, companyProfileId, answers };
 }
 
 /** Opens an SSE response with the headers required by the contract. */
@@ -202,6 +217,26 @@ export function chatRoutes(deps: ChatDeps): Hono<AppEnv> {
     const parsed = parseChatBody(raw);
     const requestId = c.get('requestId') ?? '-';
     const logger = deps.logger.child({ request_id: requestId });
+
+    // Profil d'entreprise : le contenu reste côté serveur, seul l'identifiant
+    // transite. Une panne Firestore ne doit pas empêcher le chat de fonctionner.
+    const identity = c.get('identity');
+    const individualUid = identity && /^[A-Za-z0-9_-]{1,128}$/.test(identity) ? identity : null;
+    let companyProfile: CompanyProfile | null = null;
+    if (deps.companyStore && individualUid) {
+      try {
+        if (parsed.companyProfileId) {
+          companyProfile = await deps.companyStore.get(individualUid, parsed.companyProfileId);
+        }
+        if (!companyProfile) {
+          companyProfile = await deps.companyStore.getDefault(individualUid);
+        }
+      } catch (error) {
+        logger.warn('company_profile_unavailable', {
+          error_kind: error instanceof Error ? error.name : typeof error,
+        });
+      }
+    }
 
     // Garde-fou : le message de l'utilisateur passe par le modèle de sécurité
     // avant l'ouverture du flux. Un garde-fou indisponible laisse passer.
@@ -295,6 +330,9 @@ export function chatRoutes(deps: ChatDeps): Hono<AppEnv> {
           messages: parsed.messages,
           document: parsed.document,
           contractType: parsed.contractType,
+          companyProfile,
+          companyProfileStore: deps.companyStore ?? null,
+          uid: individualUid,
           emit,
           signal: abortController.signal,
           requestId,

@@ -2,7 +2,7 @@
 
 Ce document est **normatif**. Le frontend (un seul fichier HTML) et le backend sont construits par deux agents différents, sans se parler. Tout ce qui n'est pas écrit ici n'existe pas. En cas de désaccord entre ce contrat et une spec, **le contrat gagne**. Toute modification du contrat se fait ici d'abord, puis dans le code.
 
-Version du contrat : `1.1`
+Version du contrat : `1.2`
 
 ---
 
@@ -10,6 +10,7 @@ Version du contrat : `1.1`
 
 - Le serveur est **sans état pour le chat** : le client envoie à chaque requête l'historique de conversation et le document courant. Le document vit dans le navigateur (et `localStorage`), pas sur le serveur.
 - **Historiques (optionnel)** : si `HISTORY_ENABLED=1` et si l'utilisateur est authentifié individuellement (Google/Firebase), le serveur conserve des snapshots de contrats dans Firestore. Sans identité individuelle (code partagé), rien n'est conservé côté serveur et les routes d'historique refusent l'accès. Voir §3.6 à §3.9.
+- **Profils d'entreprise (compte Google)** : si Firebase est configuré, chaque utilisateur peut enregistrer jusqu'à cinq profils de son entreprise, isolés par `uid`. Le chat reçoit le profil sélectionné ou celui par défaut. Voir §3.10.
 - Le chat est en **streaming SSE** sur un `POST` (donc lecture via `fetch` + `ReadableStream`, pas `EventSource`).
 - Le document est un **Markdown restreint** (section 5). Ce sous-ensemble est le même pour le rendu du Canvas, l'export Word et l'impression PDF.
 - Le serveur sert aussi le frontend : `GET /` renvoie `public/index.html`. Toutes les URL d'API sont donc **relatives** (`/api/...`), sans domaine codé en dur.
@@ -81,6 +82,7 @@ Liste des types de contrats disponibles (pour afficher les boutons de démarrage
 | `messages` | Texte seul, alternance `user`/`assistant`, le dernier est `user`. 1 à 30 éléments (le client tronque aux 30 derniers). Chaque `content` ≤ 8 000 caractères. Les appels d'outils ne sont **jamais** renvoyés dans l'historique. |
 | `document` | `null` si aucun contrat n'existe. Sinon `markdown` (≤ 200 000 octets) et `version` (entier ≥ 1, informatif). C'est la **version actuelle**, y compris les modifications manuelles de l'utilisateur. |
 | `contract_type` | Optionnel. Indice de type (identifiant de `/api/templates`) quand l'utilisateur a cliqué sur un bouton de démarrage. `null` sinon. |
+| `company_profile_id` | Optionnel. Identifiant du profil d'entreprise sélectionné (§3.10), 8 à 64 caractères `[A-Za-z0-9_-]`. Le serveur résout ce profil ; s'il est absent ou inconnu, il utilise le profil par défaut de l'utilisateur. Sans profil, le chat fonctionne normalement. Le contenu du profil n'est jamais renvoyé dans le flux. |
 
 **Réponse** : `200`, `Content-Type: text/event-stream; charset=utf-8`, `Cache-Control: no-cache, no-transform`, `X-Accel-Buffering: no`. Pas de compression sur ce flux.
 
@@ -250,9 +252,114 @@ Crée le document s'il n'existe pas, le remplace sinon (upsert).
 - La suppression est immédiate côté serveur ; la purge (TTL Firestore ou
   `npm run purge-history`) ne sert qu'aux documents non supprimés.
 
-### 3.10 Disponibilité des historiques
+### 3.10 Profils d'entreprise
 
-Les quatre routes ci-dessus ne sont montées que si `HISTORY_ENABLED=1`. Sinon, elles répondent `404` avec le code `not_found`. Elles ne sont jamais accessibles avec le seul code partagé.
+Chaque compte Google peut enregistrer jusqu'à **cinq profils** de son entreprise. Un profil appartient à un seul `uid` : les routes ci-dessous ne lisent et n'écrivent que sous `users/{uid}/companies/{id}` avec le SDK Admin. Aucune donnée d'entreprise n'est accessible avec le seul code partagé, et aucune n'est journalisée.
+
+- Authentification : jeton Firebase obligatoire (`uid`). Un code partagé renvoie `401`.
+- Toutes les réponses portent `Cache-Control: no-store`.
+- Tous les champs métier sont facultatifs. Un profil doit toutefois contenir au moins une valeur non vide. Les valeurs sont copiées telles quelles, sans interprétation juridique.
+
+**Champs**
+
+| Champ | Type | Limite | Sens |
+|---|---|---|---|
+| `id` | string | 8 à 64 caractères `[A-Za-z0-9_-]` | Identifiant stable, choisi par le client (`crypto.randomUUID()`). |
+| `label` | string | 80 | Nom affiché dans le sélecteur. À défaut, le client affiche `legal_name` ou « Mon entreprise ». |
+| `legal_name` | string | 200 | Raison sociale ou dénomination. |
+| `legal_form` | string | 80 | Forme juridique (SARL, SAS, EI…). |
+| `capital` | string | 80 | Capital social, tel que saisi (montant et devise). |
+| `rccm` | string | 80 | Numéro RCCM. |
+| `tax_id` | string | 80 | Compte contribuable ou identifiant fiscal. |
+| `address` | string | 300 | Adresse du siège. |
+| `city` | string | 100 | Ville du siège. |
+| `postal_box` | string | 100 | Boîte postale. |
+| `representative_first_name` | string | 100 | Prénom du représentant. |
+| `representative_last_name` | string | 100 | Nom du représentant. |
+| `representative_role` | string | 120 | Qualité ou fonction du représentant. |
+| `phone` | string | 50 | Téléphone de l'entreprise. |
+| `email` | string | 200 | Courriel de l'entreprise. |
+| `signature_place` | string | 120 | Lieu de signature habituel. |
+| `logo` | string | 120 000 | Data URL d'image (`data:image/png`, `jpeg`, `webp` ou `gif`), ou chaîne vide. |
+| `is_default` | boolean | — | Profil par défaut. Un profil est toujours par défaut ; le premier créé le devient automatiquement. |
+| `created_at` | string | ISO 8601 | Renseigné par le serveur. |
+| `updated_at` | string | ISO 8601 | Renseigné par le serveur. |
+
+**`GET /api/company-profiles`**
+
+Réponse `200` :
+
+```json
+{
+  "items": [
+    {
+      "id": "6f4c2d1e-8a3b-4c5d-9e7f-0a1b2c3d4e5f",
+      "label": "Ma société",
+      "legal_name": "Exemple SARL",
+      "legal_form": "SARL",
+      "capital": "1 000 000 FCFA",
+      "rccm": "CI-ABJ-2026-B-00000",
+      "tax_id": "0000000 A",
+      "address": "Cocody, Rue des Jardins",
+      "city": "Abidjan",
+      "postal_box": "01 BP 0000 Abidjan 01",
+      "representative_first_name": "Awa",
+      "representative_last_name": "Kone",
+      "representative_role": "Gérante",
+      "phone": "+225 00 00 00 00 00",
+      "email": "contact@exemple.ci",
+      "signature_place": "Abidjan",
+      "logo": "",
+      "is_default": true,
+      "created_at": "2026-10-27T10:00:00.000Z",
+      "updated_at": "2026-10-27T10:00:00.000Z"
+    }
+  ]
+}
+```
+
+Jusqu'à cinq profils, le profil par défaut d'abord, puis les plus récemment modifiés. L'export des données d'entreprise se fait en téléchargeant cette réponse côté client ; il n'existe pas de route d'export serveur.
+
+**`PUT /api/company-profiles/:id`**
+
+Corps JSON : tous les champs métier ci-dessus sauf `id`, `created_at`, `updated_at`. `is_default` est facultatif. Les champs absents sont enregistrés vides : le client envoie donc le profil complet. Réponse `200` : `{"profile": {…}}`.
+
+- Si le profil n'existe pas, il est créé.
+- Si `is_default` vaut `true`, les autres profils du même utilisateur perdent ce marqueur.
+- Retirer `is_default` au profil par défaut sans désigner un autre profil le laisse par défaut.
+- Un sixième profil renvoie `400` `bad_request`.
+- Un `logo` qui n'est pas une data URL d'image autorisée, ou trop long, renvoie `400` `bad_request` ou `413` `payload_too_large`.
+
+**`DELETE /api/company-profiles/:id`**
+
+Réponse `204`, idempotente. Si le profil supprimé était celui par défaut, le profil le plus récemment modifié devient par défaut.
+
+**`DELETE /api/company-profiles`**
+
+Réponse `204`, idempotente. Supprime tous les profils de l'utilisateur authentifié, et seulement les siens.
+
+**Préremplissage déterministe à la création**
+
+À la création d'un contrat de travail, d'apprentissage, de stage ou de télétravail, le serveur remplace lui-même les espaces réservés **côté employeur** avec le profil sélectionné (ou par défaut). Le modèle ne fournit pas ces valeurs. Les espaces réservés de l'autre partie ne sont jamais touchés.
+
+| Espace réservé (libellé exact du squelette) | Valeur du profil |
+|---|---|
+| `raison sociale de l'employeur`, `raison sociale de l'entreprise d'accueil` | `legal_name` |
+| `adresse du siège`, `adresse de l'employeur`, `adresse de l'entreprise` | `address`, puis `city`, puis `postal_box`, séparés par « , » |
+| `nom et prénom du représentant de l'employeur`, `nom du représentant` | `representative_first_name` + `representative_last_name` |
+| `qualité du représentant` | `representative_role` |
+| `nom et qualité du représentant` | nom complet, puis `representative_role` |
+| `lieu` (signature) | `signature_place` |
+
+Les autres espaces réservés restent intacts et sont comptés dans `validation.placeholders`. Les valeurs sont copiées au moment de la création : modifier un profil ne modifie aucun contrat existant.
+
+**Outils du chat**
+
+Le chat peut lire le profil injecté et le mettre à jour avec les outils internes `get_company_profile` et `save_company_profile`. `save_company_profile` refuse toute écriture sans confirmation explicite de l'utilisateur (`confirmed: true` et message de confirmation récent) : le modèle doit d'abord poser la question. Une modification de profil ne modifie pas le document courant.
+
+### 3.11 Disponibilité des historiques et des profils
+
+Les quatre routes d'historique (§3.6 à §3.9) ne sont montées que si `HISTORY_ENABLED=1`. Les routes de profils (§3.10) sont montées dès que Firebase/Firestore est configuré côté serveur. Sinon, elles répondent `404` avec le code `not_found`. Elles ne sont jamais accessibles avec le seul code partagé.
 
 ## 4. Erreurs
 
@@ -266,7 +373,7 @@ Après l'ouverture du flux : événement SSE `error`, puis fermeture.
 | `not_found` | 404 | non | Route inconnue, historique inconnu ou expiré, fonctionnalité désactivée |
 | `payload_too_large` | 413 | non | Document ou message au-delà des limites |
 | `rate_limited` | 429 | oui | Trop de requêtes (en-tête `Retry-After` en secondes) |
-| `storage_unavailable` | 503 | oui | Stockage des historiques momentanément indisponible |
+| `storage_unavailable` | 503 | oui | Stockage des historiques ou des profils d'entreprise momentanément indisponible |
 | `llm_unavailable` | 503 | oui | Modèle indisponible ou surchargé après une nouvelle tentative |
 | `llm_error` | 502 | oui | Erreur du fournisseur de modèle |
 | `truncated` | — (flux) | oui | Le contrat généré a été coupé par la limite de jetons ; rien n'est appliqué |
@@ -338,11 +445,12 @@ data: {"stop_reason":"end_turn","usage":{"input_tokens":5120,"output_tokens":248
 - Corps de requête : 1 Mo maximum.
 - Durée maximale d'un flux : **240 secondes**. Les modèles de la chaîne sont des modèles à raisonnement : une génération complète dépasse 120 s.
 - `/api/chat` : 30 requêtes par heure et par identité (ou par IP si aucune identité). `/api/export/docx` : 10 par minute et par identité (ou par IP).
-- `/api/history/*` : 60 requêtes par minute et par `uid`.
+- `/api/history/*` : 60 requêtes par minute et par `uid`. `/api/company-profiles/*` : 60 requêtes par minute et par `uid`.
 - Historiques : 50 éléments dans la liste, 100 documents maximum par utilisateur, 200 000 octets de Markdown, 30 messages de 8 000 caractères maximum, conservation de 90 jours.
+- Profils d'entreprise : 5 profils maximum par utilisateur, 120 000 caractères maximum pour le logo, 1 Mo maximum pour le corps de la requête.
 - Toute limite dépassée renvoie le code `rate_limited` (429) ou `payload_too_large` (413) selon le cas.
 
-## 8. Intégration Google et historiques — résumé pour le frontend
+## 8. Intégration Google, historiques et profils — résumé pour le frontend
 
 1. L'authentification se fait **côté navigateur** avec le SDK Firebase JS (Google). Le backend ne redirige pas vers Google et ne pose pas de cookie de session.
 2. Le front envoie l'ID token dans `Authorization: Bearer …` à chaque requête `/api/*`. Le code partagé (`X-Access-Code`) reste accepté uniquement en mode `hybrid` ou `code`.
@@ -352,3 +460,7 @@ data: {"stop_reason":"end_turn","usage":{"input_tokens":5120,"output_tokens":248
 6. Le front doit informer l'utilisateur que ses contrats sont conservés côté serveur pendant 90 jours (paramétrable) et peuvent être supprimés à tout moment. Cette information ne remplace pas une politique de confidentialité validée.
 7. En cas de `401` : rafraîchir le jeton une fois, puis déconnecter. En cas de `503` `storage_unavailable` : proposer de réessayer, sans perdre le document local.
 8. Le document reste la source de vérité du front : un historique est un **snapshot** et ne doit jamais écraser silencieusement une version locale plus récente.
+9. Profils : `GET /api/company-profiles` au démarrage, après connexion Google et après un enregistrement par le chat. Le front affiche le profil par défaut et permet d'en choisir un autre lors de la création d'un contrat.
+10. Le front envoie le profil choisi dans `company_profile_id` à chaque `POST /api/chat`. L'identifiant seul transite ; les valeurs restent côté serveur. Le front ne doit pas envoyer le contenu du profil dans l'historique de messages.
+11. Le front ne demande jamais à l'utilisateur une information déjà présente dans le profil sélectionné. Il peut toujours signaler qu'un champ reste à compléter dans le contrat.
+12. Le front propose dans « Mon entreprise » l'export (téléchargement du JSON de `GET /api/company-profiles`) et la suppression (`DELETE /api/company-profiles`). Il précise que ces données sont stockées sur le compte et supprimables à tout moment, et invite à ne pas enregistrer les données personnelles des autres parties.

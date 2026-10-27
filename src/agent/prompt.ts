@@ -7,11 +7,14 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { TemplateStore } from '../templates.js';
+import type { CompanyProfile } from '../company/store.js';
+import { companyProfilePromptText } from '../company/profile.js';
 import { ABIDJAN_TIME_ZONE } from '../doc/dates.js';
 
 export const SYSTEM_PROMPT_PATH = resolve(process.cwd(), 'prompts', 'system.fr.md');
 export const CATALOGUE_MARKER = '{{CATALOGUE}}';
 export const NOW_MARKER = '{{NOW}}';
+export const COMPANY_MARKER = '{{ENTREPRISE}}';
 
 export interface DocumentPayload {
   markdown: string;
@@ -45,7 +48,7 @@ export function formatNow(now: Date = new Date()): string {
 /** System prompt with the catalogue and the current date injected. */
 export function buildSystemPrompt(
   store: TemplateStore,
-  options: { path?: string; now?: Date } = {},
+  options: { path?: string; now?: Date; companyProfile?: CompanyProfile | null } = {},
 ): string {
   if (!cachedPrompt) cachedPrompt = readSystemPromptFile(options.path ?? SYSTEM_PROMPT_PATH);
   const catalogue = store.catalogue();
@@ -55,9 +58,16 @@ export function buildSystemPrompt(
   if (!cachedPrompt.includes(NOW_MARKER)) {
     throw new Error(`Le prompt système ne contient pas le marqueur ${NOW_MARKER}.`);
   }
+  if (!cachedPrompt.includes(COMPANY_MARKER)) {
+    throw new Error(`Le prompt système ne contient pas le marqueur ${COMPANY_MARKER}.`);
+  }
   return cachedPrompt
     .replace(CATALOGUE_MARKER, catalogue)
-    .replace(NOW_MARKER, formatNow(options.now));
+    .replace(NOW_MARKER, formatNow(options.now))
+    .replace(
+      COMPANY_MARKER,
+      () => `<profil_entreprise>\n${companyProfilePromptText(options.companyProfile ?? null)}\n</profil_entreprise>`,
+    );
 }
 
 /** Clears the in-process cache (used by the tests). */

@@ -22,10 +22,13 @@ import { TemplateStore } from './templates.js';
 import { initFirebase } from './firebase.js';
 import { FirestoreHistoryStore } from './history/firestore.js';
 import type { HistoryStore } from './history/store.js';
+import { FirestoreCompanyProfileStore } from './company/firestore.js';
+import type { CompanyProfileStore } from './company/store.js';
 import { metaRoutes } from './routes/meta.js';
 import { chatRoutes } from './routes/chat.js';
 import { exportRoutes } from './routes/export.js';
 import { historyRoutes } from './routes/history.js';
+import { companyRoutes } from './routes/company.js';
 
 export interface AppDeps {
   config: AppConfig;
@@ -40,6 +43,8 @@ export interface AppDeps {
   verifier?: AccessVerifier;
   /** Injected by the tests; a Firestore store is built when histories are enabled. */
   historyStore?: HistoryStore;
+  /** Injected by the tests; a Firestore store is built when Firebase is configured. */
+  companyProfileStore?: CompanyProfileStore;
 }
 
 const PUBLIC_INDEX = resolve(process.cwd(), 'public', 'index.html');
@@ -81,6 +86,7 @@ export function createApp({
   onToolCall,
   verifier,
   historyStore,
+  companyProfileStore,
 }: AppDeps): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
   const publicApiOrigin = publicApiOriginOf(config.publicApiBase);
@@ -110,6 +116,9 @@ export function createApp({
       maxPerUser: config.historyMaxPerUser,
     })
     : null);
+
+  const companyStore: CompanyProfileStore | null = companyProfileStore
+    ?? (firebase ? new FirestoreCompanyProfileStore(firebase.db) : null);
 
   let templateStore = templates;
   if (!templateStore) {
@@ -219,6 +228,7 @@ export function createApp({
       appTitle: config.appTitle,
     }),
     onToolCall,
+    companyStore,
   }));
 
   // Rate limiting is attached per route, with the bucket and window required by the contract.
@@ -234,6 +244,10 @@ export function createApp({
   if (config.historyEnabled) {
     if (!store) throw new Error('Le stockage des historiques n’est pas initialisé.');
     app.route('/', historyRoutes({ config, logger, store }));
+  }
+
+  if (companyStore) {
+    app.route('/', companyRoutes({ config, logger, store: companyStore }));
   }
 
   app.get('/favicon.ico', (c) => c.body(null, 204));

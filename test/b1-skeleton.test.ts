@@ -10,7 +10,7 @@ describe('B1 — squelette', () => {
     const body = await readJson(res);
     expect(body).toEqual({
       ok: true,
-      contract_version: '1.1',
+      contract_version: '1.2',
       model: 'minimax/minimax-m3.1-flash:free',
     });
   });

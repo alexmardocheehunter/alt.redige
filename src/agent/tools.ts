@@ -4,6 +4,7 @@
  * the `emit` callback, so the SSE contract stays in one place.
  */
 import { applyEdits, type Edit } from '../doc/edit.js';
+import { randomUUID } from 'node:crypto';
 import { validate } from '../doc/validate.js';
 import { lostArticles, countChangedBlocks, renumberArticles } from '../doc/structure.js';
 import { informedRequiredFields, placeholdersForField } from '../doc/required-fields.js';
@@ -38,6 +39,22 @@ import {
 } from '../doc/blocks.js';
 import { blockingStructureIssues } from '../doc/structure-check.js';
 import { buildSuggestions } from './progress.js';
+import { applyCompanyProfilePrefill } from '../company/prefill.js';
+import {
+  CompanyProfileValidationError,
+  isValidCompanyId,
+  isProfileSaveConfirmed,
+  mergeProfileFields,
+  parseCompanyProfileFields,
+  profileDisplayLabel,
+} from '../company/profile.js';
+import {
+  CompanyProfileLimitError,
+  type CompanyProfile,
+  type CompanyProfileFields,
+  type CompanyProfileInput,
+  type CompanyProfileStore,
+} from '../company/store.js';
 
 export const TOOL_GET_TEMPLATE = 'get_template';
 export const TOOL_CREATE_CANVAS = 'create_canvas';
@@ -49,6 +66,8 @@ export const TOOL_INSERT_TABLE = 'insert_table';
 export const TOOL_INSERT_LIST = 'insert_list';
 export const TOOL_INSERT_SIGNATURE_BLOCK = 'insert_signature_block';
 export const TOOL_SUGGEST_NEXT_ACTIONS = 'suggest_next_actions';
+export const TOOL_GET_COMPANY_PROFILE = 'get_company_profile';
+export const TOOL_SAVE_COMPANY_PROFILE = 'save_company_profile';
 
 export interface ToolContext {
   /** Current working document, updated by the tools. */
@@ -69,6 +88,14 @@ export interface ToolContext {
    * information exploitable a été fournie (garde-fou P0-3).
    */
   userText: string;
+  /** Dernier message de l'utilisateur, pour le garde-fou de confirmation. */
+  lastUserText: string;
+  /** Profil d'entreprise sélectionné ou par défaut, sans données d'une autre partie. */
+  companyProfile: CompanyProfile | null;
+  /** Stockage des profils ; `null` avec le code partagé ou sans Firestore. */
+  companyProfileStore: CompanyProfileStore | null;
+  /** Identité individuelle Firebase ; `null` avec le code partagé. */
+  uid: string | null;
   /** Version du document courant, reportée dans les explications de clause. */
   documentVersion: number;
   /**
@@ -220,6 +247,48 @@ export function toolDefinitions(templates: TemplateStore): LlmToolDefinition[] {
           contract_type: { type: 'string', enum: enumIds },
         },
         required: ['contract_type'],
+      },
+    },
+    {
+      name: TOOL_GET_COMPANY_PROFILE,
+      description:
+        'Relit le profil d’entreprise du compte connecté. Le profil est déjà injecté dans le contexte : '
+        + 'ne l’appelle que pour vérifier une valeur. Ne jamais enregistrer ni modifier avec cet outil.',
+      parameters: { type: 'object', properties: {}, required: [] },
+    },
+    {
+      name: TOOL_SAVE_COMPANY_PROFILE,
+      description:
+        'Enregistre ou modifie le profil d’entreprise du compte connecté. '
+        + 'N’appelle cet outil qu’après une confirmation explicite de l’utilisateur, avec `confirmed: true`. '
+        + 'Sans confirmation, le serveur refuse. Les champs absents sont conservés. '
+        + 'Ne jamais enregistrer les données personnelles des autres parties.',
+      parameters: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', description: 'Profil à modifier ; vide = profil courant.' },
+          label: { type: 'string', description: 'Nom du profil dans le sélecteur.' },
+          legal_name: { type: 'string', description: 'Raison sociale ou dénomination.' },
+          legal_form: { type: 'string', description: 'Forme juridique.' },
+          capital: { type: 'string', description: 'Capital social tel que saisi.' },
+          rccm: { type: 'string', description: 'Numéro RCCM.' },
+          tax_id: { type: 'string', description: 'Compte contribuable ou identifiant fiscal.' },
+          address: { type: 'string', description: 'Adresse du siège.' },
+          city: { type: 'string', description: 'Ville du siège.' },
+          postal_box: { type: 'string', description: 'Boîte postale.' },
+          representative_first_name: { type: 'string' },
+          representative_last_name: { type: 'string' },
+          representative_role: { type: 'string', description: 'Qualité ou fonction du représentant.' },
+          phone: { type: 'string' },
+          email: { type: 'string' },
+          signature_place: { type: 'string', description: 'Lieu de signature habituel.' },
+          is_default: { type: 'boolean', description: 'Définir ce profil comme profil par défaut.' },
+          confirmed: {
+            type: 'boolean',
+            description: 'Vrai uniquement après une confirmation explicite de l’utilisateur.',
+          },
+        },
+        required: ['confirmed'],
       },
     },
     {
@@ -516,6 +585,10 @@ export async function executeTool(
       return listPlaceholdersTool(args, context);
     case TOOL_SUGGEST_NEXT_ACTIONS:
       return suggestNextActions(args, context);
+    case TOOL_GET_COMPANY_PROFILE:
+      return getCompanyProfile(context);
+    case TOOL_SAVE_COMPANY_PROFILE:
+      return saveCompanyProfile(args, context);
     case TOOL_ASK_USER:
       return askUser(args, context);
     case TOOL_EXPLAIN_CLAUSE:
@@ -523,6 +596,129 @@ export async function executeTool(
     default:
       return fail(`Outil inconnu : ${name}.`);
   }
+}
+
+/**
+ * Profil envoyé au modèle : jamais le logo (une data URL peut être énorme).
+ */
+function companyProfileToolPayload(profile: CompanyProfile): Record<string, unknown> {
+  const { logo, ...fields } = profile;
+  return { ...fields, has_logo: Boolean(logo) };
+}
+
+async function getCompanyProfile(context: ToolContext): Promise<ToolResult> {
+  let profile = context.companyProfile;
+  if (!profile && context.companyProfileStore && context.uid) {
+    try {
+      profile = await context.companyProfileStore.getDefault(context.uid);
+    } catch (error) {
+      context.logger.warn('company_profile_tool_unavailable', {
+        operation: 'get_default',
+        error_kind: error instanceof Error ? error.name : typeof error,
+      });
+      return fail('Le profil d’entreprise est momentanément indisponible. Réessayez.');
+    }
+  }
+  return ok({ profile: profile ? companyProfileToolPayload(profile) : null });
+}
+
+async function saveCompanyProfile(
+  args: Record<string, unknown>,
+  context: ToolContext,
+): Promise<ToolResult> {
+  if (!context.companyProfileStore || !context.uid) {
+    return fail(
+      'La sauvegarde du profil d’entreprise nécessite une connexion Google individuelle. '
+      + 'Aucune donnée n’a été enregistrée.',
+    );
+  }
+
+  if (args.confirmed !== true || !isProfileSaveConfirmed(context.lastUserText)) {
+    context.logger.info('tool_save_company_profile_refused', { code: 'confirmation_required' });
+    return fail(
+      'Confirmation requise : demande d’abord à l’utilisateur s’il veut enregistrer ces informations, '
+      + 'puis attends un « oui » explicite. Ne réessaie pas avant sa réponse. Aucune donnée n’a été enregistrée.',
+      { code: 'confirmation_required', confirmation_required: true },
+    );
+  }
+
+  let patch: Partial<CompanyProfileFields>;
+  let isDefault: boolean | undefined;
+  try {
+    const parsed = parseCompanyProfileFields(args, { partial: true });
+    patch = parsed.fields;
+    isDefault = parsed.isDefault;
+  } catch (error) {
+    if (error instanceof CompanyProfileValidationError) {
+      return fail(error.message, { code: error.code });
+    }
+    throw error;
+  }
+
+  const rawId = typeof args.id === 'string' ? args.id.trim() : '';
+  if (rawId && !isValidCompanyId(rawId)) {
+    return fail('Identifiant de profil invalide.');
+  }
+  const targetId = rawId || context.companyProfile?.id || randomUUID();
+
+  let existing: CompanyProfile | null = null;
+  try {
+    existing = await context.companyProfileStore.get(context.uid, targetId);
+  } catch (error) {
+    context.logger.warn('company_profile_tool_unavailable', {
+      operation: 'get',
+      error_kind: error instanceof Error ? error.name : typeof error,
+    });
+    return fail('Le profil d’entreprise est momentanément indisponible. Réessayez.');
+  }
+
+  let input: CompanyProfileInput;
+  try {
+    input = mergeProfileFields(existing, patch);
+  } catch (error) {
+    if (error instanceof CompanyProfileValidationError) {
+      return fail(error.message, { code: error.code });
+    }
+    throw error;
+  }
+
+  let saved: CompanyProfile;
+  try {
+    saved = await context.companyProfileStore.put(
+      context.uid,
+      targetId,
+      isDefault === undefined ? input : { ...input, is_default: isDefault },
+    );
+  } catch (error) {
+    if (error instanceof CompanyProfileLimitError) {
+      return fail('Vous avez atteint la limite de cinq profils d’entreprise.');
+    }
+    context.logger.warn('company_profile_tool_unavailable', {
+      operation: 'put',
+      error_kind: error instanceof Error ? error.name : typeof error,
+    });
+    return fail('L’enregistrement du profil a échoué. Réessayez.');
+  }
+
+  context.companyProfile = saved;
+  context.logger.info('tool_save_company_profile', {
+    created: existing === null,
+    fields: Object.keys(patch).length,
+  });
+
+  return {
+    content: JSON.stringify({
+      ok: true,
+      profile: {
+        id: saved.id,
+        label: profileDisplayLabel(saved),
+        is_default: saved.is_default,
+      },
+      note: 'Profil enregistré. Le document courant n’a pas été modifié.',
+    }),
+    isError: false,
+    summary: 'Profil d’entreprise enregistré',
+  };
 }
 
 /**
@@ -701,7 +897,7 @@ function factIssues(markdown: string, context: ToolContext, template: ContractTe
 async function createCanvas(args: Record<string, unknown>, context: ToolContext): Promise<ToolResult> {
   const title = typeof args.title === 'string' ? args.title.trim() : '';
   const contractType = typeof args.contract_type === 'string' ? args.contract_type.trim() : '';
-  const markdown = typeof args.markdown === 'string' ? args.markdown : '';
+  let markdown = typeof args.markdown === 'string' ? args.markdown : '';
   const replace = args.replace === true;
 
   if (!markdown.trim()) {
@@ -788,6 +984,12 @@ async function createCanvas(args: Record<string, unknown>, context: ToolContext)
     }
   }
 
+  // Préremplissage employeur : déterministe, côté serveur, uniquement pour les
+  // contrats où le profil est du côté employeur. Les champs de l'autre partie
+  // restent des espaces réservés.
+  const prefilled = applyCompanyProfilePrefill(markdown, context.companyProfile, contractType);
+  markdown = prefilled.markdown;
+
   // Garde-fou P1-2 : aucune mention normative hors du référentiel du modèle.
   const unsupported = checkReferences(markdown, template);
   if (unsupported.length > 0) {
@@ -846,6 +1048,7 @@ async function createCanvas(args: Record<string, unknown>, context: ToolContext)
   context.logger.info('tool_create_canvas', {
     contract_type: contractType,
     placeholders: validation.placeholders,
+    prefilled: prefilled.filled,
     issues: validation.issues.length,
     safety: safety.available ? 'checked' : 'skipped',
   });
