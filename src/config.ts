@@ -254,4 +254,4 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   return config;
 }
 
-export const CONTRACT_VERSION = '1.2';
+export const CONTRACT_VERSION = '1.3';

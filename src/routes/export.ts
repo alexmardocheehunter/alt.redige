@@ -1,13 +1,12 @@
 /**
  * POST /api/export/docx — exports the contract as a Word file.
- *
- * The PDF export is done in the browser (`window.print()`): there is no PDF
- * endpoint in version 1.0.
+ * POST /api/export/pdf  — exports the contract as a PDF file (server-side, pdfmake).
  */
 import { Hono } from 'hono';
 import type { AppConfig } from '../config.js';
 import { AppError } from '../errors.js';
 import { contentDisposition, renderDocx, slugify, titleFromMarkdown } from '../export/docx.js';
+import { renderPdf, contentDisposition as pdfContentDisposition, type PdfExportBody } from '../export/pdf.js';
 import { validate } from '../doc/validate.js';
 import type { Logger } from '../logger.js';
 import type { AppEnv } from '../types.js';
@@ -16,6 +15,7 @@ export const MAX_DOCUMENT_BYTES = 200_000;
 export const MAX_FOOTER_LENGTH = 200;
 
 export const DOCX_CONTENT_TYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+export const PDF_CONTENT_TYPE = 'application/pdf';
 
 export interface ExportDeps {
   config: AppConfig;
@@ -117,6 +117,86 @@ export function exportRoutes({ config, logger }: ExportDeps): Hono<AppEnv> {
     return c.body(result.buffer as unknown as ArrayBuffer, 200, {
       'Content-Type': DOCX_CONTENT_TYPE,
       'Content-Disposition': contentDisposition(filename),
+      'Content-Length': String(result.bytes),
+      'Cache-Control': 'no-store',
+    });
+  });
+
+  // ─── PDF export ─────────────────────────────────────────────────────
+  app.post('/api/export/pdf', async (c) => {
+    let raw: unknown;
+    try {
+      raw = await c.req.json();
+    } catch {
+      throw new AppError('bad_request', 'Corps de requête invalide.');
+    }
+
+    if (!raw || typeof raw !== 'object') {
+      throw new AppError('bad_request', 'Corps de requête invalide.');
+    }
+    const body = raw as Record<string, unknown>;
+
+    const markdown = body.markdown;
+    if (typeof markdown !== 'string' || markdown.trim().length === 0) {
+      throw new AppError('bad_request', 'Le document à exporter est absent ou vide.');
+    }
+    if (Buffer.byteLength(markdown, 'utf8') > MAX_DOCUMENT_BYTES) {
+      throw new AppError('payload_too_large', 'Le document est trop long pour être exporté.');
+    }
+
+    const contractType = body.contract_type;
+    if (typeof contractType !== 'string' || contractType.trim().length === 0) {
+      throw new AppError('bad_request', 'Le type de contrat est requis.');
+    }
+
+    const companyProfileRaw = body.company_profile;
+    let companyProfile: { legal_name: string; logo: string } | null = null;
+    if (companyProfileRaw && typeof companyProfileRaw === 'object') {
+      const cp = companyProfileRaw as Record<string, unknown>;
+      const legalName = typeof cp.legal_name === 'string' ? cp.legal_name.trim() : '';
+      const logo = typeof cp.logo === 'string' ? cp.logo.trim() : '';
+      if (legalName || logo) {
+        companyProfile = { legal_name: legalName, logo };
+      }
+    }
+
+    const draft = body.draft === true;
+
+    // Validate markdown subset
+    const validation = validate(markdown);
+    const forbidden = validation.issues.filter((issue) => issue.code === 'forbidden_construct');
+    if (forbidden.length > 0) {
+      logger.warn('export_pdf_refused', {
+        request_id: c.get('requestId') ?? '-',
+        issues: forbidden.length,
+      });
+      throw new AppError(
+        'bad_request',
+        `Le document contient des éléments qui ne peuvent pas être exportés en PDF : ${forbidden.map((issue) => issue.message).join(' ')} Corrigez le document avant de l'exporter.`,
+      );
+    }
+
+    let result;
+    try {
+      result = await renderPdf({ markdown, contractType, companyProfile, draft });
+    } catch (error) {
+      logger.error('export_pdf_failed', {
+        request_id: c.get('requestId') ?? '-',
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw new AppError('internal', "L'export PDF a échoué. Réessayez.");
+    }
+
+    logger.info('export_pdf', {
+      request_id: c.get('requestId') ?? '-',
+      bytes: result.bytes,
+      filename: result.filename,
+      draft,
+    });
+
+    return c.body(result.buffer as unknown as ArrayBuffer, 200, {
+      'Content-Type': PDF_CONTENT_TYPE,
+      'Content-Disposition': pdfContentDisposition(result.filename),
       'Content-Length': String(result.bytes),
       'Cache-Control': 'no-store',
     });

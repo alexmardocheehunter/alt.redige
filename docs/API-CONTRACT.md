@@ -2,7 +2,7 @@
 
 Ce document est **normatif**. Le frontend (un seul fichier HTML) et le backend sont construits par deux agents différents, sans se parler. Tout ce qui n'est pas écrit ici n'existe pas. En cas de désaccord entre ce contrat et une spec, **le contrat gagne**. Toute modification du contrat se fait ici d'abord, puis dans le code.
 
-Version du contrat : `1.2`
+Version du contrat : `1.3`
 
 ---
 
@@ -147,9 +147,40 @@ Format des événements : lignes `event: <nom>` puis `data: <JSON sur une seule 
 **Réponse `200`** : corps binaire, `Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document`, `Content-Disposition: attachment; filename="<slug-du-titre>.docx"`.
 **Erreurs** : JSON `{"error": {"code": "...", "message": "..."}}` avec le statut HTTP de la section 4.
 
-L'export **PDF** se fait côté navigateur (`window.print()` + feuille de style d'impression). Il n'y a pas d'endpoint PDF dans la version 1.1.
+### 3.5 `POST /api/export/pdf` — document hors sous-ensemble
 
-### 3.5 `POST /api/export/docx` — document hors sous-ensemble
+Génère un PDF **côté serveur** (pdfmake) depuis le Markdown du contrat, selon le même sous-ensemble que l'export Word.
+
+**Requête** (`Content-Type: application/json`) :
+```json
+{
+  "markdown": "# Contrat…",
+  "contract_type": "stage-ecole",
+  "company_profile": { "legal_name": "Exemple SARL", "logo": "data:image/png;base64,…" } | null,
+  "draft": false
+}
+```
+
+| Champ | Règle |
+|-------|-------|
+| `markdown` | Requis, ≤ 200 000 octets, conforme au §5. |
+| `contract_type` | Requis, identifiant d'un modèle connu (`/api/templates`). |
+| `company_profile` | Facultatif. Si fourni, son `logo` (data URL) est inséré en en-tête. Les autres valeurs **ne sont pas** utilisées pour préremplir (le Markdown est déjà complet). |
+| `draft` | Facultatif, défaut `false`. Si `true` : filigrane « BROUILLON – champs à compléter » en diagonale, et la surbrillance jaune des `[À COMPLÉTER : …]` est conservée. |
+
+**Réponse** : `200`, `Content-Type: application/pdf`, `Cache-Control: no-store`, `Content-Disposition: attachment; filename="Contrat_de_stage_Nom_Date.pdf"`. Le nom du fichier suit le patrón `Contrat_de_<type>_<partie-principale>_<YYYY-MM-DD>.pdf` (sans accents, underscores).
+
+- **Format** : A4, marges 2,5 cm, police intégrée (Roboto ou DejaVu Sans, texte sélectionnable).
+- **Tableaux** : vrais tableaux PDF (bloc signatures sur une seule page, pas de coupure de ligne).
+- **Listes** : vraies listes à puces.
+- **Surbrillance** : `[À COMPLÉTER : …]` → fond jaune (`#fff9c4`), texte noir.
+- **Filigrane brouillon** : texte diagonal semi-transparent 30 %, police 60 pt.
+- **En-tête** : logo entreprise (si `company_profile.logo` fourni) + titre contrat.
+- **Pied de page** : « Page X / Y » centré, pas de date/URL navigateur.
+- **Métadonnées PDF** : Title = titre contrat, Author = `company_profile.legal_name` ou utilisateur, CreationDate = maintenant (Africa/Abidjan).
+- Si le Markdown contient une construction interdite (§5) → `400` `bad_request`.
+
+### 3.6 `POST /api/export/docx` — document hors sous-ensemble
 
 Si le Markdown contient une construction interdite (image, lien, bloc de code,
 titre de niveau 4 ou plus), la réponse est `400` avec le code
@@ -444,7 +475,9 @@ data: {"stop_reason":"end_turn","usage":{"input_tokens":5120,"output_tokens":248
 
 - Corps de requête : 1 Mo maximum.
 - Durée maximale d'un flux : **240 secondes**. Les modèles de la chaîne sont des modèles à raisonnement : une génération complète dépasse 120 s.
-- `/api/chat` : 30 requêtes par heure et par identité (ou par IP si aucune identité). `/api/export/docx` : 10 par minute et par identité (ou par IP).
+- `/api/chat` : 30 requêtes par heure et par identité (ou par IP si aucune identité).
+- `/api/export/docx` : 10 par minute et par identité (ou par IP).
+- `/api/export/pdf` : 10 par minute et par identité (ou par IP).
 - `/api/history/*` : 60 requêtes par minute et par `uid`. `/api/company-profiles/*` : 60 requêtes par minute et par `uid`.
 - Historiques : 50 éléments dans la liste, 100 documents maximum par utilisateur, 200 000 octets de Markdown, 30 messages de 8 000 caractères maximum, conservation de 90 jours.
 - Profils d'entreprise : 5 profils maximum par utilisateur, 120 000 caractères maximum pour le logo, 1 Mo maximum pour le corps de la requête.

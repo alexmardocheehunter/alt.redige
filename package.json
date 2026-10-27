@@ -33,10 +33,12 @@
     "mdast-util-from-markdown": "^2.0.2",
     "mdast-util-gfm-table": "^2.0.0",
     "micromark-extension-gfm-table": "^2.1.0",
+    "pdfmake": "^0.2.10",
     "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
+    "@types/pdfmake": "^0.3.3",
     "jszip": "^3.10.2",
     "tsx": "^4.20.0",
     "typescript": "^5.9.0",

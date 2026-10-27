@@ -17,7 +17,7 @@
     "forceConsistentCasingInFileNames": true,
     "declaration": false,
     "sourceMap": true,
-    "types": ["node"]
+    "types": ["node", "pdfmake"]
   },
   "include": ["src/**/*.ts", "evals/**/*.ts", "test/**/*.ts"],
   "exclude": ["node_modules", "dist", "reference", "public"]
