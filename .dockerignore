@@ -1,26 +1,14 @@
-# Dependencies
+# Dependencies (installed in each stage)
 node_modules
 npm-debug.log*
 
 # Logs
 *.log
 
-# Source files (not needed in container)
-src
-scripts
-test
-reference
-docs
-webinaire-ia
-
-# Config files
-tsconfig*.json
-.eslintrc*
-.prettierrc*
-.gitignore
+# Git
 .git
+.gitignore
 .github
-.vscode
 
 # Environment files (secrets go in Secret Manager)
 .env
@@ -37,12 +25,24 @@ Thumbs.db
 *.swo
 *~
 
-# Firebase
+# Firebase config (not needed in container)
 .firebaserc
 firebase.json
 firestore.rules
 firestore.indexes.json
 
-# Misc
+# IDE
+.vscode
+*.swp
+*.swo
+
+# Documentation & reference (not needed for build)
+docs
+reference
+webinaire-ia
 *.md
 !public/index.html
+
+# Test files (not needed for production build)
+test
+evals
