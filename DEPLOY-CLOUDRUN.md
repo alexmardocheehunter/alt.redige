@@ -82,6 +82,8 @@ Non-secret configuration lives in `cloudrun-env.yaml`:
 | `LLM_SAFETY_MODEL` | `nvidia/nemotron-3.5-content-safety:free` |
 | `MAX_OUTPUT_TOKENS` | `16000` |
 | `SAFETY_CHECK` | `1` |
+| `ALLOWED_ORIGIN` | `https://altredige.web.app,https://altredige.firebaseapp.com` |
+| `PUBLIC_API_BASE` | `https://lexcanvas-657enh5l5q-ew.a.run.app` |
 
 `OPENROUTER_API_KEY` is injected as an environment secret. The Firebase service
 account is mounted as a file at `/secrets/firebase-service-account.json`; the
@@ -114,6 +116,68 @@ the popup is served by `altredige.firebaseapp.com` and needs the Cloud Run origi
 in the authorized domains above. The `Cross-Origin-Opener-Policy:
 same-origin-allow-popups` header required by `signInWithPopup` is set in
 `src/app.ts`.
+
+## Firebase Hosting (public entry point)
+
+Firebase Hosting is the public entry point:
+
+- `https://altredige.web.app` (and the equivalent
+  `https://altredige.firebaseapp.com`) is served through the Hosting rewrite to
+  the Cloud Run service `lexcanvas` in `europe-west1`.
+- The page HTML is the same file served by Cloud Run; the Hosting rewrite only
+  forwards the HTTP response. The CSP nonce therefore keeps working.
+- **The API is not proxied through Hosting.** Firebase Hosting buffers SSE
+  responses, which breaks `/api/chat`. The served page injects
+  `PUBLIC_API_BASE` into `API_BASE`, so the browser calls Cloud Run directly.
+  This is why `ALLOWED_ORIGIN` contains the Hosting domains: the API is
+  cross-origin from the page.
+
+Deploy Hosting after the Cloud Run release:
+
+```bash
+firebase deploy --only hosting --project altredige
+```
+
+The Hosting configuration lives in `firebase.json`; the public directory is
+`hosting/` and only contains the fallback `404.html`. The `**` rewrite sends
+every other request to Cloud Run. Never add an `index.html` to `hosting/`: the
+static file would bypass the Cloud Run nonce CSP.
+
+If the rewrite returns a permission error, grant the Firebase Hosting service
+agent the Cloud Run Invoker role (the service is normally public, so this is
+only needed if public access is removed):
+
+```bash
+PROJECT_NUMBER=586777695980
+gcloud run services add-iam-policy-binding lexcanvas \
+  --region=europe-west1 \
+  --member="serviceAccount:service-${PROJECT_NUMBER}@gcp-sa-firebasehosting.iam.gserviceaccount.com" \
+  --role="roles/run.invoker" \
+  --project=altredige
+```
+
+Verify the public entry point:
+
+```bash
+curl -I https://altredige.web.app/
+# 200, content-type text/html, cross-origin-opener-policy: same-origin-allow-popups
+
+curl -s https://altredige.web.app/api/health
+# {"ok":true,...}
+
+# CORS preflight for a direct call from the Hosting page.
+curl -i -X OPTIONS https://lexcanvas-657enh5l5q-ew.a.run.app/api/chat \
+  -H "Origin: https://altredige.web.app" \
+  -H "Access-Control-Request-Method: POST" \
+  -H "Access-Control-Request-Headers: authorization,content-type"
+# Access-Control-Allow-Origin: https://altredige.web.app
+```
+
+Add `altredige.web.app` and `altredige.firebaseapp.com` to Firebase
+Authentication → Settings → Authorized domains if they are not already listed.
+The final check is a real browser session on `https://altredige.web.app/`:
+Google sign-in, streaming `/api/chat` (direct Cloud Run), history, and Word
+export.
 
 ## Firestore TTL (history retention)
 
@@ -177,4 +241,6 @@ gcloud projects remove-iam-policy-binding altredige \
 - `.gcloudignore` — whitelist for `gcloud run deploy --source`.
 - `cloudrun-env.yaml` — non-secret production environment.
 - `deploy-cloudrun.sh` — build and deploy automation.
+- `firebase.json` — Hosting rewrite to Cloud Run and Firestore configuration.
+- `hosting/` — Firebase Hosting public fallback (`404.html` only).
 - `DEPLOY-CLOUDRUN.md` — this document.

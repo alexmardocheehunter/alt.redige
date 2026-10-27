@@ -12,7 +12,18 @@ import type { AppEnv } from '../types.js';
 
 export const CSP_NONCE_KEY = 'cspNonce';
 
-function buildPolicy(nonce: string): string {
+function buildPolicy(nonce: string, publicApiOrigin: string | null): string {
+  const connectSrc = [
+    "'self'",
+    'https://identitytoolkit.googleapis.com',
+    'https://securetoken.googleapis.com',
+    'https://www.googleapis.com',
+  ];
+  // When the page is served by Firebase Hosting, the frontend calls the
+  // Cloud Run API directly (SSE cannot cross the Hosting CDN without being
+  // buffered). That origin must be explicitly allowed by `connect-src`.
+  if (publicApiOrigin) connectSrc.push(publicApiOrigin);
+
   return [
     "default-src 'self'",
     // The nonce authorises the inline script of the page; 'self' keeps the
@@ -22,7 +33,7 @@ function buildPolicy(nonce: string): string {
     `script-src 'self' 'nonce-${nonce}' https://www.gstatic.com https://apis.google.com`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https://*.googleusercontent.com",
-    "connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com",
+    `connect-src ${connectSrc.join(' ')}`,
     "frame-src 'self' https://*.firebaseapp.com https://accounts.google.com",
     "object-src 'none'",
     "frame-ancestors 'none'",
@@ -32,11 +43,11 @@ function buildPolicy(nonce: string): string {
 }
 
 /** Issues a per-response nonce and the matching policy. */
-export function contentSecurityPolicy(): MiddlewareHandler<AppEnv> {
+export function contentSecurityPolicy(publicApiOrigin: string | null = null): MiddlewareHandler<AppEnv> {
   return async (c, next) => {
     const nonce = randomBytes(16).toString('base64');
     c.set(CSP_NONCE_KEY, nonce);
-    c.header('Content-Security-Policy', buildPolicy(nonce));
+    c.header('Content-Security-Policy', buildPolicy(nonce, publicApiOrigin));
     await next();
   };
 }

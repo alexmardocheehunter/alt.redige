@@ -44,6 +44,16 @@ export interface AppDeps {
 
 const PUBLIC_INDEX = resolve(process.cwd(), 'public', 'index.html');
 
+/** Returns the origin of PUBLIC_API_BASE, or null when it is absent/invalid. */
+function publicApiOriginOf(publicApiBase: string | null): string | null {
+  if (!publicApiBase) return null;
+  try {
+    return new URL(publicApiBase).origin;
+  } catch {
+    return null;
+  }
+}
+
 interface CachedFile {
   mtimeMs: number;
   body: Buffer;
@@ -73,6 +83,7 @@ export function createApp({
   historyStore,
 }: AppDeps): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
+  const publicApiOrigin = publicApiOriginOf(config.publicApiBase);
 
   // Firebase is initialised only when the current configuration needs it, so
   // the tests and the historical `AUTH_MODE=code` mode never touch credentials.
@@ -114,7 +125,7 @@ export function createApp({
 
   app.use('*', requestId());
   app.use('*', requestLogger(logger));
-  app.use('*', contentSecurityPolicy());
+  app.use('*', contentSecurityPolicy(publicApiOrigin));
   app.use('*', secureHeaders({
     xContentTypeOptions: 'nosniff',
     referrerPolicy: 'no-referrer',
@@ -139,11 +150,14 @@ export function createApp({
     },
   }));
 
-  if (config.allowedOrigin) {
+  if (config.allowedOrigins.length > 0) {
     app.use('/api/*', cors({
-      origin: config.allowedOrigin,
+      // The page can be served from Firebase Hosting (`web.app` and
+      // `firebaseapp.com`) while API calls target Cloud Run directly.
+      origin: (origin) => (config.allowedOrigins.includes(origin) ? origin : null),
       allowHeaders: ['Content-Type', 'X-Access-Code', 'X-Request-Id', 'Authorization'],
       allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+      exposeHeaders: ['Content-Disposition'],
       maxAge: 600,
     }));
   }
@@ -230,8 +244,14 @@ export function createApp({
       return c.text('Interface indisponible.', 503, { 'Content-Type': 'text/plain; charset=utf-8' });
     }
     // The page carries an inline script: the nonce of the response authorises it.
+    let html = body.toString('utf8');
+    if (config.publicApiBase) {
+      // Runtime setting: the same page works same-origin locally, and calls
+      // Cloud Run directly when served through Firebase Hosting (SSE-safe).
+      html = html.replace("API_BASE: ''", `API_BASE: ${JSON.stringify(config.publicApiBase)}`);
+    }
     const nonce = c.get('cspNonce');
-    const html = nonce ? applyNonce(body.toString('utf8'), nonce) : body.toString('utf8');
+    if (nonce) html = applyNonce(html, nonce);
     return c.body(html, 200, {
       'Content-Type': 'text/html; charset=utf-8',
       'Cache-Control': 'no-cache',

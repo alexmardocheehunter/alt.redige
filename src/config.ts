@@ -82,7 +82,17 @@ const schema = z.object({
   MAX_EDIT_CHANGED_BLOCKS: positiveInt(4, 50),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
   TRUST_PROXY: z.enum(['0', '1']).default('0'),
+  /**
+   * Origine(s) autorisée(s) pour les appels API cross-origin. Liste séparée par
+   * des virgules, par exemple `https://altredige.web.app,https://altredige.firebaseapp.com`.
+   */
   ALLOWED_ORIGIN: z.string().min(1).optional(),
+  /**
+   * URL publique du backend, utilisée quand la page est servie par Firebase
+   * Hosting : le front doit appeler Cloud Run directement pour que le flux SSE
+   * de `/api/chat` ne soit pas bufferisé par le CDN de Firebase Hosting.
+   */
+  PUBLIC_API_BASE: z.string().url().optional(),
   EXPORT_FOOTER: z.string().min(1).optional(),
   /**
    * Nombre maximal de messages de l'historique renvoyés au modèle.
@@ -130,7 +140,12 @@ export interface AppConfig {
   maxHistoryMessages: number;
   logLevel: 'debug' | 'info' | 'warn' | 'error';
   trustProxy: boolean;
+  /** Première origine autorisée, conservée pour la compatibilité. */
   allowedOrigin: string | null;
+  /** Toutes les origines autorisées (ALLOWED_ORIGIN séparé par des virgules). */
+  allowedOrigins: string[];
+  /** URL absolue du backend injectée dans la page servie par Firebase Hosting. */
+  publicApiBase: string | null;
   exportFooter: string | null;
 }
 
@@ -152,6 +167,10 @@ function toAppConfig(raw: RawConfig): AppConfig {
   const ordered = raw.LLM_MODEL
     ? [raw.LLM_MODEL, ...list.filter((model) => model !== raw.LLM_MODEL)]
     : list;
+
+  const allowedOrigins = raw.ALLOWED_ORIGIN
+    ? raw.ALLOWED_ORIGIN.split(',').map((origin) => origin.trim()).filter(Boolean)
+    : [];
 
   return {
     nodeEnv: raw.NODE_ENV,
@@ -183,7 +202,9 @@ function toAppConfig(raw: RawConfig): AppConfig {
     maxHistoryMessages: raw.MAX_HISTORY_MESSAGES,
     logLevel: raw.LOG_LEVEL,
     trustProxy: raw.TRUST_PROXY === '1',
-    allowedOrigin: raw.ALLOWED_ORIGIN ?? null,
+    allowedOrigin: allowedOrigins[0] ?? null,
+    allowedOrigins,
+    publicApiBase: raw.PUBLIC_API_BASE ?? null,
     exportFooter: raw.EXPORT_FOOTER ?? null,
   };
 }

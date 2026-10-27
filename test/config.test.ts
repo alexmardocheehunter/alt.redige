@@ -54,6 +54,27 @@ describe('config', () => {
     expect(loadConfig({ OPENROUTER_API_KEY: 'k', TRUST_PROXY: '0' }).trustProxy).toBe(false);
   });
 
+  it('lit une liste d’origines autorisées et PUBLIC_API_BASE', () => {
+    const config = loadConfig({
+      OPENROUTER_API_KEY: 'k',
+      ALLOWED_ORIGIN: ' https://altredige.web.app , https://altredige.firebaseapp.com ',
+      PUBLIC_API_BASE: 'https://lexcanvas-657enh5l5q-ew.a.run.app',
+    });
+    expect(config.allowedOrigins).toEqual([
+      'https://altredige.web.app',
+      'https://altredige.firebaseapp.com',
+    ]);
+    expect(config.allowedOrigin).toBe('https://altredige.web.app');
+    expect(config.publicApiBase).toBe('https://lexcanvas-657enh5l5q-ew.a.run.app');
+  });
+
+  it('refuse une PUBLIC_API_BASE qui n’est pas une URL', () => {
+    expect(() => loadConfig({
+      OPENROUTER_API_KEY: 'k',
+      PUBLIC_API_BASE: 'pas-une-url',
+    })).toThrow(ConfigError);
+  });
+
   it('lit la chaîne de bascule LLM_MODELS', () => {
     const config = loadConfig({
       OPENROUTER_API_KEY: 'k',

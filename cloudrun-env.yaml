@@ -8,3 +8,5 @@ LLM_MODELS: "dots-studio/dots-3-note-preview:free,nvidia/nemotron-3-ultra-550b-a
 LLM_SAFETY_MODEL: "nvidia/nemotron-3.5-content-safety:free"
 MAX_OUTPUT_TOKENS: "16000"
 SAFETY_CHECK: "1"
+ALLOWED_ORIGIN: "https://altredige.web.app,https://altredige.firebaseapp.com"
+PUBLIC_API_BASE: "https://lexcanvas-657enh5l5q-ew.a.run.app"

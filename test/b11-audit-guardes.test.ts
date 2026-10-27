@@ -471,6 +471,36 @@ describe('S11 — Content-Security-Policy et Permissions-Policy', () => {
     // le navigateur et l'interface ne démarre pas.
     expect(res.headers.get('content-security-policy')).toContain(`'nonce-${nonce}'`);
   });
+
+  it('injecte PUBLIC_API_BASE et l’autorise dans connect-src', async () => {
+    const app = testApp({ publicApiBase: 'https://api.example.com' });
+    const res = await app.request('/');
+    const html = await res.text();
+    expect(html).toContain('API_BASE: "https://api.example.com"');
+    expect(res.headers.get('content-security-policy'))
+      .toContain('connect-src \'self\' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com https://api.example.com');
+  });
+
+  it('répond au préflight CORS depuis Firebase Hosting', async () => {
+    const app = testApp({ allowedOrigins: ['https://altredige.web.app'] });
+    const res = await app.request('/api/chat', {
+      method: 'OPTIONS',
+      headers: {
+        Origin: 'https://altredige.web.app',
+        'Access-Control-Request-Method': 'POST',
+        'Access-Control-Request-Headers': 'authorization,content-type',
+      },
+    });
+    expect(res.status).toBe(204);
+    expect(res.headers.get('access-control-allow-origin')).toBe('https://altredige.web.app');
+
+    // Cross-origin export: the frontend reads Content-Disposition.
+    const health = await app.request('/api/health', {
+      headers: { Origin: 'https://altredige.web.app' },
+    });
+    expect(health.headers.get('access-control-allow-origin')).toBe('https://altredige.web.app');
+    expect(health.headers.get('access-control-expose-headers')).toContain('Content-Disposition');
+  });
 });
 
 /* ------------------------------------------------------------------ */
