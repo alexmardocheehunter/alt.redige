@@ -160,6 +160,16 @@ export function createApp({
   }));
 
   if (config.allowedOrigins.length > 0) {
+    // Explicitly reject requests from unallowed origins before CORS middleware.
+    // This ensures 403 for unallowed origins instead of silently dropping CORS headers.
+    app.use('/api/*', async (c, next) => {
+      const origin = c.req.header('origin');
+      if (origin && !config.allowedOrigins.includes(origin)) {
+        return c.json({ error: { code: 'forbidden', message: 'Origine non autorisée.' } }, 403);
+      }
+      await next();
+    });
+
     app.use('/api/*', cors({
       // The page can be served from Firebase Hosting (`web.app` and
       // `firebaseapp.com`) while API calls target Cloud Run directly.
@@ -168,6 +178,7 @@ export function createApp({
       allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
       exposeHeaders: ['Content-Disposition'],
       maxAge: 600,
+      credentials: true,
     }));
   }
 

@@ -156,8 +156,7 @@ Génère un PDF **côté serveur** (pdfmake) depuis le Markdown du contrat, selo
 {
   "markdown": "# Contrat…",
   "contract_type": "stage-ecole",
-  "company_profile": { "legal_name": "Exemple SARL", "logo": "data:image/png;base64,…" } | null,
-  "draft": false
+  "company_profile": { "legal_name": "Exemple SARL", "logo": "data:image/png;base64,…" } | null
 }
 ```
 
@@ -166,17 +165,19 @@ Génère un PDF **côté serveur** (pdfmake) depuis le Markdown du contrat, selo
 | `markdown` | Requis, ≤ 200 000 octets, conforme au §5. |
 | `contract_type` | Requis, identifiant d'un modèle connu (`/api/templates`). |
 | `company_profile` | Facultatif. Si fourni, son `logo` (data URL) est inséré en en-tête. Les autres valeurs **ne sont pas** utilisées pour préremplir (le Markdown est déjà complet). |
-| `draft` | Facultatif, défaut `false`. Si `true` : filigrane « BROUILLON – champs à compléter » en diagonale, et la surbrillance jaune des `[À COMPLÉTER : …]` est conservée. |
 
-**Réponse** : `200`, `Content-Type: application/pdf`, `Cache-Control: no-store`, `Content-Disposition: attachment; filename="Contrat_de_stage_Nom_Date.pdf"`. Le nom du fichier suit le patrón `Contrat_de_<type>_<partie-principale>_<YYYY-MM-DD>.pdf` (sans accents, underscores).
+**Mode brouillon (automatique)** : le serveur détecte la présence de `[À COMPLÉTER : …]` dans le Markdown (`validation.placeholders > 0`). Si oui :
+- filigrane diagonal « BROUILLON – champs à compléter » (30 % opacité, police 60 pt) ;
+- surbrillance jaune (`#fff9c4`) conservée sur les espaces réservés.
 
-- **Format** : A4, marges 2,5 cm, police intégrée (Roboto ou DejaVu Sans, texte sélectionnable).
+**Réponse** : `200`, `Content-Type: application/pdf`, `Cache-Control: no-store`, `Content-Disposition: attachment; filename="Contrat_de_stage_Nom_Date.pdf"`. Le nom du fichier suit le pattern `Contrat_de_<type>_<partie-principale>_<YYYY-MM-DD>.pdf` (sans accents, underscores).
+
+- **Format** : A4, marges 2,5 cm, police intégrée (Roboto via pdfmake, texte sélectionnable).
 - **Tableaux** : vrais tableaux PDF (bloc signatures sur une seule page, pas de coupure de ligne).
 - **Listes** : vraies listes à puces.
 - **Surbrillance** : `[À COMPLÉTER : …]` → fond jaune (`#fff9c4`), texte noir.
-- **Filigrane brouillon** : texte diagonal semi-transparent 30 %, police 60 pt.
-- **En-tête** : logo entreprise (si `company_profile.logo` fourni) + titre contrat.
-- **Pied de page** : « Page X / Y » centré, pas de date/URL navigateur.
+- **En-tête** : logo entreprise (si `company_profile.logo` fourni) + titre contrat + pagination `Page X / Y` à droite.
+- **Pied de page** : vide (pagination dans l'en-tête), pas de date/URL navigateur.
 - **Métadonnées PDF** : Title = titre contrat, Author = `company_profile.legal_name` ou utilisateur, CreationDate = maintenant (Africa/Abidjan).
 - Si le Markdown contient une construction interdite (§5) → `400` `bad_request`.
 

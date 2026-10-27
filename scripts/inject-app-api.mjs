@@ -12,9 +12,20 @@ import { fileURLToPath } from 'node:url';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const indexPath = resolve(root, 'public', 'index.html');
 const scriptPath = resolve(root, 'public', 'app-api.js');
+const envPath = resolve(root, 'cloudrun-env.yaml');
 
 const START = '<!-- app-api:debut -->';
 const END = '<!-- app-api:fin -->';
+
+// Read PUBLIC_API_BASE from cloudrun-env.yaml if present
+let publicApiBase = '';
+try {
+  const envContent = readFileSync(envPath, 'utf8');
+  const match = envContent.match(/^PUBLIC_API_BASE:\s*"([^"]+)"/m);
+  if (match) publicApiBase = match[1];
+} catch {
+  // File may not exist locally; that's fine
+}
 
 const script = readFileSync(scriptPath, 'utf8');
 if (script.includes('</script>')) {
@@ -31,8 +42,14 @@ if (start === -1 || end === -1 || end < start) {
   process.exit(1);
 }
 
+// Inject config before the app script
+const configScript = publicApiBase
+  ? `<script>window.__LEXCANVAS_CONFIG__={PUBLIC_API_BASE:${JSON.stringify(publicApiBase)}};</script>`
+  : '';
+
 const block = [
   START,
+  configScript,
   '<script>',
   script,
   '</script>',
@@ -41,4 +58,4 @@ const block = [
 
 html = html.slice(0, start) + block + html.slice(end + END.length);
 writeFileSync(indexPath, html, 'utf8');
-console.log('index.html : branchement de l’IA injecté.');
+console.log("index.html : branchement de l'IA inject\u00E9" + (publicApiBase ? ` (PUBLIC_API_BASE=${publicApiBase})` : ''));

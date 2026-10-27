@@ -498,6 +498,7 @@ theme(getS('altredige.theme')||'auto');render();
 // L'ouverture de la session est pilotée par Firebase Auth (app-api.js).
 </script>
 <!-- app-api:debut -->
+<script>window.__LEXCANVAS_CONFIG__={PUBLIC_API_BASE:"https://lexcanvas-657enh5l5q-ew.a.run.app"};</script>
 <script>
 /*
  * Branchement de l'IA — alt.redige v2.
@@ -522,7 +523,7 @@ theme(getS('altredige.theme')||'auto');render();
   'use strict';
 
   var CONFIG = {
-    API_BASE: '',
+    API_BASE: (typeof window !== 'undefined' && window.__LEXCANVAS_CONFIG__?.PUBLIC_API_BASE) || '',
     MOCK: new URLSearchParams(location.search).get('mock') === '1',
     STORAGE_KEY: 'altredige:convs',
     MAX_MESSAGES: 30,

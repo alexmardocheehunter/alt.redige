@@ -2,8 +2,8 @@
  * Vérification de production — utilisable comme porte avant déploiement.
  *
  * Deux volets :
- *  1. **configuration** : mode d'authentification, politique « modèles
- *     gratuits uniquement », gardien de sécurité et limites ; les écarts
+ *  1. **configuration** : mode d'authentification, politique de modèles
+ *     gratuits uniquement, gardien de sécurité et limites ; les écarts
  *     importants sont signalés avec la correction ;
  *  2. **sondes réelles** : chaque modèle de la chaîne et le gardien de sécurité
  *     sont appelés (un jeton), puis le serveur en cours d'exécution est
@@ -54,7 +54,7 @@ try {
 
 console.log('\n═══════════ Vérification de production — LexCanvas ═══════════\n');
 
-/* ── 1. Configuration ─────────────────────────────────────────────── */
+/* ─── 1. Configuration ─── */
 
 console.log('─ Configuration ─\n');
 
@@ -63,7 +63,7 @@ check(
   config.nodeEnv === 'production',
   config.nodeEnv === 'production'
     ? 'production (HSTS actif)'
-    : `« ${config.nodeEnv} » — à passer à production sur le serveur de production`,
+    : `⚠ ${config.nodeEnv} — à passer à production sur le serveur de production`,
   false,
 );
 
@@ -85,9 +85,7 @@ check(
 check(
   'Authentification',
   config.authMode !== 'code',
-  `AUTH_MODE=${config.authMode}${
-    config.authMode === 'code' ? ' — code partagé, pas d’identité individuelle' : ' — identité Firebase'
-  }`,
+  `AUTH_MODE=${config.authMode}${config.authMode === 'code' ? ' — code partagé, pas d\'identité individuelle' : ' — identité Firebase'}`,
   false,
 );
 
@@ -97,7 +95,7 @@ check(
   paid.length === 0,
   paid.length === 0
     ? `chaîne 100 % gratuite (${config.models.length} modèles) — débit limité, bascule indispensable`
-    : `modèles payants détectés (${paid.join(', ')}) alors que la politique est « gratuit uniquement »`,
+    : `modèles payants détectés (${paid.join(', ')}) alors que la politique est à gratuit uniquement`,
   false,
 );
 
@@ -114,9 +112,7 @@ check(
   'Gardien de sécurité',
   config.safetyCheck && config.safetyMode !== 'off',
   config.safetyCheck
-    ? `actif, mode « ${config.safetyMode} »${
-      config.safetyMode === 'block' ? ' — déconseillé : bloque 1 demande légitime sur 20' : ''
-    }`
+    ? `actif, mode « ${config.safetyMode} »${config.safetyMode === 'block' ? ' — déconseillé : bloque 1 demande légitime sur 20' : ''}`
     : 'désactivé (SAFETY_CHECK=0)',
   false,
 );
@@ -145,17 +141,17 @@ check(
   'Proxy inverse',
   true,
   config.trustProxy
-    ? 'TRUST_PROXY=1 : l’IP client est lue dans X-Forwarded-For'
-    : 'TRUST_PROXY=0 : à passer à 1 derrière un proxy (sinon tous les utilisateurs partagent le quota de l’IP du proxy)',
+    ? 'TRUST_PROXY=1 : l\'IP client est lue dans X-Forwarded-For'
+    : 'TRUST_PROXY=0 : à passer à 1 derrière un proxy (sinon tous les utilisateurs partagent le quota de l\'IP du proxy)',
   false,
 );
 
 for (const item of checks) {
-  const mark = item.ok ? '  ok  ' : item.blocking ? ' ÉCHEC ' : 'attention';
+  const mark = item.ok ? '  ok  ' : item.blocking ? ' ☒ ' : 'attention';
   console.log(`[${mark}] ${item.label.padEnd(20)} ${item.detail}`);
 }
 
-/* ── 2. Sondes du fournisseur ─────────────────────────────────────── */
+/* ─── 2. Sondes du fournisseur ─── */
 
 const client = createOpenRouterClient({
   baseUrl: config.baseUrl,
@@ -203,7 +199,7 @@ const modelResults = await Promise.all(config.models.map(async (model) => ({
 let firstModelOk = false;
 for (const [index, item] of modelResults.entries()) {
   if (item.result.ok && index === 0) firstModelOk = true;
-  const mark = item.result.ok ? '  ok  ' : ' ÉCHEC ';
+  const mark = item.result.ok ? '  ok  ' : index === 0 ? ' ☒ ' : 'attention';
   console.log(`[${mark}] ${item.model.padEnd(44)} ${item.result.detail}`);
 }
 check(
@@ -211,7 +207,8 @@ check(
   firstModelOk,
   firstModelOk
     ? 'le premier modèle de la chaîne a répondu'
-    : 'aucun modèle de la chaîne n’a répondu : vérifiez la clé, les identifiants de modèle et le réseau',
+    : 'le modèle principal n\'a pas répondu : vérifiez la clé, les identifiants de modèle et le réseau',
+  true,
 );
 
 if (config.safetyCheck) {
@@ -227,7 +224,7 @@ if (config.safetyCheck) {
   );
 }
 
-/* ── 3. Sondes du serveur en cours ────────────────────────────────── */
+/* ─── 3. Sondes du serveur en cours ─── */
 
 if (!skipServer && baseUrl) {
   console.log(`\n─ Serveur ${baseUrl} ─\n`);
@@ -261,8 +258,8 @@ if (!skipServer && baseUrl) {
     if (hasAuth) {
       const refused = await get('/api/templates');
       const refusedOk = refused.status === 401;
-      console.log(`[${refusedOk ? '  ok  ' : ' ÉCHEC '}] sans authentification ${refused.status} ${refused.body.slice(0, 70)}`);
-      check('Refus sans authentification', refusedOk, refusedOk ? '401 attendu' : 'l’authentification n’est pas exigée', true);
+      console.log(`[${refusedOk ? '  ok  ' : ' ☒ '}] sans authentification ${refused.status} ${refused.body.slice(0, 70)}`);
+      check('Refus sans authentification', refusedOk, refusedOk ? '401 attendu' : 'l\'authentification n\'est pas exigée', true);
     } else {
       const message = 'aucun code ni jeton fourni : utilisez --token <idToken> pour les sondes authentifiées';
       console.log(`[attention] sondes authentifiées ${message}`);
@@ -270,7 +267,7 @@ if (!skipServer && baseUrl) {
     }
 
     if (hasAuth) {
-      const markdown = '# Contrat de vérification\n\n## Article 1 – Objet\n\nVérification technique.\n';
+      const markdown = '# Contrat de vérification\n\n## Article 1 — Objet\n\nVérification technique.\n';
       try {
         const response = await fetch(`${baseUrl}/api/export/docx`, {
           method: 'POST',
@@ -280,31 +277,31 @@ if (!skipServer && baseUrl) {
         });
         const bytes = Buffer.from(await response.arrayBuffer());
         const isDocx = response.status === 200 && bytes[0] === 0x50 && bytes[1] === 0x4b;
-        console.log(`[${isDocx ? '  ok  ' : ' ÉCHEC '}] POST /api/export/docx  ${response.status} ${bytes.length} octets${isDocx ? ' (.docx valide)' : ''}`);
-        check('Export Word', isDocx, isDocx ? 'fichier .docx produit' : 'l’export n’a pas produit de .docx valide');
+        console.log(`[${isDocx ? '  ok  ' : ' ☒ '}] POST /api/export/docx  ${response.status} ${bytes.length} octets${isDocx ? ' (.docx valide)' : ''}`);
+        check('Export Word', isDocx, isDocx ? 'fichier .docx produit' : 'l\'export n\'a pas produit de .docx valide');
       } catch (error) {
-        console.log(`[ ÉCHEC ] POST /api/export/docx  ${error instanceof Error ? error.message : String(error)}`);
+        console.log(`[ ☒ ] POST /api/export/docx  ${error instanceof Error ? error.message : String(error)}`);
         check('Export Word', false, 'export injoignable');
       }
     }
   }
 }
 
-/* ── Verdict ──────────────────────────────────────────────────────── */
+/* ─── Verdict ─── */
 
 const blocking = checks.filter((item) => !item.ok && item.blocking);
 const warnings = checks.filter((item) => !item.ok && !item.blocking);
 
 console.log('\n═══════════════════════════════════════════════════════════════\n');
 if (blocking.length === 0) {
-  console.log(`Verdict : PRÊT${warnings.length > 0 ? ` (${warnings.length} point(s) d’attention)` : ''}.`);
-  for (const item of warnings) console.log(`  · ${item.label} : ${item.detail}`);
+  console.log(`Verdict : PRÊT${warnings.length > 0 ? ` (${warnings.length} point(s) d'attention)` : ''}.`);
+  for (const item of warnings) console.log(`  ⚠ ${item.label} : ${item.detail}`);
   console.log('');
   process.exit(0);
 }
 
 console.log(`Verdict : NON PRÊT — ${blocking.length} point(s) bloquant(s) :`);
 for (const item of blocking) console.log(`  ✗ ${item.label} : ${item.detail}`);
-for (const item of warnings) console.log(`  · ${item.label} : ${item.detail}`);
+for (const item of warnings) console.log(`  ⚠ ${item.label} : ${item.detail}`);
 console.log('');
 process.exit(1);

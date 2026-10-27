@@ -21,7 +21,7 @@
   'use strict';
 
   var CONFIG = {
-    API_BASE: '',
+    API_BASE: (typeof window !== 'undefined' && window.__LEXCANVAS_CONFIG__?.PUBLIC_API_BASE) || '',
     MOCK: new URLSearchParams(location.search).get('mock') === '1',
     STORAGE_KEY: 'altredige:convs',
     MAX_MESSAGES: 30,

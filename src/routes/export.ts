@@ -160,10 +160,11 @@ export function exportRoutes({ config, logger }: ExportDeps): Hono<AppEnv> {
       }
     }
 
-    const draft = body.draft === true;
-
-    // Validate markdown subset
+    // Draft mode is automatic: true if there are remaining placeholders.
+    // The client MUST NOT decide — the server decides based on the document.
     const validation = validate(markdown);
+    const draft = validation.placeholders > 0;
+
     const forbidden = validation.issues.filter((issue) => issue.code === 'forbidden_construct');
     if (forbidden.length > 0) {
       logger.warn('export_pdf_refused', {
