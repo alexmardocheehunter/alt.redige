@@ -5,20 +5,39 @@
   "status": "ready",
   "legal_review": { "status": "fourni", "reviewer": "Référentiel juridique joint (TOUTES LES INFOS LEGALES.txt)", "date": "2026-10-21" },
   "required_fields": [
-    { "key": "employeur", "label": "Identité de l'employeur", "question_hint": "Raison sociale, adresse et représentant de l'employeur ?" },
+    { "key": "employeur", "label": "Identité de l'employeur", "question_hint": "Raison sociale, forme juridique, capital, RCCM, compte contribuable, adresse et représentant de l'employeur ?" },
     { "key": "employe", "label": "Identité de l'employé", "question_hint": "Nom, prénom, date et lieu de naissance, nationalité, adresse de l'employé ?" },
     { "key": "poste", "label": "Emploi et missions", "question_hint": "Poste occupé et missions confiées ?" },
     { "key": "motif_tache", "label": "Motif précis du recrutement", "question_hint": "Pourquoi ce recrutement ? (objet spécifique du recrutement, art. 15.6)" },
-    { "key": "remuneration", "label": "Salaire de base", "question_hint": "Salaire de base mensuel en FCFA ?" },
-    { "key": "duree", "label": "Durée du contrat", "question_hint": "Durée du CDD (terme imprécis) ?" }
+    { "key": "remuneration", "label": "Rémunération", "question_hint": "Salaire de base mensuel, primes, avantages en nature, mode et périodicité de paiement en FCFA ?" },
+    { "key": "duree", "label": "Durée estimée", "question_hint": "Durée estimée du CDD (terme imprécis, max 2 ans) ?" },
+    { "key": "date_debut", "label": "Date de prise de fonction", "question_hint": "Date d'entrée en fonction de l'employé ?" },
+    { "key": "lieu_travail", "label": "Lieu de travail", "question_hint": "Lieu d'exécution du travail ?" },
+    { "key": "classification", "label": "Classification professionnelle", "question_hint": "Catégorie, coefficient, convention collective applicable ?" },
+    { "key": "periode_essai", "label": "Période d'essai", "question_hint": "Durée de la période d'essai (si applicable) ?" }
   ],
   "optional_fields": [
-    { "key": "periode_essai", "label": "Période d'essai (clause écrite obligatoire)" },
     { "key": "visa_emploi", "label": "Numéro de visa de l'Emploi (salarié étranger)" },
-    { "key": "avantage", "label": "Avantages divers" }
+    { "key": "avantage", "label": "Avantages divers (transport, logement, restauration, etc.)" },
+    { "key": "convention_collective", "label": "Convention collective applicable" }
   ],
   "required_articles": [
-    "Textes de référence", "Nature", "Emploi et missions", "Obligations des parties", "Rémunération", "Horaires de travail", "Confidentialité", "Rupture du contrat", "Signatures"
+    "Textes de référence",
+    "Nature du contrat",
+    "Emploi et missions",
+    "Date de début et lieu de travail",
+    "Classification et convention collective",
+    "Obligations de l'employé",
+    "Obligations de l'employeur",
+    "Rémunération",
+    "Horaires de travail",
+    "Période d'essai",
+    "Congés annuels",
+    "Protection sociale",
+    "Devoir de réserve et confidentialité",
+    "Rupture du contrat",
+    "Règlement des différends",
+    "Signatures"
   ],
   "legal_notes": [
     "Un CDD à terme imprécis ne peut être conclu que pour l'exécution d'une tâche précise [S01, art. 15.6] : le motif du recrutement doit être écrit dans le contrat.",
@@ -26,7 +45,11 @@
     "Les CDD ne peuvent excéder un tiers de l'effectif total de l'entreprise [S01, art. 15.1].",
     "Une prime de fin de contrat de précarité de 3 % des salaires bruts est due [S01, art. 15.8].",
     "Interdiction de toute clause de concurrence post-contractuelle [S01, art. 16.5].",
-    "Le contrat doit être rédigé en langue française [S01, art. 13.1 ; S05, Décret 96-287 art. 4] et revêtu de la signature des deux parties [S05, Décret 96-287 art. 4]."
+    "Le contrat doit être rédigé en langue française [S01, art. 13.1 ; S05, Décret 96-287 art. 4] et revêtu de la signature des deux parties [S05, Décret 96-287 art. 4].",
+    "La période d'essai ne peut excéder 15 jours pour les ouvriers, 30 jours pour les employés et techniciens, 2 mois pour les cadres [S01, art. 12.2].",
+    "Les congés annuels sont de 2,5 jours ouvrables par mois de travail effectif [S01, art. 32.1].",
+    "L'employeur doit affilier l'employé à la Caisse Nationale de Prévoyance Sociale (CNPS) [S01, art. 100].",
+    "Pour une entreprise privée, ne pas inclure de clause d'imputation budgétaire ni de dispositif d'évaluation de performance (secteur public)."
   ],
   "validators": [
     {
@@ -46,8 +69,32 @@
       "severity": "error",
       "description": "Interdiction de concurrence post-contractuelle [S01, art. 16.5] : la clause est nulle de plein droit.",
       "check": { "type": "forbidden_phrases", "phrases": ["interdiction de concurrencer", "clause de non-concurrence"] }
+    },
+    {
+      "id": "cdd_imprecis_date_debut",
+      "severity": "warning",
+      "description": "La date de début d'exécution doit figurer dans le contrat.",
+      "check": { "type": "required_phrases", "phrases": ["date de début", "date d'entrée", "prise de fonction"] }
+    },
+    {
+      "id": "cdd_imprecis_lieu_travail",
+      "severity": "warning",
+      "description": "Le lieu de travail doit être précisé.",
+      "check": { "type": "required_phrases", "phrases": ["lieu de travail", "lieu d'exécution"] }
+    },
+    {
+      "id": "cdd_imprecis_classification",
+      "severity": "warning",
+      "description": "La classification professionnelle et la convention collective doivent être mentionnées.",
+      "check": { "type": "required_phrases", "phrases": ["classification", "catégorie", "convention collective"] }
+    },
+    {
+      "id": "cdd_imprecis_remuneration_complete",
+      "severity": "warning",
+      "description": "La rémunération doit inclure le salaire de base, les primes, avantages et mode de paiement.",
+      "check": { "type": "required_phrases", "phrases": ["salaire de base", "primes", "paiement"] }
     }
   ],
-  "skeleton_markdown": "# Contrat de travail à durée déterminée (terme imprécis)\n\nEntre les soussignés :\n\n**Monsieur [À COMPLÉTER : nom et prénom du représentant de l'employeur]**, agissant en qualité de [À COMPLÉTER : qualité du représentant] pour le compte de **[À COMPLÉTER : raison sociale de l'employeur]**, dont le siège est situé à [À COMPLÉTER : adresse du siège],\n\nci-après dénommé « l'**Employeur** »,\n\net\n\n**Monsieur/Madame [À COMPLÉTER : nom et prénom de l'employé]**, né(e) le [À COMPLÉTER : date de naissance] à [À COMPLÉTER : lieu de naissance], de nationalité [À COMPLÉTER : nationalité], demeurant à [À COMPLÉTER : adresse de l'employé],\n\nci-après dénommé(e) « l'**Employé(e)** »,\n\nil a été convenu et arrêté ce qui suit :\n\n## Article 1 – Textes de référence\n\nLe présent contrat est régi par :\n\n- la Loi n° 2015-532 du 20 juillet 2015 portant Code du travail en Côte d'Ivoire ;\n- le Décret n° 96-287 du 3 avril 1996 relatif au contrat de travail ;\n- [À COMPLÉTER : autres textes particuliers].\n\n## Article 2 – Nature du contrat\n\nLe présent contrat est un contrat de travail à durée déterminée à terme imprécis, conclu en application de l'article 15.6 du Code du travail pour l'exécution d'une tâche précise.\n\n## Article 3 – Emploi et missions\n\nL'Employé est engagé en qualité de [À COMPLÉTER : emploi occupé].\n\nObjet spécifique du recrutement : [À COMPLÉTER : objet précis du recrutement, rattaché à un besoin déterminé].\n\nL'Employé a pour mission :\n\n- [À COMPLÉTER : mission principale] ;\n- [À COMPLÉTER : missions complémentaires].\n\n## Article 4 – Obligations des parties\n\nL'Employé s'engage à [À COMPLÉTER : obligations de l'employé].\n\nL'Employeur s'engage à [À COMPLÉTER : obligations de l'employeur].\n\n## Article 5 – Évaluation de performance\n\nL'Employé est évalué selon [À COMPLÉTER : dispositif d'évaluation].\n\n## Article 6 – Horaires de travail\n\nL'horaire de travail est de [À COMPLÉTER : horaire de travail].\n\n## Article 7 – Imputation budgétaire et rémunération\n\nL'Employé est imputé au budget [À COMPLÉTER : imputation budgétaire].\n\nLe salaire de base est fixé à [À COMPLÉTER : montant du salaire de base] FCFA par mois.\n\n## Article 8 – Devoir de réserve et confidentialité\n\nL'Employé est tenu du devoir de réserve et de confidentialité [À COMPLÉTER : étendue].\n\n## Article 9 – Rupture du contrat\n\nLe contrat prend fin à l'achèvement de la tâche pour laquelle il a été conclu.\n\nToute rupture anticipée à l'initiative de l'Employeur ouvre droit à l'indemnité de préavis prévue par la réglementation.\n\n## Article 10 – Règlement des différends\n\nLes parties s'engagent à rechercher une solution amiable à toute différend [À COMPLÉTER : durée].\n\n## Article 11 – Signatures\n\nFait à [À COMPLÉTER : lieu], le [À COMPLÉTER : date], en trois exemplaires originaux.\n\n| L'Employeur | L'Employé(e) |\n|---|---|\n| Lu et approuvé | Lu et approuvé |\n|  |  |\n",
+  "skeleton_markdown": "# Contrat de travail à durée déterminée (terme imprécis)\n\nEntre les soussignés :\n\n**Monsieur [À COMPLÉTER : nom et prénom du représentant de l'employeur]**, agissant en qualité de [À COMPLÉTER : qualité du représentant] pour le compte de **[À COMPLÉTER : raison sociale de l'employeur]**, société [À COMPLÉTER : forme juridique] au capital de [À COMPLÉTER : capital], dont le siège est situé à [À COMPLÉTER : adresse du siège], immatriculée au Registre du Commerce et du Crédit Mobilier sous le n° [À COMPLÉTER : RCCM], compte contribuable n° [À COMPLÉTER : compte contribuable],\n\nci-après dénommée « l'**Employeur** »,\n\net\n\n**Monsieur/Madame [À COMPLÉTER : nom et prénom de l'employé]**, né(e) le [À COMPLÉTER : date de naissance] à [À COMPLÉTER : lieu de naissance], de nationalité [À COMPLÉTER : nationalité], demeurant à [À COMPLÉTER : adresse de l'employé],\n\nci-après dénommé(e) « l'**Employé(e)** »,\n\nil a été convenu et arrêté ce qui suit :\n\n## Article 1 – Textes de référence\n\nLe présent contrat est régi par :\n\n- la Loi n° 2015-532 du 20 juillet 2015 portant Code du travail en Côte d'Ivoire ;\n- le Décret n° 96-287 du 3 avril 1996 relatif au contrat de travail ;\n- la Convention collective applicable : [À COMPLÉTER : convention collective applicable].\n\n## Article 2 – Nature du contrat\n\nLe présent contrat est un contrat de travail à durée déterminée à terme imprécis, conclu en application de l'article 15.6 du Code du travail pour l'exécution d'une tâche précise.\n\nObjet spécifique du recrutement : [À COMPLÉTER : objet précis du recrutement, rattaché à un besoin déterminé].\n\nDurée estimée : [À COMPLÉTER : durée estimée, maximum 2 ans].\n\n## Article 3 – Date de début et lieu de travail\n\nDate de prise de fonction : [À COMPLÉTER : date de début].\n\nLieu de travail : [À COMPLÉTER : lieu de travail].\n\n## Article 4 – Classification et convention collective\n\nL'Employé est classé en catégorie [À COMPLÉTER : catégorie professionnelle], coefficient [À COMPLÉTER : coefficient], selon la convention collective [À COMPLÉTER : convention collective applicable].\n\nEmploi occupé : [À COMPLÉTER : emploi occupé].\n\nMissions confiées :\n\n- [À COMPLÉTER : mission principale] ;\n- [À COMPLÉTER : missions complémentaires].\n\n## Article 5 – Période d'essai\n\nUne période d'essai de [À COMPLÉTER : durée de la période d'essai, max 2 mois pour les cadres] est prévue, conformément à l'article 12.2 du Code du travail.\n\n## Article 6 – Obligations de l'employé\n\nL'Employé s'engage à :\n\n- Exécuter loyalement et consciencieusement les missions qui lui sont confiées ;\n- Respecter les horaires de travail et le règlement intérieur de l'entreprise ;\n- Observer le devoir de réserve et de confidentialité sur les informations dont il a connaissance dans l'exercice de ses fonctions ;\n- Signaler sans délai toute difficulté dans l'exécution de ses missions ;\n- Restituer à la fin du contrat tout matériel, document ou bien appartenant à l'Employeur.\n\n## Article 7 – Obligations de l'employeur\n\nL'Employeur s'engage à :\n\n- Fournir à l'Employé les moyens nécessaires à l'exécution de ses missions ;\n- Verser la rémunération convenue aux échéances convenues ;\n- Assurer les conditions de travail conformes à la réglementation en vigueur ;\n- Affilier l'Employé à la Caisse Nationale de Prévoyance Sociale (CNPS) et aux organismes sociaux obligatoires ;\n- Respecter la durée légale du travail et accorder les congés annuels ;\n- Délivrer les documents de fin de contrat (certificat de travail, attestation Pôle Emploi, reçu pour solde de tout compte).\n\n## Article 8 – Rémunération\n\nLe salaire de base mensuel brut est fixé à [À COMPLÉTER : montant du salaire de base] FCFA.\n\nPrimes et avantages : [À COMPLÉTER : primes, avantages en nature, 13ème mois, etc.].\n\nMode de paiement : [À COMPLÉTER : virement bancaire, chèque, espèces] - [À COMPLÉTER : périodicité : mensuel, quinzaine, etc.].\n\nCompte bancaire de l'Employé : [À COMPLÉTER : IBAN / compte bancaire].\n\nPrime de précarité de 3 % des salaires bruts versée à la fin du contrat, conformément à l'article 15.8 du Code du travail.\n\n## Article 9 – Horaires de travail\n\nL'horaire de travail est de [À COMPLÉTER : horaire de travail, ex: 40h/semaine du lundi au vendredi].\n\nHeures supplémentaires : majorées conformément à la réglementation en vigueur.\n\n## Article 10 – Période d'essai\n\nUne période d'essai de [À COMPLÉTER : durée, max 15 jours ouvriers / 30 jours employés / 2 mois cadres] est prévue à compter de la date d'entrée en fonction.\n\nDurant cette période, chaque partie peut rompre le contrat sans préavis ni indemnité.\n\n## Article 11 – Congés annuels\n\nL'Employé bénéficie de 2,5 jours ouvrables de congés par mois de travail effectif, soit 30 jours ouvrables par an, conformément à l'article 32.1 du Code du travail.\n\nLes dates de congés sont fixées d'un commun accord, en tenant compte des nécessités de service.\n\n## Article 12 – Protection sociale\n\nL'Employeur affilie l'Employé à la Caisse Nationale de Prévoyance Sociale (CNPS) et verse les cotisations obligatoires.\n\nL'Employé bénéficie de la couverture maladie, maternité, accidents du travail et maladies professionnelles selon la législation en vigueur.\n\n## Article 13 – Devoir de réserve et confidentialité\n\nL'Employé est tenu du devoir de réserve et de confidentialité sur l'ensemble des informations, documents, savoir-faire et secrets d'affaires dont il a connaissance dans l'exercice de ses fonctions.\n\nCet engagement se prolonge après la fin du contrat pour une durée de [À COMPLÉTER : durée post-contractuelle, ex: 2 ans].\n\n## Article 14 – Rupture du contrat\n\nLe contrat prend fin à l'achèvement de la tâche pour laquelle il a été conclu.\n\nToute rupture anticipée :\n\n- À l'initiative de l'Employeur : ouverture du droit à l'indemnité de préavis prévue par la réglementation (1 mois pour les ouvriers/employés, 3 mois pour les cadres) et à l'indemnité de licenciement si applicable.\n- À l'initiative de l'Employé : respect d'un préavis de [À COMPLÉTER : durée du préavis salarié, ex: 15 jours].\n- D'un commun accord : selon les termes convenus par les parties.\n\nEn cas de force majeure, le contrat est rompu sans préavis ni indemnité.\n\nÀ la fin du contrat, l'Employeur verse la prime de précarité de 3 % des salaires bruts (art. 15.8 Code du travail).\n\n## Article 15 – Règlement des différends\n\nLes parties s'engagent à rechercher une solution amiable à tout différend dans un délai de [À COMPLÉTER : durée, ex: 30 jours] à compter de sa notification.\n\nÀ défaut d'accord amiable, le différend sera porté devant le Tribunal du Travail compétent du lieu d'exécution du contrat.\n\n## Article 16 – Signatures\n\nFait à [À COMPLÉTER : lieu, ex: Abidjan], le [À COMPLÉTER : date], en deux exemplaires originaux.\n\n| L'Employeur | L'Employé(e) |\n|---|---|\n| Lu et approuvé | Lu et approuvé |\n| Signature : | Signature : |\n| Nom : | Nom : |\n| Prénom : | Prénom : |\n| Fonction : | |\n| Date : | Date : |\n",
   "_comment_legal": "legal_notes et validators sont issus du référentiel juridique joint (reference/TOUTES LES INFOS LEGALES.txt, fiche 1 cdd)."
 }

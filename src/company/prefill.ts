@@ -23,6 +23,53 @@ export const EMPLOYER_CONTRACT_TYPES = new Set([
   'teletravail',
 ]);
 
+// Map of contract type to the employer profile fields that should be prefilled
+// This defines which profile fields are relevant for each contract type
+export const EMPLOYER_PROFILE_FIELDS_BY_CONTRACT: Record<string, string[]> = {
+  'cdi': [
+    'legal_name', 'legal_form', 'capital', 'rccm', 'tax_id',
+    'address', 'city', 'postal_box',
+    'representative_first_name', 'representative_last_name', 'representative_role',
+    'phone', 'email', 'signature_place'
+  ],
+  'cdd-terme-precis': [
+    'legal_name', 'legal_form', 'capital', 'rccm', 'tax_id',
+    'address', 'city', 'postal_box',
+    'representative_first_name', 'representative_last_name', 'representative_role',
+    'phone', 'email', 'signature_place'
+  ],
+  'cdd-terme-imprecis': [
+    'legal_name', 'legal_form', 'capital', 'rccm', 'tax_id',
+    'address', 'city', 'postal_box',
+    'representative_first_name', 'representative_last_name', 'representative_role',
+    'phone', 'email', 'signature_place'
+  ],
+  'apprentissage': [
+    'legal_name', 'legal_form', 'capital', 'rccm', 'tax_id',
+    'address', 'city', 'postal_box',
+    'representative_first_name', 'representative_last_name', 'representative_role',
+    'phone', 'email', 'signature_place'
+  ],
+  'stage-ecole': [
+    'legal_name', 'legal_form', 'capital', 'rccm', 'tax_id',
+    'address', 'city', 'postal_box',
+    'representative_first_name', 'representative_last_name', 'representative_role',
+    'phone', 'email', 'signature_place'
+  ],
+  'stage-qualification': [
+    'legal_name', 'legal_form', 'capital', 'rccm', 'tax_id',
+    'address', 'city', 'postal_box',
+    'representative_first_name', 'representative_last_name', 'representative_role',
+    'phone', 'email', 'signature_place'
+  ],
+  'teletravail': [
+    'legal_name', 'legal_form', 'capital', 'rccm', 'tax_id',
+    'address', 'city', 'postal_box',
+    'representative_first_name', 'representative_last_name', 'representative_role',
+    'phone', 'email', 'signature_place'
+  ],
+};
+
 const PLACEHOLDER_RE = /\[À COMPLÉTER\s*:\s*([^\]]+)\]/g;
 const COUNTERPARTY_TERMS = [
   'salarie',
@@ -48,6 +95,15 @@ export interface PrefillResult {
   filled: number;
   /** Nombre d'espaces réservés restants. */
   remaining: number;
+}
+
+/**
+ * Returns the list of employer profile fields that should be prefilled
+ * for a given contract type. Returns empty array for non-employer contracts.
+ */
+export function getEmployerProfileFieldsForContract(contractType: string | null): string[] {
+  if (!contractType) return [];
+  return EMPLOYER_PROFILE_FIELDS_BY_CONTRACT[contractType] ?? [];
 }
 
 function normalizeLabel(value: string): string {
