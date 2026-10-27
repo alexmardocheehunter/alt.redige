@@ -41,6 +41,13 @@ const LABELS: Record<string, string> = {
   get_template: 'Je consulte le modèle de contrat',
   create_canvas: 'Je rédige le contrat',
   edit_canvas: 'Je modifie le contrat',
+  edit_article: 'Je réécris un article',
+  insert_table: 'J’insère un tableau',
+  insert_list: 'J’insère une liste',
+  insert_signature_block: 'Je prépare les signatures',
+  compute_date: 'Je calcule la date',
+  list_placeholders: 'Je vérifie les champs',
+  suggest_next_actions: 'Je prépare la suite',
   ask_user: 'Je prépare une question',
 };
 
@@ -123,42 +130,68 @@ export class Progress {
 
 /**
  * Suggestions proposées en fin de tour.
- * Elles sont des messages prêts à être renvoyés par le client.
+ *
+ * Elles sont calculées à partir de l'état réel du document (jamais d'une
+ * liste statique) et restent courtes : trois libellés de quatre mots maximum.
  */
 export function buildSuggestions(options: {
   hasDocument: boolean;
   placeholders: number;
   askedUser: boolean;
+  markdown?: string | null;
 }): SuggestionItem[] {
   if (options.askedUser) return [];
 
+  const markdown = String(options.markdown ?? '');
   const items: SuggestionItem[] = [];
 
   if (options.hasDocument) {
     if (options.placeholders > 0) {
       items.push({
-        label: 'Compléter les champs restants',
-        message: 'Complète les champs restants du contrat avec les informations que je vais te donner.',
+        label: 'Compléter les champs',
+        message: 'Aide-moi à compléter les champs restants du contrat.',
       });
     }
-    items.push({
-      label: 'Ajouter une clause de pénalité de retard',
-      message: 'Ajoute une clause de pénalité de retard au contrat.',
-    });
-    items.push({
-      label: 'Ajouter le bloc de signatures',
-      message: 'Ajoute le bloc de signatures avec la mention de lecture et d’approbation.',
-    });
+    if (!/##[^\n]*signature/i.test(markdown)) {
+      items.push({
+        label: 'Ajouter les signatures',
+        message: 'Ajoute un bloc de signatures avec les parties du contrat.',
+      });
+    }
+    if (!/p[ée]nalit[ée]|retard/i.test(markdown)) {
+      items.push({
+        label: 'Ajouter une pénalité',
+        message: 'Ajoute une clause de pénalité de retard.',
+      });
+    }
+    if (!/confidentialit[ée]/i.test(markdown)) {
+      items.push({
+        label: 'Ajouter la confidentialité',
+        message: 'Ajoute une clause de confidentialité.',
+      });
+    }
+    if (items.length < 2) {
+      items.push({
+        label: 'Simplifier le ton',
+        message: 'Rends le ton du contrat plus simple et plus direct.',
+      });
+    }
   } else {
-    items.push({
-      label: 'Choisir un autre type de contrat',
-      message: 'Montre-moi les autres types de contrat disponibles.',
-    });
-    items.push({
-      label: 'Reprendre un contrat existant',
-      message: 'Reprends le contrat que j’ai déjà rédigé.',
-    });
+    items.push(
+      {
+        label: 'Créer un bail',
+        message: 'Je veux rédiger un contrat de bail d’habitation.',
+      },
+      {
+        label: 'Créer un CDI',
+        message: 'Je veux rédiger un contrat de travail à durée indéterminée.',
+      },
+      {
+        label: 'Voir les modèles',
+        message: 'Montre-moi les types de contrat disponibles.',
+      },
+    );
   }
 
-  return items.slice(0, 4);
+  return items.slice(0, 3);
 }

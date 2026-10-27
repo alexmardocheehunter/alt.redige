@@ -13,6 +13,7 @@ import type { ContractTemplate, ValidatorCheck } from '../templates.js';
 import { brokenReferences } from './structure.js';
 import { missingRequiredFields } from './required-fields.js';
 import { findEnglishWords } from './lexical.js';
+import { structureIssues } from './structure-check.js';
 
 export type IssueSeverity = 'info' | 'warning' | 'error';
 
@@ -201,6 +202,10 @@ export function validate(markdown: string, template?: ContractTemplate | null): 
       `Renvoi interne vers un article inexistant : ${broken.map((n) => `article ${n}`).join(', ')}.`,
     ));
   }
+
+  // Tableaux et numérotation : le rendu HTML et l'export Word reposent sur
+  // cette structure. Un tableau mal formé est bloquant pour les outils.
+  issues.push(...structureIssues(text));
 
   // Validators: règles juridiques chiffrées, exécutées quand elles sont
   // mécaniquement vérifiables. Le contenu vient du référentiel validé.

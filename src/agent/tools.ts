@@ -24,10 +24,31 @@ import type {
 } from './events.js';
 import { checkExplanation, EXPLANATION_LIMITS, findArticle } from '../doc/explanation.js';
 import { articles } from '../doc/structure.js';
+import { listPlaceholders } from '../doc/placeholders.js';
+import { computeDate } from '../doc/dates.js';
+import {
+  insertBlock,
+  insertSignatureBlock,
+  listToMarkdown,
+  newEngagingArticles,
+  replaceArticleBody,
+  tableToMarkdown,
+  userConsentedToClause,
+  type SignatureParty,
+} from '../doc/blocks.js';
+import { blockingStructureIssues } from '../doc/structure-check.js';
+import { buildSuggestions } from './progress.js';
 
 export const TOOL_GET_TEMPLATE = 'get_template';
 export const TOOL_CREATE_CANVAS = 'create_canvas';
 export const TOOL_EDIT_CANVAS = 'edit_canvas';
+export const TOOL_COMPUTE_DATE = 'compute_date';
+export const TOOL_LIST_PLACEHOLDERS = 'list_placeholders';
+export const TOOL_EDIT_ARTICLE = 'edit_article';
+export const TOOL_INSERT_TABLE = 'insert_table';
+export const TOOL_INSERT_LIST = 'insert_list';
+export const TOOL_INSERT_SIGNATURE_BLOCK = 'insert_signature_block';
+export const TOOL_SUGGEST_NEXT_ACTIONS = 'suggest_next_actions';
 
 export interface ToolContext {
   /** Current working document, updated by the tools. */
@@ -58,6 +79,8 @@ export interface ToolContext {
   /** Compteur des questions posées dans ce tour (identifiants uniques). */
   askUserCounter: number;
   signal: AbortSignal;
+  /** Horloge du serveur, injectable pour les tests de dates. */
+  now?: Date;
 }
 
 export interface ToolResult {
@@ -238,6 +261,141 @@ export function toolDefinitions(templates: TemplateStore): LlmToolDefinition[] {
         required: ['edits'],
       },
     },
+    {
+      name: TOOL_COMPUTE_DATE,
+      description:
+        'Calcule une date de calendrier de façon fiable (fuseau Africa/Abidjan), par exemple le lundi suivant, '
+        + 'ou trois mois après le début du contrat. À utiliser dès qu’une date ou une durée doit être calculée : '
+        + 'ne calcule jamais une date de tête.',
+      parameters: {
+        type: 'object',
+        properties: {
+          start: {
+            type: 'string',
+            description: 'Date de départ : « today », « next_monday », « lundi prochain », « 2026-10-27 » ou « 27/10/2026 ».',
+          },
+          add: {
+            type: 'object',
+            description: 'Décalage à ajouter au calendrier.',
+            properties: {
+              years: { type: 'integer' },
+              months: { type: 'integer' },
+              weeks: { type: 'integer' },
+              days: { type: 'integer' },
+            },
+          },
+          inclusive: {
+            type: 'boolean',
+            description: 'Si vrai, la période inclut le jour de départ : la fin est la veille de l’anniversaire.',
+          },
+        },
+        required: ['start'],
+      },
+    },
+    {
+      name: TOOL_LIST_PLACEHOLDERS,
+      description:
+        'Liste les espaces réservés « [À COMPLÉTER : …] » du document, avec l’article auquel chacun appartient. '
+        + 'À utiliser pour savoir ce qui manque avant de proposer une suite.',
+      parameters: { type: 'object', properties: {}, required: [] },
+    },
+    {
+      name: TOOL_EDIT_ARTICLE,
+      description:
+        'Remplace le corps d’un article existant, sans toucher à son titre ni aux autres articles. '
+        + 'Le corps est du Markdown restreint (paragraphes, listes, tableaux).',
+      parameters: {
+        type: 'object',
+        properties: {
+          article: { type: 'string', description: 'Numéro (« 4 ») ou intitulé exact de l’article.' },
+          markdown: { type: 'string', description: 'Nouveau corps de l’article, sans la ligne « ## Article … ».' },
+        },
+        required: ['article', 'markdown'],
+      },
+    },
+    {
+      name: TOOL_INSERT_TABLE,
+      description:
+        'Insère un vrai tableau GFM à la fin d’un article (ou du document). La première ligne est l’en-tête. '
+        + 'À utiliser pour les signatures, les échéances ou tout tableau demandé.',
+      parameters: {
+        type: 'object',
+        properties: {
+          article: { type: 'string', description: 'Article où insérer le tableau ; vide = fin du document.' },
+          rows: {
+            type: 'array',
+            minItems: 2,
+            maxItems: 30,
+            items: {
+              type: 'array',
+              minItems: 1,
+              maxItems: 12,
+              items: { type: 'string' },
+            },
+            description: 'Lignes du tableau, première ligne = en-tête.',
+          },
+        },
+        required: ['rows'],
+      },
+    },
+    {
+      name: TOOL_INSERT_LIST,
+      description:
+        'Insère une liste à puces ou numérotée à la fin d’un article (ou du document), sans réécrire le reste.',
+      parameters: {
+        type: 'object',
+        properties: {
+          article: { type: 'string', description: 'Article où insérer la liste ; vide = fin du document.' },
+          items: {
+            type: 'array',
+            minItems: 1,
+            maxItems: 40,
+            items: { type: 'string' },
+          },
+          ordered: { type: 'boolean', description: 'Liste numérotée si vrai, à puces sinon.' },
+        },
+        required: ['items'],
+      },
+    },
+    {
+      name: TOOL_INSERT_SIGNATURE_BLOCK,
+      description:
+        'Insère ou met à jour un bloc de signatures déterministe, en vrai tableau à deux colonnes pour deux parties, '
+        + 'avec les lignes Lu et approuvé, Signature, Nom, Prénom, Fonction et Date. '
+        + 'Utilise les noms déjà présents dans le contrat ; n’invente aucune identité.',
+      parameters: {
+        type: 'object',
+        properties: {
+          parties: {
+            type: 'array',
+            minItems: 1,
+            maxItems: 4,
+            items: {
+              type: 'object',
+              properties: {
+                name: { type: 'string', description: 'Nom de famille ou raison sociale.' },
+                first_name: { type: 'string' },
+                role: { type: 'string', description: 'Qualité : bailleur, locataire, prestataire…' },
+                date: { type: 'string', description: 'Date de signature déjà connue, sinon vide.' },
+              },
+              required: ['name'],
+            },
+          },
+          intro: {
+            type: 'string',
+            description: 'Phrase d’introduction existante (par exemple « Fait à Abidjan, le … »), sans invention.',
+          },
+        },
+        required: ['parties'],
+      },
+    },
+    {
+      name: TOOL_SUGGEST_NEXT_ACTIONS,
+      description:
+        'Calcule et affiche les trois prochaines actions utiles selon l’état réel du document. '
+        + 'À appeler à la fin d’un tour, après avoir écrit ou modifié le document.',
+      parameters: { type: 'object', properties: {}, required: [] },
+    },
   ];
 }
 
@@ -344,6 +502,20 @@ export async function executeTool(
       return createCanvas(args, context);
     case TOOL_EDIT_CANVAS:
       return editCanvas(args, context);
+    case TOOL_EDIT_ARTICLE:
+      return editArticle(args, context);
+    case TOOL_INSERT_TABLE:
+      return insertTable(args, context);
+    case TOOL_INSERT_LIST:
+      return insertList(args, context);
+    case TOOL_INSERT_SIGNATURE_BLOCK:
+      return insertSignature(args, context);
+    case TOOL_COMPUTE_DATE:
+      return computeDateTool(args, context);
+    case TOOL_LIST_PLACEHOLDERS:
+      return listPlaceholdersTool(args, context);
+    case TOOL_SUGGEST_NEXT_ACTIONS:
+      return suggestNextActions(args, context);
     case TOOL_ASK_USER:
       return askUser(args, context);
     case TOOL_EXPLAIN_CLAUSE:
@@ -638,6 +810,19 @@ async function createCanvas(args: Record<string, unknown>, context: ToolContext)
     );
   }
 
+  const structure = blockingStructureIssues(markdown);
+  if (structure.length > 0) {
+    context.logger.info('tool_create_canvas_refused', {
+      contract_type: contractType,
+      invalid_structure: structure.length,
+    });
+    return fail(
+      `Le contrat contient une structure invalide : ${structure.map((item) => item.message).join(' ')} `
+      + 'Corrige le tableau ou la numérotation, puis recommence.',
+      { code: 'invalid_structure', problems: structure },
+    );
+  }
+
   const validation = validate(markdown, template);
   validation.issues.push(...factIssues(markdown, context, template));
 
@@ -734,6 +919,28 @@ async function editCanvas(args: Record<string, unknown>, context: ToolContext): 
   }
   result.markdown = renumbered.markdown;
 
+  const structure = blockingStructureIssues(result.markdown);
+  if (structure.length > 0) {
+    context.logger.info('tool_edit_canvas_failed', { code: 'invalid_structure', problems: structure.length });
+    return fail(
+      `La modification produit une structure invalide : ${structure.map((item) => item.message).join(' ')} `
+      + 'Corrige le tableau ou la numérotation, puis recommence.',
+      { code: 'invalid_structure', problems: structure },
+    );
+  }
+
+  // Une clause qui crée une obligation importante ne s'insère qu'après un
+  // accord explicite : le modèle doit poser la question avant.
+  const engaging = newEngagingArticles(before, result.markdown);
+  if (engaging.length > 0 && !userConsentedToClause(context.userText)) {
+    context.logger.info('tool_edit_canvas_failed', { code: 'clause_needs_confirmation', articles: engaging.length });
+    return fail(
+      `La modification crée une clause engageante (${engaging.join(', ')}) sans accord explicite. `
+      + 'Pose une question de confirmation avec ask_user avant de l’insérer.',
+      { code: 'clause_needs_confirmation', articles: engaging },
+    );
+  }
+
   // Garde-fou P1-2 : aucune mention normative hors du référentiel du modèle.
   const template = context.workingDocType ? context.templates.get(context.workingDocType) ?? null : null;
   const unsupported = checkReferences(result.markdown, template);
@@ -785,5 +992,294 @@ async function editCanvas(args: Record<string, unknown>, context: ToolContext): 
     isError: false,
     emittedCanvasSet: true,
     summary: `${result.editsApplied} modification(s) appliquée(s)`,
+  };
+}
+
+interface StructuredCommitOptions {
+  editsApplied: number;
+  summary: string;
+  logEvent: string;
+  maxChanged?: number;
+}
+
+/**
+ * Common validation and emission for the structured tools.
+ *
+ * The checks are the same as `edit_canvas`: no lost article, no runaway
+ * rewrite, no unsupported legal reference, no unsafe content. Table structure
+ * and newly engaging clauses are checked here because these tools can create
+ * blocks the model did not copy from the user's request.
+ */
+async function commitStructuredChange(
+  context: ToolContext,
+  before: string,
+  after: string,
+  options: StructuredCommitOptions,
+): Promise<ToolResult> {
+  if (!before) return fail('Aucun document à modifier : le Canvas est vide.');
+  if (after === before) return fail('La modification ne change pas le document.');
+
+  const lost = lostArticles(before, after);
+  if (lost.length > 0) {
+    context.logger.info('structured_edit_refused', { code: 'article_lost', articles: lost.length });
+    return fail(
+      `La modification fait disparaître ${lost.length} article(s) : ${lost.join(', ')}. `
+      + 'Utilise un outil ciblé qui conserve tous les articles.',
+      { code: 'article_lost', lost_articles: lost },
+    );
+  }
+
+  const limit = options.maxChanged ?? context.maxEditChangedBlocks;
+  const changed = countChangedBlocks(before, after);
+  if (changed.changed > limit) {
+    context.logger.info('structured_edit_refused', { code: 'too_many_changes', changed: changed.changed });
+    return fail(
+      `La modification touche ${changed.changed} blocs, au-delà de la limite de ${limit}. `
+      + 'Modifie un seul article ou insère un seul bloc à la fois.',
+      { code: 'too_many_changes', changed_blocks: changed.changed, limit },
+    );
+  }
+
+  const renumbered = renumberArticles(before, after);
+  after = renumbered.markdown;
+
+  const structure = blockingStructureIssues(after);
+  if (structure.length > 0) {
+    context.logger.info('structured_edit_refused', { code: 'invalid_structure', problems: structure.length });
+    return fail(
+      `Le document produit a une structure invalide : ${structure.map((item) => item.message).join(' ')} `
+      + 'Corrige le tableau ou la numérotation, puis recommence.',
+      { code: 'invalid_structure', problems: structure },
+    );
+  }
+
+  const template = context.workingDocType ? context.templates.get(context.workingDocType) ?? null : null;
+  const unsupported = checkReferences(after, template);
+  if (unsupported.length > 0) {
+    context.logger.info('structured_edit_refused', { code: 'unsupported_reference', references: unsupported.length });
+    return fail(
+      `La modification introduit une référence normative absente du référentiel validé : ${unsupported.join(', ')}. `
+      + 'Retire ces mentions ou utilise une formulation générale sans citation.',
+      { code: 'unsupported_reference', unsupported_references: unsupported },
+    );
+  }
+
+  const engaging = newEngagingArticles(before, after);
+  if (engaging.length > 0 && !userConsentedToClause(context.userText)) {
+    context.logger.info('structured_edit_refused', { code: 'clause_needs_confirmation', articles: engaging.length });
+    return fail(
+      `La modification crée une clause engageante (${engaging.join(', ')}) sans accord explicite de l’utilisateur. `
+      + 'Ne l’insère pas encore : pose une question de confirmation avec ask_user, puis attends la réponse.',
+      { code: 'clause_needs_confirmation', articles: engaging },
+    );
+  }
+
+  const safety = await documentIsSafe(context, after);
+  if (!safety.safe) {
+    context.logger.warn('safety_blocked_document', { mode: 'structured_edit' });
+    return fail(
+      'La modification a été bloquée par le filtre de sécurité. Explique à l’utilisateur que sa demande ne peut pas être traitée.',
+    );
+  }
+
+  const validation = validate(after, template);
+  validation.issues.push(...factIssues(after, context, template));
+  context.workingDoc = after;
+
+  context.emit('canvas_start', { mode: 'edit' });
+  context.emit('canvas_set', {
+    mode: 'edit',
+    markdown: after,
+    version: context.nextVersion(),
+    edits_applied: options.editsApplied,
+    validation: {
+      placeholders: validation.placeholders,
+      issues: validation.issues,
+      ...(template ? { fields: fieldStatuses(template, after) } : {}),
+    },
+    legal_notice: { required: true, text: LEGAL_NOTICE_TEXT },
+  });
+
+  context.logger.info(options.logEvent, {
+    edits_applied: options.editsApplied,
+    placeholders: validation.placeholders,
+    safety: safety.available ? 'checked' : 'skipped',
+    changed_blocks: changed.changed,
+  });
+
+  return {
+    content: JSON.stringify({
+      ok: true,
+      edits_applied: options.editsApplied,
+      placeholders: validation.placeholders,
+      issues: validation.issues,
+    }),
+    isError: false,
+    emittedCanvasSet: true,
+    summary: options.summary,
+  };
+}
+
+function stringArg(args: Record<string, unknown>, key: string): string {
+  return typeof args[key] === 'string' ? args[key].trim() : '';
+}
+
+async function editArticle(args: Record<string, unknown>, context: ToolContext): Promise<ToolResult> {
+  const article = stringArg(args, 'article');
+  const markdown = typeof args.markdown === 'string' ? args.markdown : '';
+  if (!article) return fail('Indique l’article à modifier (numéro ou intitulé).');
+  if (!markdown.trim()) return fail('Le nouveau corps de l’article est vide.');
+  if (/^#{1,6}\s+/m.test(markdown)) {
+    return fail('Le corps de l’article ne doit pas contenir de titre : le titre existant est conservé.');
+  }
+  if (!context.workingDoc) return fail('Aucun document à modifier : le Canvas est vide.');
+
+  let after: string;
+  try {
+    after = replaceArticleBody(context.workingDoc, article, markdown);
+  } catch (error) {
+    return fail(error instanceof Error ? error.message : 'Article introuvable.');
+  }
+
+  return commitStructuredChange(context, context.workingDoc, after, {
+    editsApplied: 1,
+    summary: `Article « ${article} » mis à jour`,
+    logEvent: 'tool_edit_article',
+    maxChanged: Math.max(context.maxEditChangedBlocks, 12),
+  });
+}
+
+async function insertTable(args: Record<string, unknown>, context: ToolContext): Promise<ToolResult> {
+  if (!context.workingDoc) return fail('Aucun document à modifier : le Canvas est vide.');
+  const rawRows = Array.isArray(args.rows) ? args.rows : [];
+  if (rawRows.length < 2) return fail('Un tableau doit avoir une ligne d’en-tête et au moins une ligne de données.');
+
+  const rows: string[][] = [];
+  for (const rawRow of rawRows) {
+    if (!Array.isArray(rawRow)) return fail('Chaque ligne du tableau doit être une liste de cellules.');
+    const cells = rawRow.map((cell) => String(cell ?? ''));
+    if (cells.some((cell) => cell.includes('\n'))) {
+      return fail('Une cellule de tableau ne peut pas contenir de retour à la ligne.');
+    }
+    rows.push(cells);
+  }
+
+  let block: string;
+  try {
+    block = tableToMarkdown(rows);
+  } catch (error) {
+    return fail(error instanceof Error ? error.message : 'Tableau invalide.');
+  }
+
+  let after: string;
+  try {
+    after = insertBlock(context.workingDoc, block, stringArg(args, 'article') || undefined);
+  } catch (error) {
+    return fail(error instanceof Error ? error.message : 'Insertion impossible.');
+  }
+
+  return commitStructuredChange(context, context.workingDoc, after, {
+    editsApplied: 1,
+    summary: 'Tableau inséré',
+    logEvent: 'tool_insert_table',
+  });
+}
+
+async function insertList(args: Record<string, unknown>, context: ToolContext): Promise<ToolResult> {
+  if (!context.workingDoc) return fail('Aucun document à modifier : le Canvas est vide.');
+  const items = Array.isArray(args.items) ? args.items.map((item) => String(item ?? '')) : [];
+  let block: string;
+  try {
+    block = listToMarkdown(items, args.ordered === true, 1);
+  } catch (error) {
+    return fail(error instanceof Error ? error.message : 'Liste invalide.');
+  }
+
+  let after: string;
+  try {
+    after = insertBlock(context.workingDoc, block, stringArg(args, 'article') || undefined);
+  } catch (error) {
+    return fail(error instanceof Error ? error.message : 'Insertion impossible.');
+  }
+
+  return commitStructuredChange(context, context.workingDoc, after, {
+    editsApplied: 1,
+    summary: 'Liste insérée',
+    logEvent: 'tool_insert_list',
+  });
+}
+
+function signatureParties(value: unknown): SignatureParty[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
+    .map((item) => ({
+      name: String(item.name ?? '').trim(),
+      first_name: String(item.first_name ?? '').trim(),
+      role: String(item.role ?? '').trim(),
+      date: String(item.date ?? '').trim(),
+    }))
+    .filter((item) => item.name.length > 0)
+    .slice(0, 4);
+}
+
+async function insertSignature(args: Record<string, unknown>, context: ToolContext): Promise<ToolResult> {
+  if (!context.workingDoc) return fail('Aucun document à modifier : le Canvas est vide.');
+  const parties = signatureParties(args.parties);
+  if (parties.length === 0) {
+    return fail('Indique au moins une partie avec son nom (bailleur, locataire, prestataire…).');
+  }
+
+  let after: string;
+  try {
+    after = insertSignatureBlock(
+      context.workingDoc,
+      parties,
+      stringArg(args, 'intro') || undefined,
+    );
+  } catch (error) {
+    return fail(error instanceof Error ? error.message : 'Insertion du bloc de signatures impossible.');
+  }
+
+  return commitStructuredChange(context, context.workingDoc, after, {
+    editsApplied: 1,
+    summary: 'Bloc de signatures mis à jour',
+    logEvent: 'tool_insert_signature_block',
+  });
+}
+
+function computeDateTool(args: Record<string, unknown>, context: ToolContext): ToolResult {
+  const result = computeDate({
+    start: stringArg(args, 'start') || 'today',
+    add: args.add && typeof args.add === 'object' ? args.add as Record<string, number> : {},
+    inclusive: args.inclusive === true,
+    now: context.now,
+  });
+  if (!result.ok) return fail(result.error);
+  context.logger.info('tool_compute_date', { inclusive: result.value.inclusive });
+  return ok(result.value);
+}
+
+function listPlaceholdersTool(_args: Record<string, unknown>, context: ToolContext): ToolResult {
+  if (!context.workingDoc) return fail('Aucun document : le Canvas est vide.');
+  const report = listPlaceholders(context.workingDoc);
+  context.logger.info('tool_list_placeholders', { count: report.count });
+  return ok(report);
+}
+
+function suggestNextActions(_args: Record<string, unknown>, context: ToolContext): ToolResult {
+  const markdown = context.workingDoc ?? '';
+  const report = listPlaceholders(markdown);
+  const items = buildSuggestions({
+    hasDocument: Boolean(markdown),
+    placeholders: report.count,
+    askedUser: false,
+    markdown,
+  });
+  if (items.length > 0) context.emit('suggestions', { items });
+  context.logger.info('tool_suggest_next_actions', { count: items.length });
+  return {
+    ...ok({ suggestions: items }),
+    summary: `${items.length} action(s) proposée(s)`,
   };
 }

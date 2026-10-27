@@ -44,6 +44,8 @@ describe('outils — définitions', () => {
     // question et le tour s'arrête sur `awaiting_input`.
     expect(tools.map((tool) => tool.name)).toEqual([
       'ask_user', 'explain_clause', 'get_template', 'create_canvas', 'edit_canvas',
+      'compute_date', 'list_placeholders', 'edit_article', 'insert_table',
+      'insert_list', 'insert_signature_block', 'suggest_next_actions',
     ]);
   });
 

@@ -7,9 +7,11 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { TemplateStore } from '../templates.js';
+import { ABIDJAN_TIME_ZONE } from '../doc/dates.js';
 
 export const SYSTEM_PROMPT_PATH = resolve(process.cwd(), 'prompts', 'system.fr.md');
 export const CATALOGUE_MARKER = '{{CATALOGUE}}';
+export const NOW_MARKER = '{{NOW}}';
 
 export interface DocumentPayload {
   markdown: string;
@@ -26,14 +28,36 @@ export function readSystemPromptFile(path: string = SYSTEM_PROMPT_PATH): string 
   return readFileSync(path, 'utf8');
 }
 
-/** System prompt with the catalogue injected. */
-export function buildSystemPrompt(store: TemplateStore, path: string = SYSTEM_PROMPT_PATH): string {
-  if (!cachedPrompt) cachedPrompt = readSystemPromptFile(path);
+/** Date/heure lisible en français, fuseau d'Abidjan. */
+export function formatNow(now: Date = new Date()): string {
+  const formatted = new Intl.DateTimeFormat('fr-FR', {
+    timeZone: ABIDJAN_TIME_ZONE,
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(now);
+  return `${formatted} (${now.toISOString()} — ${ABIDJAN_TIME_ZONE})`;
+}
+
+/** System prompt with the catalogue and the current date injected. */
+export function buildSystemPrompt(
+  store: TemplateStore,
+  options: { path?: string; now?: Date } = {},
+): string {
+  if (!cachedPrompt) cachedPrompt = readSystemPromptFile(options.path ?? SYSTEM_PROMPT_PATH);
   const catalogue = store.catalogue();
   if (!cachedPrompt.includes(CATALOGUE_MARKER)) {
     throw new Error(`Le prompt système ne contient pas le marqueur ${CATALOGUE_MARKER}.`);
   }
-  return cachedPrompt.replace(CATALOGUE_MARKER, catalogue);
+  if (!cachedPrompt.includes(NOW_MARKER)) {
+    throw new Error(`Le prompt système ne contient pas le marqueur ${NOW_MARKER}.`);
+  }
+  return cachedPrompt
+    .replace(CATALOGUE_MARKER, catalogue)
+    .replace(NOW_MARKER, formatNow(options.now));
 }
 
 /** Clears the in-process cache (used by the tests). */

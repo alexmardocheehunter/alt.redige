@@ -26,7 +26,11 @@ import {
   toolDefinitions,
   TOOL_ASK_USER,
   TOOL_CREATE_CANVAS,
+  TOOL_EDIT_ARTICLE,
   TOOL_EDIT_CANVAS,
+  TOOL_INSERT_LIST,
+  TOOL_INSERT_SIGNATURE_BLOCK,
+  TOOL_INSERT_TABLE,
   type ToolContext,
 } from './tools.js';
 
@@ -56,6 +60,8 @@ export interface RunAgentParams {
   startedAt?: number;
   /** Test hook: observes the tool calls (used by the evaluations). */
   onToolCall?: (name: string, input: unknown) => void;
+  /** Horloge de référence (tests de dates). */
+  now?: Date;
 }
 
 export interface RunAgentResult {
@@ -115,8 +121,9 @@ function readPlaceholders(content: string): number {
 
 export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> {
   const { client, config, logger, templates, messages, document, contractType, emit, signal } = params;
+  const now = params.now ?? new Date();
 
-  const system = buildSystemPrompt(templates);
+  const system = buildSystemPrompt(templates, { now });
   const tools = toolDefinitions(templates);
 
   const conversation: LlmMessage[] = [];
@@ -180,6 +187,7 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
     maxEditChangedBlocks: config.maxEditChangedBlocks,
     askUserCounter: 0,
     signal,
+    now,
   };
 
   const totalUsage = { input_tokens: 0, output_tokens: 0 };
@@ -270,7 +278,13 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
           progress.step('s1', 'done');
           progress.step('s2', 'done');
           progress.step(document === null ? 's3' : 's2', 'running');
-        } else if (name === TOOL_EDIT_CANVAS) {
+        } else if (
+          name === TOOL_EDIT_CANVAS
+          || name === TOOL_EDIT_ARTICLE
+          || name === TOOL_INSERT_TABLE
+          || name === TOOL_INSERT_LIST
+          || name === TOOL_INSERT_SIGNATURE_BLOCK
+        ) {
           emit('status', { phase: 'editing', label: 'Modification du contrat…' });
           progress.phase('drafting');
           progress.step('s1', 'done');
@@ -339,6 +353,7 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
         hasDocument: true,
         placeholders: lastPlaceholders,
         askedUser: false,
+        markdown: toolContext.workingDoc,
       }));
       emit('done', done('end_turn'));
       return { stopReason: 'end_turn', usage: totalUsage, steps: step, modelsUsed };
@@ -369,9 +384,10 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
       progress.phase('finalizing');
       progress.step(document === null ? 's4' : 's3', 'done');
       progress.suggestions(buildSuggestions({
-        hasDocument: document !== null || setsEmitted > 0,
+        hasDocument: document !== null || setsEmitted > 0 || Boolean(toolContext.workingDoc),
         placeholders: lastPlaceholders,
         askedUser: false,
+        markdown: toolContext.workingDoc,
       }));
       emit('done', done('end_turn'));
       return { stopReason: 'end_turn', usage: totalUsage, steps: step, modelsUsed };
