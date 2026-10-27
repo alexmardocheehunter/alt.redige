@@ -20,7 +20,7 @@ import { companyProfilePromptText } from '../company/profile.js';
 import { extractPartialString, readPartialString } from './json-partial.js';
 import { buildSystemPrompt, buildUserContext, buildModelBlock } from './prompt.js';
 import { ChatGuard } from './chat-guard.js';
-import { buildSuggestions, Progress } from './progress.js';
+import { Progress } from './progress.js';
 import { sourcesForTemplate } from '../legal-sources.js';
 import { findEnglishWords } from '../doc/lexical.js';
 import {
@@ -363,12 +363,6 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
       // (API-CONTRACT.md §3.3).
       progress.phase('finalizing');
       progress.step(document === null ? 's4' : 's3', 'done');
-      progress.suggestions(buildSuggestions({
-        hasDocument: true,
-        placeholders: lastPlaceholders,
-        askedUser: false,
-        markdown: toolContext.workingDoc,
-      }));
       emit('done', done('end_turn'));
       return { stopReason: 'end_turn', usage: totalUsage, steps: step, modelsUsed };
     }
@@ -397,12 +391,6 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
       }
       progress.phase('finalizing');
       progress.step(document === null ? 's4' : 's3', 'done');
-      progress.suggestions(buildSuggestions({
-        hasDocument: document !== null || setsEmitted > 0 || Boolean(toolContext.workingDoc),
-        placeholders: lastPlaceholders,
-        askedUser: false,
-        markdown: toolContext.workingDoc,
-      }));
       emit('done', done('end_turn'));
       return { stopReason: 'end_turn', usage: totalUsage, steps: step, modelsUsed };
     }

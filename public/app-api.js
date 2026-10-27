@@ -379,15 +379,18 @@
    */
   function chatMarkdownText(value) {
     var text = String(value || '').replace(/\r\n?/g, '\n');
-    if (text.indexOf('\n') === -1) {
-      var bullets = text.match(/\s-\s+/g);
-      if (bullets && bullets.length >= 2) {
-        text = text.replace(/\s+-\s+(?=\*\*|[A-ZÀ-ÖØ-Þ«"])/g, '\n- ');
-      } else {
-        text = text.replace(/\s+-\s+(?=\*\*)/g, '\n- ');
-      }
-    }
-    return text;
+    // Legacy messages may have been flattened to one line. Recover the
+    // unambiguous "- **Label** :" bullet form without rewriting other prose.
+    text = text.replace(/([^\n])\s+-\s+(?=\*\*[^*\n]+\*\*\s*:)/g, '$1\n- ');
+    var lines = text.split('\n');
+    var normalized = [];
+    function isList(line) { return /^\s*(?:[-*+]\s+|\d{1,3}[.)]\s+)/.test(line); }
+    lines.forEach(function (line) {
+      if (isList(line) && normalized.length && normalized[normalized.length - 1].trim()
+          && !isList(normalized[normalized.length - 1])) normalized.push('');
+      normalized.push(line);
+    });
+    return normalized.join('\n');
   }
 
   function renderChatMarkdown(host, value) {
@@ -2727,18 +2730,10 @@
     });
   }
 
-  /**
-   * Une seule barre de suggestions, dans le flux, juste au-dessus du
-   * composeur. L'ancienne rangée statique `#quick` est neutralisée.
-   */
+  /** Installs the single dynamic suggestions dock above the composer. */
   function installChatDock() {
     var chat = document.querySelector('.chat');
     if (!chat) return;
-    var quick = $('quick');
-    if (quick) {
-      quick.hidden = true;
-      quick.innerHTML = '';
-    }
     var composer = chat.querySelector('.composer');
     if (!composer) return;
 
@@ -3154,18 +3149,16 @@
   }
 
   function showSuggestions(items) {
-    ui.suggestions = Array.isArray(items) ? items.slice(0, 3) : [];
+    // Suggestions belong only to an idle, editable document state. The only
+    // populated list comes from the suggest_next_actions tool event.
+    ui.suggestions = !busy && agent.state === 'idle' && doc && Array.isArray(items)
+      ? items.slice(0, 3) : [];
     renderSuggestionDock();
   }
 
   function hideSuggestions() {
     var host = $('suggestionsDock');
     if (host) host.hidden = true;
-  }
-
-  /** The old per-message row is no longer rendered (single dynamic dock). */
-  function renderSuggestions() {
-    return null;
   }
 
   /* ---------------------------------------------------------------- */
@@ -3627,11 +3620,12 @@
       return tool.name === 'save_company_profile' && tool.ok;
     });
     if (savedProfile) void loadCompanyProfiles();
-    setState(message.question ? 'awaiting_input' : 'idle');
+    var awaitingAnswer = Boolean(message.question) || /[?？]\s*$/.test(chatMarkdownText(message.content).trim());
+    setState(awaitingAnswer ? 'awaiting_input' : 'idle');
     refreshBubble(message);
     persist();
     endTurn();
-    if (message.question) showSuggestions([]);
+    if (awaitingAnswer || !doc) showSuggestions([]);
     else showSuggestions(message.suggestions || []);
   }
 
@@ -3730,6 +3724,18 @@
         { event: 'clause_explained', data: { seq: 5, t: 420, article: 'Article 2 – Résiliation', quote: 'Chaque partie peut résilier le bail selon les modalités ci-dessous.', explanation: 'Le texte prévoit que chaque partie peut mettre fin au bail en respectant les modalités indiquées juste après. Il s\'applique aux deux parties.', obligations: [{ party: 'chaque partie', duty: 'respecter les modalités de résiliation prévues au contrat' }], risks: ['Les délais de préavis doivent être respectés.'], depends_on: ['durée du bail'], limits: 'Cette explication est une aide à la lecture. Elle ne remplace pas l\'avis d\'un professionnel du droit.', document_version: 1 } },
         { event: 'text_delta', data: { seq: 6, t: 500, text: 'Voici ce que prévoit la clause de résiliation.' } },
         { event: 'done', data: { seq: 7, t: 550, stop_reason: 'end_turn' } }
+      ];
+    } else if (lower.indexOf('présenter ces informations en liste') !== -1) {
+      // Visual regression fixture for Markdown rendering at mobile widths.
+      events = [
+        { event: 'ready', data: { seq: 1, t: 0 } },
+        { event: 'text_delta', data: { seq: 2, t: 100, text: 'Intro\n\n- **A** : x\n- **B** : y' } },
+        { event: 'suggestions', data: { seq: 3, t: 150, items: [
+          { label: 'Compléter les champs', message: 'Aide-moi à compléter les champs restants du contrat.' },
+          { label: 'Ajouter les signatures', message: 'Ajoute un bloc de signatures avec les parties du contrat.' },
+          { label: 'Ajouter une pénalité', message: 'Ajoute une clause de pénalité de retard.' }
+        ] } },
+        { event: 'done', data: { seq: 4, t: 200, stop_reason: 'end_turn' } }
       ];
     } else if (lower.indexOf('question') !== -1) {
       events = [

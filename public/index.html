@@ -57,8 +57,6 @@ button{font:inherit;color:inherit;cursor:pointer}
 .m.ai{color:var(--ink)}
 .m.ai.wait{color:var(--mut)}
 .chat .composer{margin:0 14px 14px;border-radius:18px;box-shadow:none}
-.quick{display:flex;gap:6px;flex-wrap:wrap;padding:0 18px 10px}
-.quick .chip{font-size:12.5px;padding:5px 11px}
 
 .stage{display:flex;flex-direction:column;min-height:0;min-width:0}
 .bar{display:flex;align-items:center;gap:10px;padding:12px 20px;border-bottom:1px solid var(--line)}
@@ -243,7 +241,6 @@ body.drag *{transition:none!important}
     <div class="brand"><span class="orb" id="orb2" data-state="idle"></span>Assistant de rédaction</div>
     <div id="agentStatus" role="status" aria-live="polite" hidden></div>
     <div class="msgs" id="msgs" aria-live="polite"></div>
-    <div class="quick" id="quick"></div>
     <div class="composer">
       <textarea id="cin" rows="2" placeholder="Demandez une modification…"></textarea>
       <div class="crow"><span>Maj+Entrée : nouvelle ligne</span><button class="send" id="csend" aria-label="Envoyer" disabled>↑</button></div>
@@ -278,7 +275,6 @@ body.drag *{transition:none!important}
 <script>
 const $=id=>document.getElementById(id);
 const SUGG=["Contrat de prestation freelance","Bail d’habitation meublé à Abidjan","Accord de confidentialité (NDA)","Contrat de travail à durée déterminée","Contrat de vente de véhicule"];
-const QUICK=["Ajoute une clause de confidentialité","Rends le ton plus simple","Ajoute une pénalité de retard","Ajoute les signatures"];
 let doc=null,busy=false,cur=null,convs=[],user=null,tm;
 const store=(k,v)=>{try{localStorage.setItem(k,v)}catch{}};
 const getS=k=>{try{return localStorage.getItem(k)}catch{return null}};
@@ -322,7 +318,6 @@ function enter(){
 function leave(){user=null;store('altredige.user','null');cur=null;doc=null;$('shell').hidden=true;$('login').hidden=false;$('set').hidden=true;$('menu').hidden=true}
 
 SUGG.forEach(s=>{const b=document.createElement('button');b.className='chip';b.textContent=s;b.onclick=()=>{$('hin').value=s;$('hin').focus();$('hsend').disabled=false};$('chips').appendChild(b)});
-QUICK.forEach(s=>{const b=document.createElement('button');b.className='chip';b.textContent=s;b.onclick=()=>send(s);$('quick').appendChild(b)});
 
 function bindInput(t,s,fn){
   t.addEventListener('input',()=>{s.disabled=!t.value.trim()||busy;t.style.height='auto';t.style.height=Math.min(t.scrollHeight,160)+'px'});
@@ -885,15 +880,18 @@ theme(getS('altredige.theme')||'auto');render();
    */
   function chatMarkdownText(value) {
     var text = String(value || '').replace(/\r\n?/g, '\n');
-    if (text.indexOf('\n') === -1) {
-      var bullets = text.match(/\s-\s+/g);
-      if (bullets && bullets.length >= 2) {
-        text = text.replace(/\s+-\s+(?=\*\*|[A-ZÀ-ÖØ-Þ«"])/g, '\n- ');
-      } else {
-        text = text.replace(/\s+-\s+(?=\*\*)/g, '\n- ');
-      }
-    }
-    return text;
+    // Legacy messages may have been flattened to one line. Recover the
+    // unambiguous "- **Label** :" bullet form without rewriting other prose.
+    text = text.replace(/([^\n])\s+-\s+(?=\*\*[^*\n]+\*\*\s*:)/g, '$1\n- ');
+    var lines = text.split('\n');
+    var normalized = [];
+    function isList(line) { return /^\s*(?:[-*+]\s+|\d{1,3}[.)]\s+)/.test(line); }
+    lines.forEach(function (line) {
+      if (isList(line) && normalized.length && normalized[normalized.length - 1].trim()
+          && !isList(normalized[normalized.length - 1])) normalized.push('');
+      normalized.push(line);
+    });
+    return normalized.join('\n');
   }
 
   function renderChatMarkdown(host, value) {
@@ -3233,18 +3231,10 @@ theme(getS('altredige.theme')||'auto');render();
     });
   }
 
-  /**
-   * Une seule barre de suggestions, dans le flux, juste au-dessus du
-   * composeur. L'ancienne rangée statique `#quick` est neutralisée.
-   */
+  /** Installs the single dynamic suggestions dock above the composer. */
   function installChatDock() {
     var chat = document.querySelector('.chat');
     if (!chat) return;
-    var quick = $('quick');
-    if (quick) {
-      quick.hidden = true;
-      quick.innerHTML = '';
-    }
     var composer = chat.querySelector('.composer');
     if (!composer) return;
 
@@ -3660,18 +3650,16 @@ theme(getS('altredige.theme')||'auto');render();
   }
 
   function showSuggestions(items) {
-    ui.suggestions = Array.isArray(items) ? items.slice(0, 3) : [];
+    // Suggestions belong only to an idle, editable document state. The only
+    // populated list comes from the suggest_next_actions tool event.
+    ui.suggestions = !busy && agent.state === 'idle' && doc && Array.isArray(items)
+      ? items.slice(0, 3) : [];
     renderSuggestionDock();
   }
 
   function hideSuggestions() {
     var host = $('suggestionsDock');
     if (host) host.hidden = true;
-  }
-
-  /** The old per-message row is no longer rendered (single dynamic dock). */
-  function renderSuggestions() {
-    return null;
   }
 
   /* ---------------------------------------------------------------- */
@@ -4133,11 +4121,12 @@ theme(getS('altredige.theme')||'auto');render();
       return tool.name === 'save_company_profile' && tool.ok;
     });
     if (savedProfile) void loadCompanyProfiles();
-    setState(message.question ? 'awaiting_input' : 'idle');
+    var awaitingAnswer = Boolean(message.question) || /[?？]\s*$/.test(chatMarkdownText(message.content).trim());
+    setState(awaitingAnswer ? 'awaiting_input' : 'idle');
     refreshBubble(message);
     persist();
     endTurn();
-    if (message.question) showSuggestions([]);
+    if (awaitingAnswer || !doc) showSuggestions([]);
     else showSuggestions(message.suggestions || []);
   }
 
@@ -4236,6 +4225,18 @@ theme(getS('altredige.theme')||'auto');render();
         { event: 'clause_explained', data: { seq: 5, t: 420, article: 'Article 2 – Résiliation', quote: 'Chaque partie peut résilier le bail selon les modalités ci-dessous.', explanation: 'Le texte prévoit que chaque partie peut mettre fin au bail en respectant les modalités indiquées juste après. Il s\'applique aux deux parties.', obligations: [{ party: 'chaque partie', duty: 'respecter les modalités de résiliation prévues au contrat' }], risks: ['Les délais de préavis doivent être respectés.'], depends_on: ['durée du bail'], limits: 'Cette explication est une aide à la lecture. Elle ne remplace pas l\'avis d\'un professionnel du droit.', document_version: 1 } },
         { event: 'text_delta', data: { seq: 6, t: 500, text: 'Voici ce que prévoit la clause de résiliation.' } },
         { event: 'done', data: { seq: 7, t: 550, stop_reason: 'end_turn' } }
+      ];
+    } else if (lower.indexOf('présenter ces informations en liste') !== -1) {
+      // Visual regression fixture for Markdown rendering at mobile widths.
+      events = [
+        { event: 'ready', data: { seq: 1, t: 0 } },
+        { event: 'text_delta', data: { seq: 2, t: 100, text: 'Intro\n\n- **A** : x\n- **B** : y' } },
+        { event: 'suggestions', data: { seq: 3, t: 150, items: [
+          { label: 'Compléter les champs', message: 'Aide-moi à compléter les champs restants du contrat.' },
+          { label: 'Ajouter les signatures', message: 'Ajoute un bloc de signatures avec les parties du contrat.' },
+          { label: 'Ajouter une pénalité', message: 'Ajoute une clause de pénalité de retard.' }
+        ] } },
+        { event: 'done', data: { seq: 4, t: 200, stop_reason: 'end_turn' } }
       ];
     } else if (lower.indexOf('question') !== -1) {
       events = [

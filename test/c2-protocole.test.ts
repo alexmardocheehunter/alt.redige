@@ -139,6 +139,7 @@ describe('C2 — protocole agent : progression visible', () => {
         }],
         finishReason: 'tool_calls',
       },
+      { toolUses: [{ id: 'tool_2', name: 'suggest_next_actions', input: {} }], finishReason: 'tool_calls' },
       { text: 'Le bail est prêt.' },
     ]);
 
@@ -176,5 +177,10 @@ describe('C2 — protocole agent : progression visible', () => {
       previous = event.data.seq;
       expect(typeof event.data.t).toBe('number');
     }
+  });
+
+  it('n’ajoute pas de suggestions de secours hors de l’outil dédié', async () => {
+    const events = await runTurn([{ text: 'Quelle durée souhaitez-vous retenir ?' }]);
+    expect(events.some((event) => event.event === 'suggestions')).toBe(false);
   });
 });

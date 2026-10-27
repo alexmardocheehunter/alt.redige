@@ -284,10 +284,9 @@ describe('suggestions dynamiques', () => {
     expect(buildSuggestions({ hasDocument: true, placeholders: 1, askedUser: true })).toEqual([]);
   });
 
-  it('propose trois types de contrat quand le document est vide', () => {
+  it('ne propose rien avant la création du document', () => {
     const suggestions = buildSuggestions({ hasDocument: false, placeholders: 0, askedUser: false });
-    expect(suggestions).toHaveLength(3);
-    expect(suggestions[0]?.label).toBe('Créer un bail');
+    expect(suggestions).toEqual([]);
   });
 });
 

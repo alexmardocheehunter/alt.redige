@@ -142,7 +142,7 @@ export function buildSuggestions(options: {
   askedUser: boolean;
   markdown?: string | null;
 }): SuggestionItem[] {
-  if (options.askedUser) return [];
+  if (options.askedUser || !options.hasDocument) return [];
 
   const markdown = String(options.markdown ?? '');
   const items: SuggestionItem[] = [];
@@ -178,21 +178,6 @@ export function buildSuggestions(options: {
         message: 'Rends le ton du contrat plus simple et plus direct.',
       });
     }
-  } else {
-    items.push(
-      {
-        label: 'Créer un bail',
-        message: 'Je veux rédiger un contrat de bail d’habitation.',
-      },
-      {
-        label: 'Créer un CDI',
-        message: 'Je veux rédiger un contrat de travail à durée indéterminée.',
-      },
-      {
-        label: 'Voir les modèles',
-        message: 'Montre-moi les types de contrat disponibles.',
-      },
-    );
   }
 
   return items.slice(0, 3);
