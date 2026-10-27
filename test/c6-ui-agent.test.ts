@@ -48,6 +48,16 @@ describe('C6 — interface agent v2', () => {
     expect(source).toContain('QUESTION_MAX_FIELDS');
   });
 
+  it('rend le Markdown des messages du chat sans HTML injecté', () => {
+    expect(source).toContain('function renderChatMarkdown');
+    expect(source).toContain('window.msg = function');
+    expect(source).toContain("el(ordered ? 'ol' : 'ul', 'chat-list')");
+    expect(source).toContain("el('strong')");
+    // Les anciens messages aplatis sont reconnectés en puces.
+    expect(source).toContain('chatMarkdownText');
+    expect(source).toContain('.msg-text{white-space:pre-wrap');
+  });
+
   it('échappe le contenu : aucun HTML injecté', () => {
     // `innerHTML` ne sert qu'à vider un conteneur : jamais à insérer du contenu.
     const assignments = [...source.matchAll(/\.innerHTML\s*=\s*([^;]+);/g)].map((m) => m[1]!.trim());
