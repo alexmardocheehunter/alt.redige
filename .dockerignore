@@ -1,0 +1,48 @@
+# Dependencies
+node_modules
+npm-debug.log*
+
+# Logs
+*.log
+
+# Source files (not needed in container)
+src
+scripts
+test
+reference
+docs
+webinaire-ia
+
+# Config files
+tsconfig*.json
+.eslintrc*
+.prettierrc*
+.gitignore
+.git
+.github
+.vscode
+
+# Environment files (secrets go in Secret Manager)
+.env
+.env.*
+*.pem
+*.key
+*service-account*.json
+*firebase-adminsdk*.json
+
+# OS/Editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Firebase
+.firebaserc
+firebase.json
+firestore.rules
+firestore.indexes.json
+
+# Misc
+*.md
+!public/index.html

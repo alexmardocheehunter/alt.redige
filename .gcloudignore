@@ -1,0 +1,16 @@
+# Cloud Run source deploy: whitelist only the files the Dockerfile needs.
+# gcloud falls back to .gitignore when this file is absent, and .gitignore
+# excludes dist/ (built locally before deploy). Keep the built output here.
+*
+!Dockerfile
+!.dockerignore
+!package.json
+!package-lock.json
+!dist/
+!dist/**
+!public/
+!public/**
+!data/
+!data/**
+!prompts/
+!prompts/**

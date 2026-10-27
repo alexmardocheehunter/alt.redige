@@ -1,0 +1,10 @@
+NODE_ENV: production
+AUTH_MODE: firebase
+HISTORY_ENABLED: "1"
+TRUST_PROXY: "1"
+FIREBASE_PROJECT_ID: altredige
+FIREBASE_SERVICE_ACCOUNT: /secrets/firebase-service-account.json
+LLM_MODELS: "dots-studio/dots-3-note-preview:free,nvidia/nemotron-3-ultra-550b-a55b:free,nvidia/nemotron-3.5-lightning:free,nvidia/nemotron-3.5-super-vl:free,google/gemma-4-31b-it:free"
+LLM_SAFETY_MODEL: "nvidia/nemotron-3.5-content-safety:free"
+MAX_OUTPUT_TOKENS: "16000"
+SAFETY_CHECK: "1"
